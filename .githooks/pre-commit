@@ -1,0 +1,255 @@
+#!/bin/sh
+#
+# pre-commit hook for Laufbursche Edition
+#
+#   Phase A - syntax check every staged JS / HTML / JSON / XML / Java file.
+#   Phase B - scan staged content for secrets / credentials.
+#
+# NOTE: heavy static application security testing (SAST) -- Android Lint security
+# checks + SpotBugs/FindSecBugs -- deliberately does NOT run here; a full analysis is
+# too slow for every commit. It runs in .githooks/pre-push instead (via the gradle
+# `securityScan` task). This hook stays fast: per-file syntax + secret scan only.
+#
+# This hook is versioned under .githooks/ and activated with:
+#   git config core.hooksPath .githooks
+#
+# Bypass options:
+#   git commit --no-verify         -> skip ALL hooks (use for a genuine false positive)
+#   SKIP_GRADLE=1 git commit ...   -> skip ONLY the slow Java gradle compile check
+#
+# NOTE: the hook checks the WORKING-TREE copy for syntax (node --check "$f")
+# and the STAGED blob (git show ":$f") for the secret scan.
+
+set -u
+
+RC=0
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+# Private temp workspace, auto-removed on exit.
+TMPD=$(mktemp -d 2>/dev/null || echo "${TMPDIR:-/tmp}/pchook.$$")
+mkdir -p "$TMPD" 2>/dev/null || true
+trap 'rm -rf "$TMPD"' EXIT INT TERM
+
+echo "----- pre-commit: syntax + secret scan --------------------------"
+
+# Staged Added/Copied/Modified files, NUL-separated (safe for spaces/newlines).
+STAGED_LIST="$TMPD/staged.lst"
+git diff --cached --name-only --diff-filter=ACM -z > "$STAGED_LIST" 2>/dev/null || : > "$STAGED_LIST"
+
+if [ ! -s "$STAGED_LIST" ]; then
+  echo "No staged files (Added/Copied/Modified). Nothing to check."
+  exit 0
+fi
+
+# =================================================================
+# PHASE 0 - normalize Unicode dashes to ASCII '-' (auto-fix + re-stage)
+# =================================================================
+# Any Unicode hyphen/dash (hyphen, non-breaking/figure/en/em dash, horizontal
+# bar, minus sign, small/fullwidth hyphen-minus) is replaced with a plain '-'.
+# Box-drawing '-' (U+2500) is NOT a dash and is intentionally left untouched.
+DASH_CLASS='[\x{2010}-\x{2015}\x{2212}\x{FE58}\x{FE63}\x{FF0D}]'
+dash_blocked=""
+if command -v perl >/dev/null 2>&1; then
+  while IFS= read -r -d '' f; do
+    [ -n "$f" ] || continue
+    [ -f "$f" ] || continue
+    case "$f" in .githooks/*) continue ;; esac
+    perl -e 'exit(-B $ARGV[0] ? 0 : 1)' "$f" 2>/dev/null && continue          # skip binary
+    perl -CSD -0777 -ne "exit(/$DASH_CLASS/ ? 0 : 1)" "$f" 2>/dev/null || continue  # no dash -> skip
+    if git diff --quiet -- "$f" 2>/dev/null; then
+      # working tree == index: safe to auto-fix and re-stage the whole file
+      perl -CSD -i -pe "s/$DASH_CLASS/-/g" "$f"
+      git add -- "$f"
+      echo "  normalized Unicode dashes -> '-': $f"
+    else
+      # file also has UNSTAGED changes; do not silently stage them
+      dash_blocked="$dash_blocked  $f
+"
+    fi
+  done < "$STAGED_LIST"
+fi
+if [ -n "$dash_blocked" ]; then
+  echo "BLOCK: Unicode dashes found, but these staged files also have UNSTAGED changes:"
+  printf '%s' "$dash_blocked"
+  echo "  -> stage the whole file (git add <file>) so the hook can normalize it, then re-commit."
+  RC=1
+fi
+
+# =================================================================
+# PHASE A - syntax checks
+# =================================================================
+JAVA_CHANGED=0
+
+# Detect PowerShell once (used for XML well-formedness).
+HAS_PS=0
+if command -v powershell.exe >/dev/null 2>&1; then HAS_PS=1; fi
+
+# Node snippet: extract every inline <script> WITHOUT a src= attribute from an
+# HTML file (argv[1]) and write the concatenated JS to argv[2].
+HTML_EXTRACT='var fs=require("fs");var src=fs.readFileSync(process.argv[1],"utf8");var re=/<script\b([^>]*)>([\s\S]*?)<\/script>/gi;var out="";var m;while((m=re.exec(src))!==null){var a=m[1]||"";if(/\bsrc\s*=/i.test(a)){continue;}out+="\n"+m[2]+"\n;\n";}fs.writeFileSync(process.argv[2],out);'
+
+while IFS= read -r -d '' f; do
+  [ -n "$f" ] || continue
+  lf=$(printf '%s' "$f" | tr 'A-Z' 'a-z')
+  case "$lf" in
+    *.js)
+      if node --check "$f" 2>"$TMPD/err"; then
+        echo "PASS  [js]    $f"
+      else
+        echo "FAIL  [js]    $f"
+        sed 's/^/        /' "$TMPD/err"
+        RC=1
+      fi
+      ;;
+    *.html|*.htm)
+      exj="$TMPD/inline.js"
+      if node -e "$HTML_EXTRACT" "$f" "$exj" 2>"$TMPD/err"; then
+        if node --check "$exj" 2>"$TMPD/err"; then
+          echo "PASS  [html]  $f (inline script)"
+        else
+          echo "FAIL  [html]  $f (inline script syntax error)"
+          sed 's/^/        /' "$TMPD/err"
+          RC=1
+        fi
+      else
+        echo "FAIL  [html]  $f (could not extract inline scripts)"
+        sed 's/^/        /' "$TMPD/err"
+        RC=1
+      fi
+      ;;
+    *.json)
+      if node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' "$f" 2>"$TMPD/err"; then
+        echo "PASS  [json]  $f"
+      else
+        echo "FAIL  [json]  $f"
+        sed 's/^/        /' "$TMPD/err"
+        RC=1
+      fi
+      ;;
+    *.xml)
+      if [ "$HAS_PS" = "1" ]; then
+        abs="$REPO_ROOT/$f"
+        # Double single quotes for the PowerShell single-quoted literal.
+        abs_ps=$(printf '%s' "$abs" | sed "s/'/''/g")
+        if powershell.exe -NoProfile -Command "try { [void][xml](Get-Content -Raw -LiteralPath '$abs_ps'); exit 0 } catch { exit 1 }" 2>"$TMPD/err"; then
+          echo "PASS  [xml]   $f"
+        else
+          echo "FAIL  [xml]   $f (not well-formed)"
+          sed 's/^/        /' "$TMPD/err"
+          RC=1
+        fi
+      else
+        echo "WARN  [xml]   $f (powershell.exe not found - XML check skipped)"
+      fi
+      ;;
+    *.java)
+      JAVA_CHANGED=1
+      ;;
+  esac
+done < "$STAGED_LIST"
+
+# Java: a single real compile check after the loop (slow; skippable).
+if [ "$JAVA_CHANGED" = "1" ]; then
+  if [ -n "${SKIP_GRADLE:-}" ]; then
+    echo "SKIP  [java]  gradle compile skipped (SKIP_GRADLE set)"
+  else
+    echo "..    [java]  compiling changed Java (set SKIP_GRADLE=1 to skip this step) ..."
+    if JAVA_HOME="C:\Program Files\Android\openjdk\jdk-21.0.8" ./gradlew -q compileDebugJavaWithJavac; then
+      echo "PASS  [java]  gradle compileDebugJavaWithJavac"
+    else
+      echo "FAIL  [java]  gradle compileDebugJavaWithJavac"
+      RC=1
+    fi
+  fi
+fi
+
+# =================================================================
+# PHASE B - secret / credential scan of staged content
+# =================================================================
+SQ="'"
+DQ='"'
+
+JWT_RE='eyJ[A-Za-z0-9_-]{6,}\.eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]+'
+PEM_RE='-----BEGIN[A-Z ]*PRIVATE KEY-----'
+AWS_RE='AKIA[0-9A-Z]{16}'
+GAPI_RE='AIza[0-9A-Za-z_-]{35}'
+# Generic Windows user-home path (C:\Users\<name>\). Blocks any staged file that
+# leaks a personal home path, independent of the specific user name.
+WINHOME_RE='[Cc]:\\Users\\[^\\]+\\'
+# keyword, then optional quotes/space, then [:=], then a non-empty (non-quote,
+# non-space) value -> avoids matching empty assignments like  password = ""
+GENERIC_RE="(password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token|private[_-]?key|bearer)[${SQ}${DQ}[:space:]]*[:=][[:space:]]*[${SQ}${DQ}]?[^[:space:]${SQ}${DQ}]"
+
+# Placeholder / example VALUES that are NOT real secrets. Anchored to the value (right after the
+# [:=], optionally quoted) so a documented example like  storePassword=your-store-password  is
+# ignored, while a real high-entropy value (which does not START with one of these tokens) still
+# blocks. This only relaxes the loose GENERIC_RE heuristic; JWT/PEM/AWS/Google are unaffected and
+# still scan every file (including docs).
+PLACEHOLDER_RE="[:=][[:space:]]*[${SQ}${DQ}]?(your[-_ ]|<[A-Za-z.]|example|changeme|change-me|placeholder|redacted|dummy|sample|xxxx|\.\.\.|todo|replace[-_]?me|password-here|value-here|my[-_]?(secret|password|token|key))"
+
+# Values that are REFERENCES to a secret - a CI secret expansion (${{ secrets.* }}
+# or ${...}), an environment read (System.getenv) or a gradle property / config
+# field (props.getProperty, releaseSigning.storePassword) - not a literal secret.
+# These are the correct way to pass secrets, so they must not trip the heuristic.
+# Anchored to the value right after [:=]. A real high-entropy literal (which does
+# not match one of these specific reference forms) still blocks.
+REFERENCE_RE="[:=][[:space:]]*[${SQ}${DQ}]?([$]\{|system\.getenv|system\.getproperty|[a-z_][a-z0-9_]*\.getproperty|[a-z_][a-z0-9_]*\.(store|key)password)"
+
+SEC_HITS=0
+
+# scan_content <file-label> <path-to-content-file>
+scan_content() {
+  _f=$1
+  _c=$2
+  if grep -aqE  -e "$JWT_RE"     "$_c"; then echo "BLOCK $_f : rule=jwt-token";                 SEC_HITS=1; RC=1; fi
+  if grep -aqE  -e "$PEM_RE"     "$_c"; then echo "BLOCK $_f : rule=pem-private-key";            SEC_HITS=1; RC=1; fi
+  if grep -aqE  -e "$AWS_RE"     "$_c"; then echo "BLOCK $_f : rule=aws-access-key";             SEC_HITS=1; RC=1; fi
+  if grep -aqE  -e "$GAPI_RE"    "$_c"; then echo "BLOCK $_f : rule=google-api-key";             SEC_HITS=1; RC=1; fi
+  if grep -aqE  -e "$WINHOME_RE" "$_c"; then echo "BLOCK $_f : rule=windows-home-path";          SEC_HITS=1; RC=1; fi
+  # Generic keyword=value, minus lines whose value is an obvious placeholder
+  # (PLACEHOLDER_RE) or a reference to a secret rather than a literal (REFERENCE_RE).
+  if grep -ainE -e "$GENERIC_RE" "$_c" | grep -aivE -e "$PLACEHOLDER_RE" | grep -aivE -e "$REFERENCE_RE" | grep -aq .; then
+    echo "BLOCK $_f : rule=generic-secret-assignment"; SEC_HITS=1; RC=1
+  fi
+}
+
+while IFS= read -r -d '' f; do
+  [ -n "$f" ] || continue
+  # Exclude the hook's own files so its regexes/patterns cannot self-match.
+  case "$f" in
+    .githooks/*|.gitignore) continue ;;
+  esac
+
+  # Filename-based block for sensitive file types.
+  base=$(basename "$f")
+  case "$base" in
+    token.txt|id_rsa|.env)                echo "BLOCK $f : rule=sensitive-filename"; SEC_HITS=1; RC=1 ;;
+    *.pem|*.jks|*.keystore|*.p12|*.token) echo "BLOCK $f : rule=sensitive-filename"; SEC_HITS=1; RC=1 ;;
+    secrets.*)                            echo "BLOCK $f : rule=sensitive-filename"; SEC_HITS=1; RC=1 ;;
+  esac
+
+  # Content-based scan of the STAGED blob.
+  blob="$TMPD/blob"
+  if git show ":$f" > "$blob" 2>/dev/null; then
+    scan_content "$f" "$blob"
+  fi
+done < "$STAGED_LIST"
+
+if [ "$SEC_HITS" = "0" ]; then
+  echo "OK    [secrets] no secrets/credentials detected in staged content"
+fi
+
+# =================================================================
+# Result
+# =================================================================
+echo "-----------------------------------------------------------------"
+if [ "$RC" -ne 0 ]; then
+  echo "pre-commit FAILED -- commit blocked."
+  echo "  * Fix the issues listed above, then re-stage and commit again."
+  echo "  * If a secret hit is a FALSE POSITIVE, bypass with: git commit --no-verify"
+  echo "  * To skip only the slow Java build: SKIP_GRADLE=1 git commit ..."
+  exit 1
+fi
+
+echo "pre-commit PASSED."
+exit 0

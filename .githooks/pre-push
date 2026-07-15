@@ -1,0 +1,102 @@
+#!/bin/sh
+#
+# pre-push hook for Laufbursche Edition  --  Static Application Security Testing (SAST) gate.
+#
+# Runs the heavier SAST scan (Android Lint security checks + SpotBugs/FindSecBugs) once,
+# before a push, so the slow whole-project analysis never burdens per-commit work. The fast
+# per-file syntax + secret scan stays in .githooks/pre-commit.
+#
+# It BLOCKS the push when:
+#   * the scan fails to run (gradle error, broken build, lint crash), or
+#   * the Android Lint XML report contains an Error/Fatal-severity finding. The build raises a
+#     curated set of genuinely dangerous security checks to Fatal (see app/build.gradle
+#     `lint { fatal += [...] }`); this app's intentional patterns (local file:// WebView + JS
+#     bridge, LAN cleartext) stay at Warning and do NOT block.
+#
+# Bypass:
+#   git push --no-verify      -> skip ALL pre-push hooks
+#   SKIP_SAST=1 git push ...  -> skip ONLY this SAST gate
+#
+# Activated via: git config core.hooksPath .githooks
+
+set -u
+
+if [ -n "${SKIP_SAST:-}" ]; then
+  echo "pre-push: SKIP_SAST set -> SAST scan skipped."
+  exit 0
+fi
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$REPO_ROOT" || exit 0
+
+# Match the project's documented build environment.
+JAVA_HOME="C:\Program Files\Android\openjdk\jdk-21.0.8"
+export JAVA_HOME
+export MSYS_NO_PATHCONV=1
+
+echo "----- pre-push: SAST scan (Android Lint + SpotBugs/FindSecBugs) -"
+echo "  bypass: git push --no-verify   |   SKIP_SAST=1 git push ..."
+
+TMPD=$(mktemp -d 2>/dev/null || echo "${TMPDIR:-/tmp}/prepush.$$")
+mkdir -p "$TMPD" 2>/dev/null || true
+trap 'rm -rf "$TMPD"' EXIT INT TERM
+OUT="$TMPD/gradle.out"
+
+# Prefer the aggregate securityScan task; fall back to lintDebug if it is not defined.
+run_scan() {
+  # stdin from /dev/null so gradle never consumes the ref list git feeds this hook.
+  ./gradlew "$1" < /dev/null > "$OUT" 2>&1
+}
+
+SCAN_TASK="securityScan"
+echo ".. running: ./gradlew $SCAN_TASK"
+if run_scan "$SCAN_TASK"; then
+  GRADLE_RC=0
+else
+  GRADLE_RC=$?
+  if grep -qiE "Task '?securityScan'? not found|Cannot locate .*securityScan" "$OUT"; then
+    SCAN_TASK="lintDebug"
+    echo ".. securityScan not defined; falling back to: ./gradlew $SCAN_TASK"
+    if run_scan "$SCAN_TASK"; then GRADLE_RC=0; else GRADLE_RC=$?; fi
+  fi
+fi
+
+# Always show the tail of the gradle output so failures are diagnosable.
+tail -n 15 "$OUT" 2>/dev/null | sed 's/^/    /'
+
+# Inspect the Lint XML report for Error/Fatal-severity (security) findings. abortOnError=false
+# means these do NOT fail the gradle task, so the hook has to gate on them explicitly.
+LINT_XML="app/build/reports/lint-results-debug.xml"
+OFFENDERS=""
+if [ -f "$LINT_XML" ]; then
+  OFFENDERS=$(awk '
+    /id="/       { l=$0; sub(/.*id="/,"",l); sub(/".*/,"",l); lastid=l }
+    /severity="(Error|Fatal)"/ { print lastid }
+  ' "$LINT_XML" 2>/dev/null | sort -u | tr '\n' ' ')
+fi
+
+echo "-----------------------------------------------------------------"
+if [ "$GRADLE_RC" -ne 0 ]; then
+  echo "pre-push BLOCKED: the SAST scan (./gradlew $SCAN_TASK) failed to complete."
+  echo "  * See the gradle output above."
+  echo "  * Reports (if produced):"
+  echo "      $REPO_ROOT/app/build/reports/lint-results-debug.html"
+  echo "      $REPO_ROOT/app/build/reports/spotbugs/spotbugs-debug.html"
+  echo "  * Bypass a genuine false positive with: git push --no-verify"
+  exit 1
+fi
+
+if [ -n "$OFFENDERS" ]; then
+  echo "pre-push BLOCKED: Android Lint reported Error/Fatal-severity finding(s):"
+  echo "    $OFFENDERS"
+  echo "  * Full report: $REPO_ROOT/app/build/reports/lint-results-debug.html"
+  echo "  * SpotBugs:    $REPO_ROOT/app/build/reports/spotbugs/spotbugs-debug.html"
+  echo "  * Fix the issue(s), or bypass with: git push --no-verify  (or SKIP_SAST=1 git push ...)"
+  exit 1
+fi
+
+echo "pre-push PASSED: no Error/Fatal-severity security findings."
+echo "  Reviewable reports:"
+echo "    $REPO_ROOT/app/build/reports/lint-results-debug.html"
+echo "    $REPO_ROOT/app/build/reports/spotbugs/spotbugs-debug.html"
+exit 0

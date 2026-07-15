@@ -1,0 +1,269 @@
+plugins {
+    id 'com.android.application'
+    // SAST Layer 2: SpotBugs + FindSecBugs (deep bytecode analysis). Best-effort.
+    id 'com.github.spotbugs' version '6.0.26'
+}
+
+// ── Release signing (OPTIONAL; debug development is never affected) ───────────
+// Signing credentials are resolved, in order of precedence, from:
+//   1. a gitignored `keystore.properties` file in the repo root, OR
+//   2. environment variables (KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS,
+//      KEY_PASSWORD) - used by CI (GitHub Actions release workflow).
+// If NEITHER source is present, release signing is left UNCONFIGURED, so gradle
+// sync and `./gradlew assembleDebug` work and never fail on a machine that has
+// no keystore. Debug builds keep using the automatic Android debug key.
+//
+// Expected `keystore.properties` format (this file must NOT be committed - it is
+// listed in .gitignore):
+//   storeFile=laufbursche.keystore        # path to the keystore (rel. to repo root or absolute)
+//   storePassword=your-store-password
+//   keyAlias=laufbursche
+//   keyPassword=your-key-password
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def releaseSigning = [:]
+if (keystorePropertiesFile.exists()) {
+    def props = new Properties()
+    keystorePropertiesFile.withInputStream { props.load(it) }
+    releaseSigning = [
+        storeFile    : props.getProperty('storeFile'),
+        storePassword: props.getProperty('storePassword'),
+        keyAlias     : props.getProperty('keyAlias'),
+        keyPassword  : props.getProperty('keyPassword'),
+    ]
+} else if (System.getenv('KEYSTORE_FILE')) {
+    releaseSigning = [
+        storeFile    : System.getenv('KEYSTORE_FILE'),
+        storePassword: System.getenv('KEYSTORE_PASSWORD'),
+        keyAlias     : System.getenv('KEY_ALIAS'),
+        keyPassword  : System.getenv('KEY_PASSWORD'),
+    ]
+}
+// Guard boolean: true only when a keystore path is actually available. Every
+// place that touches the release signing config is gated on this, so a missing
+// keystore can never break gradle evaluation, sync or the debug build.
+def hasReleaseSigning = releaseSigning.storeFile != null && !releaseSigning.storeFile.toString().trim().isEmpty()
+
+// ── Automatic versioning from the git commit count ───────────────────────────
+// versionName = "1.0.<n>" where n = (git commit count - 1): the initial commit is
+// 1.0.0 and each further commit bumps the patch, with no manual bump. So the first
+// public release is 1.0.0; the next is 1.0.1; etc. versionCode stays monotonic as
+// VERSION_BASE + commit count so every build installs over the previous 0.x dev
+// builds. Falls back to the baseline when git is not available (e.g. a source zip
+// without .git) so the build never breaks. The release workflow computes the SAME tag.
+def VERSION_BASE = 58
+def gitCommitCount = {
+    try {
+        def proc = ['git', 'rev-list', '--count', 'HEAD'].execute(null, rootProject.projectDir)
+        def out = proc.text
+        proc.waitFor()
+        return proc.exitValue() == 0 ? out.trim().toInteger() : 0
+    } catch (ignored) {
+        return 0
+    }
+}()
+def appVersionCode = VERSION_BASE + gitCommitCount
+def appVersionName = "1.0.${Math.max(0, gitCommitCount - 1)}"
+
+android {
+    namespace = 'com.lb.edition'
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = 'com.laufbursche.edition'
+        minSdk = 26
+        targetSdk = 36
+        versionCode = appVersionCode
+        versionName = appVersionName
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    // Configured ONLY when a keystore was resolved above (see hasReleaseSigning).
+    // When no keystore is present this stays empty and nothing references it.
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile = file(releaseSigning.storeFile)
+                storePassword = releaseSigning.storePassword
+                keyAlias = releaseSigning.keyAlias
+                keyPassword = releaseSigning.keyPassword
+                // Force BOTH v1 (JAR) and v2 signing. AGP disables v1 by default for
+                // minSdk >= 24, but some installers (notably MIUI/Xiaomi) reject a
+                // v2-only APK over ADB with INSTALL_FAILED_USER_RESTRICTED "Invalid apk".
+                // v1 + v2 installs on every device.
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+
+    buildTypes {
+        // Debug is intentionally left unchanged: automatic debug key, no minify.
+        debug {
+            minifyEnabled = false
+        }
+        release {
+            minifyEnabled = false
+            shrinkResources = false
+            // Apply the release signing config ONLY when it was actually
+            // configured; otherwise assembleRelease produces an unsigned APK and
+            // gradle evaluation still succeeds (important for keystore-less sync).
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.release
+            }
+        }
+    }
+
+    // ── SAST Layer 1: Android Lint security checks ───────────────────────────────
+    // Runs Lint's built-in security detectors (WebView / JS-bridge risks, cleartext,
+    // exported components, insecure crypto, unsafe file access, SSL / hostname issues,
+    // world-readable files, etc.). Full run:
+    //   ./gradlew lintDebug  ->  app/build/reports/lint-results-debug.{html,xml}
+    // abortOnError=false keeps the normal `assembleDebug` build green; the pre-push git
+    // hook parses the XML report and blocks a push only on Error/Fatal-severity findings.
+    lint {
+        abortOnError = false          // never break the normal assemble build
+        checkReleaseBuilds = false
+        htmlReport = true
+        xmlReport = true
+        warningsAsErrors = false
+        // Checks that are noise for THIS app are disabled with a reason (behaviour unchanged):
+        //  - SetTextI18n: the app is English-only (no localization); setText string concatenation
+        //    and hardcoded literals are intentional, so the i18n nag is pure noise here.
+        //  - GradleDependency: dependency versions are pinned deliberately for reproducible offline
+        //    builds; "a newer version exists" is informational, not a correctness/security issue.
+        disable += [
+            'SetTextI18n',
+            'GradleDependency',
+        ]
+        // Genuinely dangerous patterns that are NOT part of this app's design are raised
+        // to Fatal so the pre-push hook blocks them. This app is a local file:// WebView
+        // that intentionally uses a JS bridge + local cleartext (LAN SRT / HTTP); those
+        // specific findings stay at their default Warning severity and remain visible in
+        // the report but do not block.
+        fatal += [
+            'TrustAllX509TrustManager',
+            'BadHostnameVerifier',
+            'AllowAllHostnameVerifier',
+            'SSLCertificateSocketFactoryGetInsecure',
+            'HardcodedDebugMode',
+            'WorldReadableFiles',
+            'WorldWriteableFiles',
+            'TrulyRandom',
+            'GetInstance',
+            'UnsafeProtectedBroadcastReceiver',
+            'ExportedContentProvider',
+            'ExportedService',
+            'ExportedReceiver',
+        ]
+    }
+
+    // Offline rendering (Mapsforge) pulls in jars whose META-INF metadata / multi-release
+    // class files must be dropped so the Android packager does not choke on duplicates.
+    packaging {
+        resources {
+            excludes += [
+                'META-INF/DEPENDENCIES',
+                'META-INF/INDEX.LIST',
+                'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/LICENSE.md',
+                'META-INF/NOTICE', 'META-INF/NOTICE.txt', 'META-INF/NOTICE.md',
+                'META-INF/*.kotlin_module',
+                'META-INF/maven/**',
+                'META-INF/versions/**',
+                'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA',
+                '**/module-info.class',
+            ]
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.github.pedroSG94.RootEncoder:library:2.6.7'
+    // FileProvider (androidx.core.content.FileProvider) for sharing the debug log file.
+    implementation 'androidx.core:core:1.13.1'
+
+    // ── Offline navigation ──
+    // Offline OpenStreetMap rendering of .map files + bundled render themes + POI database
+    // reader. Mapsforge is LGPL-3.0 (dynamically linked). OSM data is ODbL - attribution shown
+    // on the map. The .map files are downloaded IN-APP (see MapDownloadActivity).
+    implementation 'org.mapsforge:mapsforge-map-android:0.21.0'
+    implementation 'org.mapsforge:mapsforge-themes:0.21.0'
+    implementation 'org.mapsforge:mapsforge-poi-android:0.21.0'
+
+    // Offline turn-by-turn BICYCLE routing over BRouter (MIT). BRouter uses small, per-region
+    // downloadable 5°×5° segment files (.rd5) - perfect for in-app download - instead of a
+    // multi-GB pre-built graph. Resolved from JitPack (com.github.abrensch.brouter). The shipped
+    // trekking bike profile (assets/brouter/trekking.brf) excludes motorways/trunk. The JitPack
+    // POM marks the sibling modules as *runtime* scope, so they are declared explicitly here to
+    // put OsmNode / OsmPos (superclasses of the API types we touch) on the compile classpath.
+    implementation 'com.github.abrensch.brouter:brouter-core:v1.7.9'
+    implementation 'com.github.abrensch.brouter:brouter-mapaccess:v1.7.9'
+    implementation 'com.github.abrensch.brouter:brouter-util:v1.7.9'
+    implementation 'com.github.abrensch.brouter:brouter-expressions:v1.7.9'
+    implementation 'com.github.abrensch.brouter:brouter-codec:v1.7.9'
+
+    // Mapsforge 0.21 logs through SLF4J and pulls slf4j-api 2.x, which uses the ServiceLoader
+    // binding mechanism; the legacy slf4j-android binding is 1.7-only, so no binding is supplied
+    // and SLF4J degrades to a no-op logger (one harmless startup line). BRouter has no SLF4J.
+
+    // SAST Layer 2: the FindSecBugs detector pack loaded into SpotBugs (see spotbugsDebug).
+    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.13.0'
+}
+
+// ── SAST Layer 2: SpotBugs + FindSecBugs (deep bytecode analysis) ────────────────
+// SpotBugs works on compiled bytecode. The plugin's Android integration already creates
+// a `spotbugsDebug` task; this only tunes it: analyse the debug javac output with the
+// debug compile + Android boot classpaths as auxiliary references, MAX effort / MEDIUM
+// confidence, and emit an HTML + XML report. Reporting only - ignoreFailures keeps it
+// from ever breaking the build.
+//   ./gradlew spotbugsDebug  ->  app/build/reports/spotbugs/spotbugs-debug.html
+spotbugs {
+    ignoreFailures = true
+    effort = com.github.spotbugs.snom.Effort.MAX
+    reportLevel = com.github.spotbugs.snom.Confidence.valueOf('MEDIUM')
+}
+
+// The plugin's Android integration registers `spotbugsDebug` late (after this script is
+// evaluated), so it is tuned lazily via configureEach rather than tasks.named(...).
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach { t ->
+    if (t.name != 'spotbugsDebug') {
+        return
+    }
+    t.group = 'verification'
+    t.description = 'Runs SpotBugs + FindSecBugs over the debug variant compiled classes.'
+    t.dependsOn 'compileDebugJavaWithJavac'
+    t.ignoreFailures = true
+    t.effort = com.github.spotbugs.snom.Effort.MAX
+    t.reportLevel = com.github.spotbugs.snom.Confidence.valueOf('MEDIUM')
+    // Exclude ONLY intentional-design SECURITY findings (documented, per-exclusion reasons):
+    // local file:// WebView + JS bridge, geolocation for the bundled page, and app-scoped
+    // external-files storage. Real issues (e.g. path traversal) are fixed in code, not excluded.
+    t.excludeFilter.set(file('findbugs-exclude.xml'))
+
+    def javac = tasks.named('compileDebugJavaWithJavac')
+    t.classDirs.setFrom(javac.map { it.destinationDirectory })
+    t.sourceDirs.setFrom(files('src/main/java'))
+    t.auxClassPaths.setFrom(files(android.bootClasspath), configurations.getByName('debugCompileClasspath'))
+
+    t.reports {
+        html {
+            required = true
+            outputLocation = layout.buildDirectory.file('reports/spotbugs/spotbugs-debug.html')
+        }
+        xml {
+            required = true
+            outputLocation = layout.buildDirectory.file('reports/spotbugs/spotbugs-debug.xml')
+        }
+    }
+}
+
+// SAST Layer 3 aggregate: one entry point the pre-push git hook calls.
+tasks.register('securityScan') {
+    group = 'verification'
+    description = 'Aggregate SAST scan: Android Lint (Layer 1) + SpotBugs/FindSecBugs (Layer 2).'
+    dependsOn 'lintDebug'
+    dependsOn 'spotbugsDebug'
+}

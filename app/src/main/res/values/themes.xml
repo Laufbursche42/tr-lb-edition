@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Plain Android (no AppCompat) dark, no-action-bar theme for the WebView host. -->
+    <style name="Theme.LBEdition" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/lb_background</item>
+        <item name="android:colorBackground">@color/lb_background</item>
+        <item name="android:statusBarColor">@color/lb_background</item>
+        <item name="android:navigationBarColor">@color/lb_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

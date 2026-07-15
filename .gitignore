@@ -1,0 +1,25 @@
+# Build output
+build/
+app/build/
+.gradle/
+*.apk
+*.aab
+*.idsig
+local.properties
+# IDE
+.idea/
+*.iml
+# OS
+Thumbs.db
+.DS_Store
+# Signing / secrets - never commit
+*.keystore
+*.jks
+*.p12
+keystore.properties
+# Release keystore folder (keystore, base64 for CI secret, credentials note) - NEVER commit
+keystore/
+# Local ride logs pulled from the device for analysis - never commit
+rides/
+# Local Go analysis tool - not part of the Android app
+analysis-tool/

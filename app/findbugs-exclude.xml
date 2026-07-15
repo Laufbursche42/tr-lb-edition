@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FindSecBugs / SpotBugs exclude filter for Laufbursche Edition.
+
+  This file excludes findings that are part of the app's INTENTIONAL design, each with a
+  justification: SECURITY findings on by-design behavior, plus one documented non-security false
+  positive (EI_EXPOSE_REP on an API that must hand back a live Surface). Real issues (e.g.
+  PATH_TRAVERSAL_IN) are FIXED in code (routed through PathGuard), not excluded here.
+  Wired into the `spotbugsDebug` task via `excludeFilter` (see app/build.gradle).
+-->
+<FindBugsFilter>
+
+    <!-- ANDROID_WEB_VIEW_JAVASCRIPT (setJavaScriptEnabled) + ANDROID_WEB_VIEW_JAVASCRIPT_INTERFACE
+         (addJavascriptInterface). The whole dashboard IS a WebView: it loads a bundled, read-only
+         local page (file:///android_asset/dashboard/telemetry.html) shipped inside the APK and
+         exposes the "LB" bridge so that page can drive BLE / motor control / SRT streaming. There is
+         no remote content and no untrusted origin - the page and the bridge are the app. Disabling
+         JS or the bridge would remove the entire UI. Safe by design. -->
+    <Match>
+        <Class name="com.lb.edition.MainActivity"/>
+        <Bug pattern="ANDROID_WEB_VIEW_JAVASCRIPT"/>
+    </Match>
+    <Match>
+        <Class name="com.lb.edition.MainActivity"/>
+        <Bug pattern="ANDROID_WEB_VIEW_JAVASCRIPT_INTERFACE"/>
+    </Match>
+
+    <!-- ANDROID_GEOLOCATION. The WebChromeClient grants geolocation only to the bundled local
+         dashboard page (the sole origin ever loaded) so its route-recorder can read the device GPS.
+         No remote origin can ever request it. Intentional and scoped to our own asset page. -->
+    <Match>
+        <Class name="com.lb.edition.MainActivity$1"/>
+        <Bug pattern="ANDROID_GEOLOCATION"/>
+    </Match>
+
+    <!-- ANDROID_EXTERNAL_FILE_ACCESS. All external-storage use is the app-PRIVATE, app-scoped
+         getExternalFilesDir(...) (NOT shared/world storage): multi-GB offline Mapsforge maps and
+         BRouter routing tiles that must not count against internal storage, plus the debug log that
+         the user explicitly exports. These dirs are sandboxed to the app and removed on uninstall.
+         Intentional; the data is non-sensitive OSM map data / user-triggered logs. -->
+    <Match>
+        <Class name="com.lb.edition.DebugLog"/>
+        <Bug pattern="ANDROID_EXTERNAL_FILE_ACCESS"/>
+    </Match>
+    <Match>
+        <Class name="com.lb.edition.MapDownloadActivity"/>
+        <Bug pattern="ANDROID_EXTERNAL_FILE_ACCESS"/>
+    </Match>
+    <Match>
+        <Class name="com.lb.edition.NavActivity"/>
+        <Bug pattern="ANDROID_EXTERNAL_FILE_ACCESS"/>
+    </Match>
+    <Match>
+        <Class name="com.lb.edition.MapDownloadService"/>
+        <Bug pattern="ANDROID_EXTERNAL_FILE_ACCESS"/>
+    </Match>
+    <Match>
+        <Class name="com.lb.edition.RideLogger"/>
+        <Bug pattern="ANDROID_EXTERNAL_FILE_ACCESS"/>
+    </Match>
+
+    <!-- ================================================================================= -->
+    <!-- PATH_TRAVERSAL_IN - already FIXED in code; this excludes only the guard itself.    -->
+    <!--                                                                                    -->
+    <!-- Every File-under-a-base-dir construction in the app now routes through             -->
+    <!-- PathGuard.childOf(baseDir, name), which resolves the name and then verifies via    -->
+    <!-- File.getCanonicalPath() that the result stays inside baseDir, throwing IOException -->
+    <!-- on any escape (".." segments, absolute paths). That is a real, effective fix.      -->
+    <!--                                                                                    -->
+    <!-- PATH_TRAVERSAL_IN is a taint-flow detector: it flags the `new File(baseDir, name)` -->
+    <!-- construction inside childOf and does NOT model the canonical containment check that -->
+    <!-- immediately follows (canonicalization is not in FindSecBugs' sanitizer set). So the -->
+    <!-- single remaining report is a false positive on already-hardened code, scoped to the -->
+    <!-- one guarded construction point. All call sites are covered by this one exclusion.   -->
+    <Match>
+        <Class name="com.lb.edition.PathGuard"/>
+        <Bug pattern="PATH_TRAVERSAL_IN"/>
+    </Match>
+
+    <!-- ================================================================================= -->
+    <!-- EI_EXPOSE_REP (non-security false positive) - ScreenGlEncoder.getInputSurface().   -->
+    <!--                                                                                    -->
+    <!-- The SRT screen encoder exposes its MediaCodec input Surface so StreamService can    -->
+    <!-- attach a MediaProjection VirtualDisplay that renders directly into it. That IS the  -->
+    <!-- API contract: the caller must receive the live, shared Surface - a Surface cannot   -->
+    <!-- (and must not) be defensively copied. Returning the internal reference is correct   -->
+    <!-- by design, so the "may expose internal representation" report is a false positive.  -->
+    <Match>
+        <Class name="com.lb.srt.ScreenGlEncoder"/>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Method name="getInputSurface"/>
+    </Match>
+
+</FindBugsFilter>

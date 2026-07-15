@@ -1,0 +1,3432 @@
+<!--
+Laufbursche Edition - an app for Teverun e-scooters.
+Copyright (c) 2026 Laufbursche (https://github.com/Laufbursche42)
+Source-available under the PolyForm Noncommercial License 1.0.0 with Additional Terms. See license.md.
+-->
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Telemetry - Teverun LB</title>
+<style>
+/* ── Design Tokens ─────────────────────────────────────────── */
+:root {
+  --bg:       #0A0C10;
+  --card:     #111420;
+  --border:   #1C2035;
+  --text:     #E4EDF6;
+  --label:    #C6D2E2;
+  --value:    #BCEB39;
+  --ble:      #B8F020;
+  --gps:      #3DB8FF;
+  --good:     #1EE89A;
+  --btnfill:  #B8F020;
+  --warn:     #FFAA18;
+  --danger:   #FF5050;
+  --topbar-h: 52px;
+  --radius:   12px;
+  --gap:      10px;
+  /* Status-bar inset is applied NATIVELY (UiChrome pads the content view below the status
+     bar and consumes the window insets), so the WebView must NOT add it again - keep this 0
+     to avoid a doubled "huge bar" above the title bar. Kept as a token for inner offsets. */
+  --sat:      0px;
+}
+[data-theme="light"] {
+  --bg:     #E8EDF5;
+  --card:   #FFFFFF;
+  --border: #CDD5E4;
+  --text:   #0A0D18;
+  --label:  #0A0D18;
+  --value:  #2FEBA2;
+  --ble:    #2A6A00;
+  --gps:    #005AA0;
+  --good:   #2FEBA2;
+  --btnfill: #2FEBA2;
+  --warn:   #A05800;
+  --danger: #CC2020;
+}
+
+/* ── Reset / Base ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px; -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+}
+
+/* ── Layout Shell ──────────────────────────────────────────── */
+#app {
+  display: flex; flex-direction: column;
+  width: 100%; height: 100%;
+  max-width: 430px; margin: 0 auto;
+  position: relative;
+}
+
+/* ── Topbar ────────────────────────────────────────────────── */
+#topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  /* The status-bar inset is applied NATIVELY (UiChrome pads android.R.id.content below
+     the status bar). The title bar must NOT add another status-bar height, or the two
+     would stack into an excess band. So the bar is exactly --topbar-h tall with no top
+     padding -> exactly ONE status-bar height total above it. */
+  height: var(--topbar-h); padding: 0 8px;
+  background: var(--card); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; position: relative; z-index: 10;
+}
+#topbar .tb-title {
+  font-size: 16px; font-weight: 700; letter-spacing: .02em;
+  flex: 1 1 auto; min-width: 0; text-align: center; padding: 0 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#topbar .tb-left, #topbar .tb-right {
+  display: flex; align-items: center; gap: 4px;
+}
+/* Right-side icon group (connect / streaming / theme / settings) is PINNED and never
+   shrinks, so all four icons are always fully on screen on any phone width. The 4px
+   margin nudges the group slightly off the screen edge. */
+#topbar .tb-right { flex: 0 0 auto; margin-right: 4px; }
+/* Logo side shrinks instead: it takes only the width left over after the icons and
+   scales the logo down to fit (see .tb-logo max-width:100% + object-fit), so the
+   icons can never be pushed off-screen by a wide logo. */
+#topbar .tb-left { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.icon-btn {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px; border: none; background: transparent;
+  color: var(--text); cursor: pointer; font-size: 20px;
+  transition: background .15s;
+}
+.icon-btn:active { background: var(--border); }
+#ble-dot.ble-icon { width: 18px; height: 18px; display: inline-block; vertical-align: middle; pointer-events: none; }
+#ble-dot .bt-path { fill: var(--danger); transition: fill .2s; }
+#ble-dot.connected .bt-path { fill: var(--good); }
+
+/* ── Scroll Container ──────────────────────────────────────── */
+#scroller {
+  flex: 1 1 auto; min-height: 0;      /* min-height:0 -> container scrolls instead of growing */
+  overflow-y: auto; overflow-x: hidden;
+  padding: var(--gap);
+  padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px) + 12px);
+  display: flex; flex-direction: column; gap: var(--gap);
+  -webkit-overflow-scrolling: touch;
+}
+/* children must NOT shrink - otherwise the flex column squashes instead of scrolling */
+#scroller > * { flex-shrink: 0; }
+#scroller::-webkit-scrollbar { display: none; }
+
+/* ── Speed Drums ───────────────────────────────────────────── */
+#speed-row {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+.speed-drum {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 10px 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+}
+.speed-drum .sd-val {
+  font-size: clamp(42px, 13vw, 64px);
+  font-weight: 800; line-height: 1;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+.speed-drum.ble-drum .sd-val { color: var(--ble); }
+.speed-drum.gps-drum .sd-val { color: var(--gps); }
+.speed-drum .sd-unit {
+  font-size: 14px; color: var(--label); margin-top: 4px;
+  font-weight: 500; letter-spacing: .04em;
+}
+
+/* ── Hero Metrics ──────────────────────────────────────────── */
+#hero-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--gap);
+}
+.hero-cell {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 8px 10px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.hero-cell .hc-val {
+  font-size: clamp(28px, 9vw, 38px); font-weight: 800;
+  line-height: 1; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
+.hero-cell .hc-unit {
+  font-size: 13px; color: var(--label); margin-top: 3px; white-space: nowrap;
+}
+.hero-cell .hc-tag {
+  margin-top: 5px; padding: 2px 7px;
+  border-radius: 5px; font-size: 10px; font-weight: 700;
+  letter-spacing: .06em;
+}
+#soc-val { color: var(--good); }
+#gear-val { color: var(--warn); }
+#current-val { color: var(--text); }
+.gear-tag-eco   { background: #1EE89A22; color: var(--good); }
+.gear-tag-drive { background: #3DB8FF22; color: var(--gps); }
+.gear-tag-sport { background: #FF505022; color: var(--danger); }
+.gear-tag-na    { background: var(--border); color: var(--label); }
+
+/* ── Data Grid ─────────────────────────────────────────────── */
+#data-grid {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.dg-row {
+  display: grid; grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.dg-row:last-child { border-bottom: none; }
+.dg-cell {
+  padding: 9px 12px; display: flex; align-items: center;
+  justify-content: space-between; gap: 6px;
+}
+.dg-cell:not(:last-child) { border-right: 1px solid var(--border); }
+.dg-label { color: var(--label); font-size: 13px; white-space: nowrap; }
+/* Longer labels (e.g. "Recuperation") may wrap / shrink so the full word stays readable. */
+.dg-label-wide { white-space: normal; font-size: 12px; line-height: 1.15; }
+.dg-value {
+  font-weight: 600; font-size: 15px; color: var(--value);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+/* Groups a data-grid label with its inline "?" help button so they stay together on the left. */
+.dg-labwrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
+
+/* ── Routes List ───────────────────────────────────────────── */
+#routes-section {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.section-hdr {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-size: 14px; font-weight: 700; color: var(--label);
+  letter-spacing: .08em; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: space-between;
+}
+#routes-list { max-height: 230px; overflow-y: auto; }
+#routes-list::-webkit-scrollbar { width: 3px; }
+#routes-list::-webkit-scrollbar-thumb { background: var(--border); }
+.route-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  gap: 8px; cursor: pointer;
+}
+.route-item:last-child { border-bottom: none; }
+.route-item:active { background: var(--border); }
+.route-info { flex: 1; min-width: 0; }
+.route-date { font-size: 12px; font-weight: 700; }
+.route-stats { font-size: 11px; color: var(--label); margin-top: 2px; }
+.route-gpx-btn {
+  padding: 5px 10px; border-radius: 7px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--gps); font-size: 11px; font-weight: 600; cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.route-gpx-btn:active { background: var(--border); }
+.route-live-badge {
+  padding: 2px 7px; border-radius: 5px;
+  background: #B8F02022; color: var(--ble);
+  font-size: 10px; font-weight: 700; margin-left: 4px;
+}
+.no-routes {
+  padding: 24px; text-align: center; color: var(--label);
+  font-size: 13px;
+}
+
+/* ── Actions Row ───────────────────────────────────────────── */
+#actions-section {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.action-btn-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--border);
+}
+.del-btn {
+  padding: 10px 4px; border: none; border-right: 1px solid var(--border);
+  background: transparent; color: var(--danger); font-size: 11px;
+  font-weight: 600; cursor: pointer; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.del-btn:last-child { border-right: none; }
+.del-btn:active { background: #FF505015; }
+
+/* ── Settings Sheet ────────────────────────────────────────── */
+#settings-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,.45);
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s;
+}
+#settings-overlay.open { opacity: 1; pointer-events: all; }
+#settings-sheet {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(320px, 85vw); z-index: 101;
+  background: var(--card); border-left: 1px solid var(--border);
+  transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+  overflow-y: auto; padding-top: var(--sat);
+}
+#settings-sheet.open { transform: translateX(0); }
+
+.settings-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+}
+.settings-topbar h2 { font-size: 16px; font-weight: 700; }
+.settings-group { padding: 12px 16px; }
+.settings-group-title {
+  font-size: 11px; font-weight: 700; color: var(--label);
+  letter-spacing: .1em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--border); gap: 8px;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { font-size: 13px; font-weight: 500; }
+.settings-row-sublabel { font-size: 11px; color: var(--label); margin-top: 2px; }
+.settings-row-left { flex: 1; }
+
+/* Toggle Switch */
+.toggle-wrap { flex-shrink: 0; }
+.toggle-input { display: none; }
+.toggle-label {
+  display: block; width: 44px; height: 24px; border-radius: 12px;
+  background: var(--border); position: relative; cursor: pointer;
+  transition: background .2s;
+}
+.toggle-label::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+}
+.toggle-input:checked + .toggle-label { background: var(--good); }
+.toggle-input:checked + .toggle-label::after { transform: translateX(20px); }
+
+/* Host/Port Inputs */
+.settings-input-row {
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.settings-input-row:last-child { border-bottom: none; }
+.settings-input {
+  flex: 1; padding: 7px 10px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--text); font-size: 13px;
+}
+.settings-input:disabled { opacity: .4; }
+.settings-input-label { font-size: 11px; color: var(--label); white-space: nowrap; }
+
+/* ── Toast ──────────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 11px 20px;
+  border-radius: 10px; font-size: 13px; font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5); z-index: 200;
+  transition: transform .25s cubic-bezier(.4,0,.2,1);
+  white-space: nowrap; max-width: 90vw;
+  text-overflow: ellipsis; overflow: hidden;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+#toast.err { background: var(--danger); color: #fff; }
+
+/* ── Confirm Dialog ─────────────────────────────────────────── */
+#confirm-overlay {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+#confirm-overlay.open { opacity: 1; pointer-events: all; }
+#confirm-box {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px;
+  width: min(300px, 88vw); text-align: center;
+}
+#confirm-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+#confirm-box p { font-size: 13px; color: var(--label); margin-bottom: 18px; }
+#confirm-box .confirm-btns { display: flex; gap: 10px; }
+#confirm-box .confirm-btns button {
+  flex: 1; padding: 12px; border-radius: 9px;
+  border: none; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+#confirm-ok { background: var(--danger); color: #fff; }
+#confirm-cancel { background: var(--border); color: var(--text); }
+
+/* ── GPS Badge ──────────────────────────────────────────────── */
+.gps-badge {
+  font-size: 10px; padding: 1px 5px; border-radius: 4px;
+  font-weight: 700; margin-left: 4px;
+}
+.gps-badge.fix { background: #3DB8FF22; color: var(--gps); }
+.gps-badge.nofix { background: #FF505018; color: var(--danger); }
+
+/* ── Sub-Header ─────────────────────────────────────────────── */
+.sub-hdr {
+  padding: 4px 2px 2px; border: none; background: none;
+  font-size: 11px; font-weight: 700; color: var(--label);
+  letter-spacing: .09em; text-transform: uppercase;
+}
+
+/* ── Motors ─────────────────────────────────────────────────── */
+#motor-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--gap); }
+.motor-cell {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.mc-title { font-size: 12px; font-weight: 700; color: var(--label); letter-spacing: .06em; }
+.mc-main {
+  font-size: clamp(22px, 7vw, 30px); font-weight: 800; line-height: 1.05;
+  color: var(--value); font-variant-numeric: tabular-nums;
+}
+.mc-main .mc-unit { font-size: 12px; font-weight: 600; color: var(--label); margin-left: 2px; }
+.mc-sub { font-size: 13px; color: var(--label); font-variant-numeric: tabular-nums; }
+
+/* Motor tiles span the full width; the quick toggle moved into the "Motors" heading row. */
+#motor-area { display: flex; gap: var(--gap); align-items: stretch; }
+#motor-area #motor-row { flex: 1 1 auto; min-width: 0; }
+/* Motor-mode quick toggle: a compact horizontal row of 4 buttons beside the "Motors" heading.
+   Wraps gracefully on very narrow screens. Reset the heading's uppercase/tracking for the labels. */
+#motor-quick {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px;
+  text-transform: none; letter-spacing: normal;
+}
+#motor-quick .mq-btn {
+  min-width: 40px; padding: 4px 8px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--bg); color: var(--text);
+  font-size: 11px; font-weight: 700; line-height: 1.1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+#motor-quick .mq-btn:active { opacity: .7; }
+#motor-quick .mq-btn.active { background: var(--btnfill); color: #0A0C10; border-color: var(--btnfill); }
+#motor-quick .mq-smart.active { background: var(--good); color: #06251a; border-color: var(--good); }
+/* Not connected: whole control greyed and non-interactive */
+/* Greyed out while disconnected, but still clickable so a tap shows the "Connect the scooter
+   first" toast instead of doing nothing. The click handlers guard on the connection state. */
+#motor-quick.mq-disabled { opacity: .4; filter: grayscale(1); }
+
+/* ── All values ──────────────────────────────────────────────── */
+#all-values {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.av-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-bottom: 1px solid var(--border); gap: 8px;
+}
+.av-row:last-child { border-bottom: none; }
+.av-label { color: var(--label); font-size: 14px; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.av-val { font-weight: 600; font-size: 15px; color: var(--value); font-variant-numeric: tabular-nums; text-align: right; flex: 0 0 auto; white-space: nowrap; }
+/* Subtle circular "?" info button per row; opens a shared explanation popup (event-delegated). */
+.av-help {
+  flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid var(--label); background: transparent; color: var(--label);
+  font-size: 11px; font-weight: 700; line-height: 1; padding: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.av-help:hover, .av-help:active { background: var(--border); color: var(--text); }
+
+/* Same subtle circular "?" as .av-help, reused on every settings row (app + controller + per-gear).
+   Sits before the control so tapping it never toggles/edits the control. */
+.set-help {
+  flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid var(--label); background: transparent; color: var(--label);
+  font-size: 11px; font-weight: 700; line-height: 1; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.set-help:hover, .set-help:active { background: var(--border); color: var(--text); }
+
+/* All-values help popup - one reusable, theme-aware modal living outside #all-values. */
+#avhelp-overlay {
+  position: fixed; inset: 0; z-index: 210;
+  background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+#avhelp-overlay.open { opacity: 1; pointer-events: all; }
+#avhelp-box {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+  width: min(340px, 90vw); max-height: 80vh; overflow-y: auto; text-align: left;
+}
+#avhelp-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+#avhelp-box p { font-size: 13px; line-height: 1.5; color: var(--label); margin-bottom: 18px; white-space: pre-line; }
+#avhelp-close {
+  width: 100%; padding: 12px; border-radius: 9px; border: none;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  background: var(--border); color: var(--text);
+}
+
+/* Version Info & Disclaimer modal - theme-aware, same visual language as the help popup. */
+#verinfo-overlay {
+  position: fixed; inset: 0; z-index: 210;
+  background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+#verinfo-overlay.open { opacity: 1; pointer-events: all; }
+#verinfo-box {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+  width: min(340px, 90vw); max-height: 80vh; overflow-y: auto; text-align: left;
+}
+#verinfo-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--text); }
+#verinfo-box .verinfo-ver {
+  font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 14px;
+  font-variant-numeric: tabular-nums;
+}
+#verinfo-box p { font-size: 13px; line-height: 1.5; color: var(--label); margin-bottom: 14px; }
+#verinfo-box .verinfo-muted { opacity: .75; font-style: italic; }
+#verinfo-box .verinfo-origin {
+  font-size: 12px; line-height: 1.5; color: var(--label);
+  border-top: 1px solid var(--border); padding-top: 12px;
+}
+#verinfo-close {
+  width: 100%; padding: 12px; border-radius: 9px; border: none;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  background: var(--border); color: var(--text);
+}
+
+/* ── Routes button + sub-page ──────────────────────────────── */
+#btn-open-routes {
+  width: 100%; padding: 14px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-size: 14px; font-weight: 600;
+  border-radius: var(--radius); cursor: pointer; text-align: center;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+#btn-open-routes:active { background: var(--border); }
+#routes-count-badge {
+  min-width: 20px; padding: 1px 7px; border-radius: 10px;
+  background: var(--btnfill); color: #0A0C10; font-size: 11px; font-weight: 700;
+}
+#routes-count-badge:empty { display: none; }
+#routes-page {
+  position: fixed; inset: 0; z-index: 120; background: var(--bg);
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+}
+#routes-page.open { transform: translateX(0); }
+#routes-scroller {
+  flex: 1; min-height: 0; overflow-y: auto; padding: var(--gap);
+  display: flex; flex-direction: column; gap: var(--gap);
+}
+#routes-scroller > * { flex-shrink: 0; }
+#streaming-page {
+  position: fixed; inset: 0; z-index: 120; background: var(--bg);
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+}
+#streaming-page.open { transform: translateX(0); }
+#streaming-scroller {
+  flex: 1; min-height: 0; overflow-y: auto; padding: var(--gap);
+  display: flex; flex-direction: column; gap: 4px;
+  padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px) + 12px);
+}
+#streaming-scroller > * { flex-shrink: 0; }
+#btn-connect.connected { color: var(--good); }
+#ble-dot { pointer-events: none; }
+#btn-scooter-settings, #btn-connect-scooter, #btn-export-logs, #btn-error-reports, #btn-navigation, #btn-info, #btn-version-info {
+  width: 100%; padding: 12px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font-size: 14px; font-weight: 600;
+  border-radius: 9px; cursor: pointer; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+#btn-scooter-settings:active, #btn-connect-scooter:active, #btn-export-logs:active, #btn-error-reports:active, #btn-navigation:active, #btn-info:active, #btn-version-info:active { background: var(--border); }
+#btn-stream-start, #btn-stream-stop {
+  padding: 12px; border: 1px solid var(--border); border-radius: 9px;
+  background: var(--bg); color: var(--text); font-size: 14px; font-weight: 700;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+#btn-stream-start { background: var(--good); color: #06251a; border-color: var(--good); }
+#btn-stream-stop:active, #btn-stream-start:active { opacity: .7; }
+#stream-url { color: var(--text); background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px; font-family: monospace; }
+
+/* ── Connect / Scooter-settings subpages (reuse the streaming-page pattern) ── */
+#connect-page, #scooter-page, #error-reports-page, #info-page {
+  position: fixed; inset: 0; z-index: 120; background: var(--bg);
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+}
+#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open { transform: translateX(0); }
+#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller {
+  flex: 1; min-height: 0; overflow-y: auto; padding: var(--gap);
+  display: flex; flex-direction: column; gap: 4px;
+  padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px) + 12px);
+}
+#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > * { flex-shrink: 0; }
+
+/* Error report rows */
+.err-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 11px 12px; margin-bottom: 8px;
+}
+.err-item.sev-fault { border-color: var(--danger); }
+.err-item.sev-warn { border-color: var(--warn); }
+.err-item.sev-info { border-color: var(--border); }
+.err-item .err-dot {
+  width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex-shrink: 0;
+  background: var(--label);
+}
+.err-item.sev-fault .err-dot { background: var(--danger); }
+.err-item.sev-warn .err-dot { background: var(--warn); }
+.err-item .err-body { flex: 1; min-width: 0; }
+.err-item .err-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.err-item .err-sub { font-size: 12px; color: var(--label); margin-top: 2px; }
+#err-empty {
+  text-align: center; color: var(--good); font-size: 14px; font-weight: 600;
+  padding: 28px 12px;
+}
+
+/* Topbar logo - enlarged / prominent on the main dashboard (app name removed from header).
+   max-width:100% lets it use only the width left over by the pinned icon group and scale
+   down when that is tight; object-fit:contain keeps the aspect ratio (no horizontal squish)
+   when the width is clamped below the 44px-tall intrinsic size. SVG text stays 29/21. */
+.tb-logo { height: 44px; width: auto; max-width: 100%; object-fit: contain; display: block; }
+
+/* Connection state + scan list */
+.conn-state {
+  padding: 12px 14px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--card); margin-bottom: 10px; font-size: 13px;
+}
+.conn-state b { color: var(--good); }
+#btn-scan, #btn-disconnect {
+  padding: 12px; border: 1px solid var(--border); border-radius: 9px;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#btn-scan { background: var(--btnfill); color: #0A0C10; border-color: var(--btnfill); }
+#btn-disconnect { background: var(--bg); color: var(--danger); border-color: var(--danger); }
+#btn-scan:active, #btn-disconnect:active { opacity: .75; }
+.scan-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: 9px;
+  background: var(--card); margin-bottom: 8px; cursor: pointer; gap: 8px;
+}
+.scan-item:active { background: var(--border); }
+.scan-name { font-size: 14px; font-weight: 600; }
+.scan-addr { font-size: 11px; color: var(--label); margin-top: 2px; font-family: monospace; }
+.scan-rssi { font-size: 12px; color: var(--gps); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Segmented control (motor mode / cruise) */
+.seg {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  border: 1px solid var(--border); border-radius: 9px; overflow: hidden;
+}
+.seg button {
+  padding: 9px 6px; border: none; background: var(--bg);
+  color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer;
+  border-right: 1px solid var(--border);
+  -webkit-tap-highlight-color: transparent;
+}
+.seg button:last-child { border-right: none; }
+.seg button.active { background: var(--btnfill); color: #0A0C10; }
+
+/* Scooter-settings numeric / select inputs */
+.set-ctrl {
+  width: 92px; flex: 0 0 auto; text-align: right;
+  padding: 7px 10px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font-size: 13px;
+}
+select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; }
+
+/* Per-gear settings save button */
+.gs-save-btn {
+  width: 100%; padding: 12px; border-radius: 9px;
+  background: var(--btnfill); color: #0A0C10; border: 1px solid var(--btnfill);
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.gs-save-btn:active { opacity: .75; }
+</style>
+</head>
+<body>
+<!-- Debug-mode banner: visible only while native debug logging is recording. -->
+<div id="debug-banner" style="display:none;position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;text-align:center;z-index:9999;font-size:12px;font-weight:700;padding:4px 8px;letter-spacing:.3px;">&#9888; DEBUG MODE ON - recording logs</div>
+<div id="app">
+
+  <!-- ── Topbar ─────────────────────────────────────── -->
+  <div id="topbar">
+    <div class="tb-left">
+      <img class="tb-logo" src="logo.svg" alt="Laufbursche Edition - app for Teverun e-scooters" onerror="this.style.display='none'">
+    </div>
+    <span class="tb-title" aria-hidden="true"></span>
+    <div class="tb-right">
+      <button class="icon-btn" id="btn-connect" aria-label="Connect scooter" title="Connect scooter"><svg id="ble-dot" class="ble-icon" viewBox="0 0 24 24" aria-hidden="true"><path class="bt-path" d="M17.71 7.71 12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z"/></svg></button>
+      <button class="icon-btn" id="btn-streaming" aria-label="Streaming" title="Streaming">&#128225;</button>
+      <button class="icon-btn" id="btn-theme" aria-label="Toggle theme">&#9728;</button>
+      <button class="icon-btn" id="btn-settings" aria-label="Settings">&#9881;</button>
+    </div>
+  </div>
+
+  <!-- ── Scrollable Content ─────────────────────────── -->
+  <div id="scroller">
+
+    <!-- Speed Drums -->
+    <div id="speed-row">
+      <div class="speed-drum ble-drum">
+        <div class="sd-val" id="ble-speed">-</div>
+        <div class="sd-unit">km/h &middot; VCU</div>
+      </div>
+      <div class="speed-drum gps-drum">
+        <div class="sd-val" id="gps-speed">-</div>
+        <div class="sd-unit">km/h &middot; GPS</div>
+      </div>
+    </div>
+
+    <!-- Hero Metrics -->
+    <div id="hero-row">
+      <div class="hero-cell">
+        <div class="hc-val" id="soc-val">-</div>
+        <div class="hc-unit">Battery %</div>
+      </div>
+      <div class="hero-cell">
+        <div class="hc-val" id="gear-val">-</div>
+        <div class="hc-unit">Gear</div>
+        <div class="hc-tag" id="gear-tag" style="display:none"></div>
+      </div>
+      <div class="hero-cell">
+        <div class="hc-val" id="current-val">-</div>
+        <div class="hc-unit">A Current</div>
+      </div>
+    </div>
+
+    <!-- Motors (dual motor: rear + front). The quick motor-mode toggle sits in the heading row. -->
+    <div class="section-hdr sub-hdr">
+      <span>Motors</span>
+      <!-- Quick motor-mode toggle (mirrors the settings-sheet #motor-mode-seg codes).
+           Disabled (greyed, non-interactive) until the scooter is connected. -->
+      <div id="motor-quick" class="mq-disabled" role="group" aria-label="Motor mode quick toggle">
+        <button type="button" class="mq-btn" data-mm="2" aria-label="Front motor only">Front</button>
+        <button type="button" class="mq-btn" data-mm="1" aria-label="Rear motor only">Rear</button>
+        <button type="button" class="mq-btn" data-mm="0" aria-label="Both motors">Both</button>
+        <button type="button" class="mq-btn mq-smart" aria-label="Toggle Smart (TCS)">Smart</button>
+      </div>
+    </div>
+    <div id="motor-area">
+      <div id="motor-row">
+        <div class="motor-cell">
+          <div class="mc-title">REAR</div>
+          <div class="mc-main"><span id="mr-temp">-</span><span class="mc-unit">°C</span></div>
+          <div class="mc-sub"><span id="mr-cur">-</span> A</div>
+        </div>
+        <div class="motor-cell">
+          <div class="mc-title">FRONT</div>
+          <div class="mc-main"><span id="mf-temp">-</span><span class="mc-unit">°C</span></div>
+          <div class="mc-sub"><span id="mf-cur">-</span> A</div>
+        </div>
+        <div class="motor-cell">
+          <div class="mc-title">POWER</div>
+          <div class="mc-main"><span id="m-power">-</span><span class="mc-unit">kW</span></div>
+          <div class="mc-sub"><span id="m-total-cur">-</span> A total</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Grid -->
+    <div class="section-hdr sub-hdr">Vehicle &amp; battery</div>
+    <div id="data-grid">
+      <div class="dg-row">
+        <div class="dg-cell"><span class="dg-label">Avg speed</span><span class="dg-value" id="dg-avg">-</span></div>
+        <div class="dg-cell"><span class="dg-label">Max speed</span><span class="dg-value" id="dg-max">-</span></div>
+      </div>
+      <div class="dg-row">
+        <div class="dg-cell"><span class="dg-label">Voltage</span><span class="dg-value" id="dg-volt">-</span></div>
+        <div class="dg-cell"><span class="dg-label">Pole volt</span><span class="dg-value" id="dg-pole">-</span></div>
+      </div>
+      <div class="dg-row">
+        <div class="dg-cell"><span class="dg-label">Battery SOH</span><span class="dg-value" id="dg-soh">-</span></div>
+        <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label dg-label-wide">Recuperation</span><button type="button" class="set-help" data-set-help="dg-recup" aria-label="What is this?">?</button></span><span class="dg-value" id="dg-fb">-</span></div>
+      </div>
+      <div class="dg-row">
+        <div class="dg-cell"><span class="dg-label">Total km</span><span class="dg-value" id="dg-total">-</span></div>
+        <div class="dg-cell"><span class="dg-label">Trip km</span><span class="dg-value" id="dg-single">-</span></div>
+      </div>
+      <div class="dg-row">
+        <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label">RSSI</span><button type="button" class="set-help" data-set-help="dg-rssi" aria-label="What is this?">?</button></span><span class="dg-value" id="dg-rssi">-</span></div>
+        <div class="dg-cell"><span class="dg-label">Error</span><span class="dg-value" id="dg-err">-</span></div>
+      </div>
+    </div>
+
+    <!-- Current ride (GPS) -->
+    <div class="section-hdr sub-hdr">Current ride (GPS)</div>
+    <div id="data-grid">
+      <div class="dg-row">
+        <div class="dg-cell"><span class="dg-label">Distance</span><span class="dg-value" id="dg-dist">-</span></div>
+        <div class="dg-cell"><span class="dg-label">Time</span><span class="dg-value" id="dg-time">-</span></div>
+      </div>
+      <div class="dg-row" style="grid-template-columns:1fr">
+        <div class="dg-cell"><span class="dg-label">Avg speed</span><span class="dg-value" id="dg-ride-avg">-</span></div>
+      </div>
+      <div class="dg-row">
+        <div class="dg-cell"><span class="dg-label">Altitude</span><span class="dg-value" id="dg-alt">-</span></div>
+        <div class="dg-cell"><span class="dg-label">Elev +/-</span><span class="dg-value" id="dg-hm">-</span></div>
+      </div>
+      <div class="dg-row">
+        <div class="dg-cell"><span class="dg-label">GPS fix</span><span class="dg-value" id="dg-gps">-</span></div>
+        <div class="dg-cell"><span class="dg-label">Points</span><span class="dg-value" id="dg-pts">-</span></div>
+      </div>
+    </div>
+
+    <!-- All battery/cell values (scrollable like Lite) -->
+    <div class="section-hdr sub-hdr">All values</div>
+    <div id="all-values">
+      <div class="no-routes" id="all-values-empty">Connect the scooter to see all values</div>
+    </div>
+
+    <!-- Bottom Spacer -->
+    <div style="height:16px;flex-shrink:0"></div>
+  </div><!-- /scroller -->
+</div><!-- /app -->
+
+<!-- ── Routes page ────────────────────────────────── -->
+<div id="routes-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-routes-back" aria-label="Back">&#8592;</button>
+    </div>
+    <span class="tb-title">Routes</span>
+    <div class="tb-right"><span style="width:40px"></span></div>
+  </div>
+  <div id="routes-scroller">
+    <div id="routes-section">
+      <div class="section-hdr">
+        <span>Saved routes</span>
+        <span id="routes-count" style="color:var(--text);font-size:12px;font-weight:600"></span>
+      </div>
+      <div id="routes-list">
+        <div class="no-routes" id="no-routes-msg">No routes saved</div>
+      </div>
+    </div>
+    <div id="actions-section">
+      <div class="action-btn-row">
+        <button class="del-btn" data-period="24h">&lt;24h</button>
+        <button class="del-btn" data-period="7d">&lt;7d</button>
+        <button class="del-btn" data-period="30d">&lt;30d</button>
+        <button class="del-btn" data-period="all">All</button>
+      </div>
+    </div>
+    <div style="height:16px;flex-shrink:0"></div>
+  </div>
+</div>
+
+<!-- ── Settings Overlay ────────────────────────────── -->
+<div id="settings-overlay"></div>
+<div id="settings-sheet">
+  <div class="settings-topbar">
+    <h2>Settings</h2>
+    <button class="icon-btn" id="btn-close-settings">&#10005;</button>
+  </div>
+
+  <!-- Scooter connection + settings -->
+  <div class="settings-group">
+    <div class="settings-group-title">Scooter</div>
+    <button id="btn-connect-scooter"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="vertical-align:-2px;fill:currentColor"><path d="M17.71 7.71 12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z"/></svg> Connect scooter</button>
+    <div class="settings-row-sublabel" style="margin:6px 0 10px">Scan and connect over Bluetooth</div>
+    <button id="btn-scooter-settings">&#9881; Scooter settings</button>
+    <div class="settings-row-sublabel" style="margin:6px 0 10px">Speed limit, gears, currents, cruise, timers (scooter must be connected)</div>
+    <button id="btn-error-reports">&#9888; Read error reports</button>
+    <div class="settings-row-sublabel" style="margin:6px 0 10px">Active scooter faults and battery warnings (scooter must be connected)</div>
+    <button id="btn-info">&#8505; Scooter info</button>
+    <div class="settings-row-sublabel" style="margin:6px 0 10px">Serial number, firmware and app versions</div>
+    <button id="btn-navigation">&#129517; Navigation</button>
+    <div class="settings-row-sublabel" style="margin:6px 0 10px">Open the navigation screen</div>
+    <button id="btn-open-routes">&#128506; Saved routes<span id="routes-count-badge"></span></button>
+  </div>
+
+  <!-- Display -->
+  <div class="settings-group">
+    <div class="settings-group-title">Display</div>
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label">Dark mode</div>
+      </div>
+      <button type="button" class="set-help" data-set-help="disp-dark" aria-label="What is this?">?</button>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="toggle-dark" checked>
+        <label class="toggle-label" for="toggle-dark"></label>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label">Unit mph</div>
+        <div class="settings-row-sublabel">Default: km/h</div>
+      </div>
+      <button type="button" class="set-help" data-set-help="disp-mph" aria-label="What is this?">?</button>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="toggle-mph">
+        <label class="toggle-label" for="toggle-mph"></label>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label">Fullscreen</div>
+        <div class="settings-row-sublabel">Hide the Android status bar</div>
+      </div>
+      <button type="button" class="set-help" data-set-help="disp-fullscreen" aria-label="What is this?">?</button>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="toggle-fullscreen">
+        <label class="toggle-label" for="toggle-fullscreen"></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- GPS -->
+  <div class="settings-group" style="border-top:1px solid var(--border)">
+    <div class="settings-group-title">GPS recording</div>
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label">Auto start</div>
+        <div class="settings-row-sublabel">Starts when BLE is connected</div>
+      </div>
+      <button type="button" class="set-help" data-set-help="gps-auto" aria-label="What is this?">?</button>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="toggle-gps-auto" checked>
+        <label class="toggle-label" for="toggle-gps-auto"></label>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label">Interval</div>
+      </div>
+      <button type="button" class="set-help" data-set-help="gps-interval" aria-label="What is this?">?</button>
+      <select class="set-ctrl" id="gps-interval-sel">
+        <option value="1">1 s</option>
+        <option value="2">2 s</option>
+        <option value="5">5 s</option>
+        <option value="10">10 s</option>
+        <option value="30">30 s</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Debug logging -->
+  <div class="settings-group" style="border-top:1px solid var(--border)">
+    <div class="settings-group-title">Debug</div>
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label">Debug mode</div>
+        <div class="settings-row-sublabel">Records logs for troubleshooting</div>
+      </div>
+      <button type="button" class="set-help" data-set-help="debug-mode" aria-label="What is this?">?</button>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="toggle-debug">
+        <label class="toggle-label" for="toggle-debug"></label>
+      </div>
+    </div>
+    <button id="btn-export-logs" style="margin-top:10px">&#128228; Export debug logs</button>
+    <div class="settings-row-sublabel" style="margin:6px 0 2px">Share the recorded log file (email/message)</div>
+  </div>
+
+  <!-- Version info + disclaimer (opens a modal) -->
+  <div class="settings-group" style="border-top:1px solid var(--border)">
+    <button id="btn-version-info">&#8505; Version Info &amp; Disclaimer</button>
+  </div>
+</div>
+
+<!-- ── Connect page ───────────────────────────────── -->
+<div id="connect-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-connect-back" aria-label="Back">&#8592;</button>
+    </div>
+    <span class="tb-title">Connect scooter</span>
+    <div class="tb-right"><span style="width:40px"></span></div>
+  </div>
+  <div id="connect-scroller">
+    <div class="conn-state" id="conn-state">Not connected</div>
+    <div style="display:flex;gap:8px;margin-bottom:6px">
+      <button id="btn-scan" style="flex:1">&#8635; Scan</button>
+      <button id="btn-disconnect" style="flex:1">Disconnect</button>
+    </div>
+    <div id="known-wrap" style="display:none"><div class="section-hdr sub-hdr">Last device</div><div id="known-device"></div></div>
+    <div class="section-hdr sub-hdr">Devices</div>
+    <div id="scan-list">
+      <div class="no-routes" id="scan-empty">Tap "Scan" to search for the scooter</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Scooter settings page ──────────────────────── -->
+<div id="scooter-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-scooter-back" aria-label="Back">&#8592;</button>
+    </div>
+    <span class="tb-title">Scooter settings</span>
+    <div class="tb-right"><span style="width:40px"></span></div>
+  </div>
+  <div id="scooter-scroller">
+
+    <div class="settings-row-sublabel" style="margin-bottom:8px">
+      Edit the fields, then press a Save button to send the changes to the scooter over BLE.
+      Nothing is written until you save. Connect first.
+    </div>
+
+    <!-- Per-gear (assist) settings - mirrors the original app's per-gear assistList
+         (0 speed limit, 1 EABS, 2 front start, 3 rear start, 4 front current, 5 rear current). -->
+    <div class="section-hdr sub-hdr">Per-gear settings</div>
+    <div class="settings-group" style="padding-top:4px">
+      <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:8px">
+        <div class="settings-row-label" style="display:flex;align-items:center;gap:6px">Gear / assist profile<button type="button" class="set-help" data-set-help="gear-profile" aria-label="What is this?">?</button></div>
+        <div class="seg" id="gs-gear">
+          <button data-val="1">1</button>
+          <button data-val="2">2</button>
+          <button data-val="3">3</button>
+          <button data-val="4">4</button>
+          <button data-val="5">5</button>
+        </div>
+        <div class="settings-row-sublabel" id="gs-note">
+          Values are read live for the currently active gear (never stored). If a gear is missing,
+          switch through ALL gears on the scooter once - the firmware only ever sends the active gear.
+          gKFV/eKFV: internal gears 2/3/4 show as 1/2/3 on the scooter display.
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Speed limit</div><div class="settings-row-sublabel">Per-gear (km/h)</div></div>
+        <button type="button" class="set-help" data-set-help="gear-speed" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="gs-speed" type="number" min="0" max="127" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">EABS level</div><div class="settings-row-sublabel">0-5 · recuperation</div></div>
+        <button type="button" class="set-help" data-set-help="gear-eabs" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="gs-eabs" type="number" min="0" max="5" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Front start level</div><div class="settings-row-sublabel">1-5</div></div>
+        <button type="button" class="set-help" data-set-help="gear-fstart" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="gs-fstart" type="number" min="0" max="5" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Rear start level</div><div class="settings-row-sublabel">1-5</div></div>
+        <button type="button" class="set-help" data-set-help="gear-rstart" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="gs-rstart" type="number" min="0" max="5" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Front current</div></div>
+        <button type="button" class="set-help" data-set-help="gear-fcur" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="gs-fcur" type="number" min="0" max="255" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Rear current</div></div>
+        <button type="button" class="set-help" data-set-help="gear-rcur" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="gs-rcur" type="number" min="0" max="255" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row" style="border-bottom:none">
+        <button id="gs-save" class="gs-save-btn">Save gear</button>
+        <button type="button" class="set-help" data-set-help="gear-save" aria-label="What is this?">?</button>
+      </div>
+    </div>
+
+    <!-- Speed & drive -->
+    <div class="section-hdr sub-hdr">Speed &amp; drive</div>
+    <div class="settings-group" style="padding-top:4px">
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Main speed limit</div><div class="settings-row-sublabel">km/h</div></div>
+        <button type="button" class="set-help" data-set-help="ss-speed" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="ss-speed" type="number" min="1" max="120" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Gear</div></div>
+        <button type="button" class="set-help" data-set-help="ss-gear" aria-label="What is this?">?</button>
+        <select class="set-ctrl" id="ss-gear">
+          <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+          <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Start mode</div><div class="settings-row-sublabel">Launch / kick start</div></div>
+        <button type="button" class="set-help" data-set-help="ss-start" aria-label="What is this?">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-start"><label class="toggle-label" for="ss-start"></label></div>
+      </div>
+      <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:8px">
+        <div class="settings-row-label" style="display:flex;align-items:center;gap:6px">Cruise control<button type="button" class="set-help" data-set-help="ss-cruise" aria-label="What is this?">?</button></div>
+        <div class="seg" id="ss-cruise">
+          <button data-val="0">Off</button>
+          <button data-val="1">Manual</button>
+          <button data-val="2">Auto</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Motor & power -->
+    <div class="section-hdr sub-hdr">Motor &amp; power</div>
+    <div class="settings-group" style="padding-top:4px">
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Front current limit</div></div>
+        <button type="button" class="set-help" data-set-help="ss-fcur" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="ss-fcur" type="number" min="0" max="255" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Rear current limit</div></div>
+        <button type="button" class="set-help" data-set-help="ss-rcur" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="ss-rcur" type="number" min="0" max="255" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">ABS</div></div>
+        <button type="button" class="set-help" data-set-help="ss-abs" aria-label="What is this?">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-abs"><label class="toggle-label" for="ss-abs"></label></div>
+      </div>
+    </div>
+
+    <!-- Battery & wheel -->
+    <div class="section-hdr sub-hdr">Battery &amp; wheel</div>
+    <div class="settings-group" style="padding-top:4px">
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Pack voltage</div><div class="settings-row-sublabel">Nominal</div></div>
+        <button type="button" class="set-help" data-set-help="ss-packvolt" aria-label="What is this?">?</button>
+        <select class="set-ctrl" id="ss-packvolt">
+          <option value="36">36 V</option><option value="48">48 V</option><option value="52">52 V</option>
+          <option value="60">60 V</option><option value="72">72 V</option><option value="84">84 V</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Wheel size</div><div class="settings-row-sublabel">inch</div></div>
+        <button type="button" class="set-help" data-set-help="ss-wheel" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="ss-wheel" type="number" min="1" max="20" step="0.1" inputmode="decimal">
+      </div>
+    </div>
+
+    <!-- Assist levels -->
+    <div class="section-hdr sub-hdr">Assist levels</div>
+    <div class="settings-group" style="padding-top:4px">
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Front start level</div></div>
+        <button type="button" class="set-help" data-set-help="ss-fstart" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="ss-fstart" type="number" min="0" max="15" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Rear start level</div></div>
+        <button type="button" class="set-help" data-set-help="ss-rstart" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="ss-rstart" type="number" min="0" max="15" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">EABS level</div><div class="settings-row-sublabel">Recuperation</div></div>
+        <button type="button" class="set-help" data-set-help="ss-eabs" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="ss-eabs" type="number" min="0" max="15" step="1" inputmode="numeric">
+      </div>
+    </div>
+
+    <!-- Modes -->
+    <div class="section-hdr sub-hdr">Modes</div>
+    <div class="settings-group" style="padding-top:4px">
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Eco mode</div></div>
+        <button type="button" class="set-help" data-set-help="ss-eco" aria-label="What is this?">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-eco"><label class="toggle-label" for="ss-eco"></label></div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Unit: miles</div><div class="settings-row-sublabel">Scooter display unit</div></div>
+        <button type="button" class="set-help" data-set-help="ss-unitmile" aria-label="What is this?">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-unitmile"><label class="toggle-label" for="ss-unitmile"></label></div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Anti-theft</div></div>
+        <button type="button" class="set-help" data-set-help="ss-atmode" aria-label="What is this?">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-atmode"><label class="toggle-label" for="ss-atmode"></label></div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Smart mode</div></div>
+        <button type="button" class="set-help" data-set-help="ss-smart" aria-label="What is this?">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-smart"><label class="toggle-label" for="ss-smart"></label></div>
+      </div>
+    </div>
+
+    <!-- Explicit save for the global scooter settings (nothing is written to the controller until pressed). -->
+    <div class="settings-group" style="padding-top:4px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="ss-save" class="gs-save-btn">Save settings</button>
+        <button type="button" class="set-help" data-set-help="ss-save" aria-label="What is this?">?</button>
+      </div>
+      <div class="settings-row-sublabel" style="margin-top:8px">
+        Sends only the fields you changed above. Per-gear values have their own "Save gear" button.
+      </div>
+    </div>
+
+    <div style="height:16px;flex-shrink:0"></div>
+  </div>
+</div>
+
+<!-- ── Streaming page ─────────────────────────────── -->
+<div id="streaming-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-streaming-back" aria-label="Back">&#8592;</button>
+    </div>
+    <span class="tb-title">Streaming</span>
+    <div class="tb-right"><span style="width:40px"></span></div>
+  </div>
+  <div id="streaming-scroller">
+    <div class="section-hdr sub-hdr">SRT push</div>
+    <div class="settings-row-sublabel" style="margin-bottom:8px">
+      Streams the screen (with the telemetry overlay) over SRT. Paste the full push URL.
+    </div>
+    <textarea id="stream-url" rows="4"
+      placeholder="srt://host:16002/?streamid=push/live/…&latency=1000000"></textarea>
+    <div id="stream-status" class="settings-row-sublabel" style="margin:10px 0">Status: idle</div>
+    <div style="display:flex;gap:8px">
+      <button id="btn-stream-start" style="flex:1">&#9654; Start stream</button>
+      <button id="btn-stream-stop" style="flex:1">&#9632; Stop</button>
+    </div>
+    <div class="settings-row-sublabel" style="margin-top:14px;line-height:1.5">
+      The URL is stored encrypted on the device. Use the push URL (port 16002 for SRT).
+      Confirm the screen-capture prompt when asked.
+    </div>
+    <div id="build-info" class="settings-row-sublabel" style="margin-top:16px;opacity:.55;font-size:12px">build @@BUILDNO@@</div>
+  </div>
+</div>
+
+<!-- ── Error reports page ─────────────────────────── -->
+<div id="error-reports-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-error-reports-back" aria-label="Back">&#8592;</button>
+    </div>
+    <span class="tb-title">Error reports</span>
+    <div class="tb-right"><span style="width:40px"></span></div>
+  </div>
+  <div id="error-reports-scroller">
+    <div class="settings-row-sublabel" style="margin-bottom:10px">
+      Active faults and battery warnings read live from the scooter (BLE). No server involved.
+    </div>
+    <div id="err-list"></div>
+    <div id="err-empty" style="display:none">No active errors</div>
+  </div>
+</div>
+
+<!-- ── Scooter info page ──────────────────────────── -->
+<div id="info-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-info-back" aria-label="Back">&#8592;</button>
+    </div>
+    <span class="tb-title">Scooter info</span>
+    <div class="tb-right"><span style="width:40px"></span></div>
+  </div>
+  <div id="info-scroller">
+    <div class="settings-row-sublabel" style="margin-bottom:10px">
+      Identity and firmware versions read live from the scooter (BLE). No server involved.
+    </div>
+    <div class="settings-group" style="padding-top:4px">
+      <!-- Identity read from the scooter. The Bluetooth advertised name IS the full FIN.
+           Both rows are read-only and refresh from lb_live_data on the 1 s render loop. -->
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label">FIN / Bluetooth Name</div>
+          <div class="settings-row-sublabel" id="info-btname" style="font-family:monospace;word-break:break-all">-</div>
+        </div>
+        <button id="btn-copy-btname" class="route-gpx-btn">Copy</button>
+      </div>
+      <!-- Change the VCU identity / BLE name (cmd 0x1f). Swaps the region code in the FIN and keeps
+           the serial; the first 3 chars must NOT be "TDE". Reversible via Reset. This only clears
+           Gate 1 - the speed stays limited until the separate display step. -->
+      <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:8px">
+        <div class="settings-row-left">
+          <div class="settings-row-label">Change identity (unlock Gate 1)</div>
+          <div class="settings-row-sublabel">Prefilled with the full current FIN - edit the whole name and press Set. First 3 chars not "TDE" = Gate 1 off; type your original "TDE..." FIN to re-lock. Speed stays limited until the display step.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="info-btname-input" type="text" maxlength="16" autocomplete="off"
+                 autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="full FIN"
+                 style="flex:1;min-width:0;padding:7px 9px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:monospace;font-size:13px">
+          <button id="btn-set-btname" class="route-gpx-btn">Set</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label">Frame number (VCU)</div>
+          <div class="settings-row-sublabel" id="info-serial" style="font-family:monospace;word-break:break-all">-</div>
+        </div>
+        <button id="btn-copy-serial" class="route-gpx-btn">Copy</button>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">IVCU software version</div></div>
+        <span id="info-swver" style="color:var(--label);font-size:13px">-</span>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Hardware version</div></div>
+        <span id="info-hwver" style="color:var(--label);font-size:13px">-</span>
+      </div>
+    </div>
+
+    <!-- Ride log: opt-in local recording of the main-screen values (native side owns storage). -->
+    <div class="settings-group" style="border-top:1px solid var(--border)">
+      <div class="settings-group-title">Ride log</div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label">Record ride log</div>
+          <div class="settings-row-sublabel">Off by default. Records all main-screen values once per minute while you ride (starts after the scooter first moves). Kept for the last 3 rides.</div>
+        </div>
+        <div class="toggle-wrap">
+          <input type="checkbox" class="toggle-input" id="toggle-ridelog">
+          <label class="toggle-label" for="toggle-ridelog"></label>
+        </div>
+      </div>
+      <div class="settings-row-sublabel" style="margin:8px 0 0">View the exported CSV/JSON as graphs with the <span onclick="openExt('https://github.com/Laufbursche42/leat')" style="color:var(--ble);text-decoration:underline;cursor:pointer">Laufbursche Edition Analysis Tool (leat)</span>.</div>
+      <div class="settings-row-sublabel" style="margin:10px 0 6px">Last 3 rides</div>
+      <div id="ridelog-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Version Info & Disclaimer modal ─────────────── -->
+<div id="verinfo-overlay">
+  <div id="verinfo-box" role="dialog" aria-modal="true" aria-labelledby="verinfo-title">
+    <h3 id="verinfo-title">Version Info &amp; Disclaimer</h3>
+    <div class="verinfo-ver">App version: <span id="verinfo-ver">-</span></div>
+    <p id="verinfo-disclaimer">This is not an official Teverun app. The developer (Laufbursche) is not affiliated with, endorsed by, or connected to Teverun. Teverun is a trademark of its respective owner.</p>
+    <button type="button" id="verinfo-close">Close</button>
+  </div>
+</div>
+
+<!-- ── Toast ───────────────────────────────────────── -->
+<div id="toast"></div>
+
+<!-- ── Confirm Dialog ──────────────────────────────── -->
+<div id="confirm-overlay">
+  <div id="confirm-box">
+    <h3 id="confirm-title">Delete routes?</h3>
+    <p id="confirm-msg">This action cannot be undone.</p>
+    <div class="confirm-btns">
+      <button id="confirm-cancel">Cancel</button>
+      <button id="confirm-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   TEVERUN LB - Telemetry  (full implementation)
+   ═══════════════════════════════════════════════════════════ */
+
+'use strict';
+
+/* ── Debug logging (native LB bridge) ─────────────────────── */
+// Reflect the native debug flag into the UI (toggle + red banner). All calls guarded so the
+// dashboard still works when opened outside the app (typeof LB === 'undefined').
+function isDebugOn() {
+  try { return typeof LB !== 'undefined' && LB.isDebug && !!LB.isDebug(); } catch (e) { return false; }
+}
+function syncDebugUI() {
+  const on = isDebugOn();
+  const t = document.getElementById('toggle-debug');
+  if (t) t.checked = on;
+  const b = document.getElementById('debug-banner');
+  if (b) b.style.display = on ? 'block' : 'none';
+}
+// Forward uncaught JS errors + console.error/warn to the native log file (only while debug is ON).
+(function installDebugForwarding() {
+  function fwd(prefix, args) {
+    try {
+      if (!isDebugOn()) return;
+      const parts = [];
+      for (let i = 0; i < args.length; i++) {
+        const a = args[i];
+        try { parts.push(typeof a === 'string' ? a : JSON.stringify(a)); }
+        catch (e) { parts.push(String(a)); }
+      }
+      LB.log(prefix + parts.join(' '));
+    } catch (e) {}
+  }
+  const _err = (console && console.error) ? console.error.bind(console) : function () {};
+  const _warn = (console && console.warn) ? console.warn.bind(console) : function () {};
+  console.error = function () { fwd('console.error: ', arguments); _err.apply(console, arguments); };
+  console.warn = function () { fwd('console.warn: ', arguments); _warn.apply(console, arguments); };
+  window.addEventListener('error', function (ev) {
+    try {
+      if (!isDebugOn()) return;
+      const msg = ev && ev.message ? ev.message : String(ev);
+      const src = (ev && ev.filename) ? (' @' + ev.filename + ':' + ev.lineno + ':' + ev.colno) : '';
+      LB.log('window.onerror: ' + msg + src);
+    } catch (e) {}
+  });
+  window.addEventListener('unhandledrejection', function (ev) {
+    try {
+      if (!isDebugOn()) return;
+      const r = ev ? ev.reason : null;
+      LB.log('unhandledrejection: ' + (r && r.message ? r.message : String(r)));
+    } catch (e) {}
+  });
+})();
+
+/* ── Utilities ────────────────────────────────────────────── */
+
+const storage = {
+  // Write to BOTH plus.storage and the webview's own localStorage. localStorage in this
+  // hybrid webview survives app restarts and in-place updates, so the SRT url sticks even
+  // if plus.storage misbehaves. Read plus.storage first, fall back to localStorage.
+  get: k => {
+    let v = null;
+    if (window.plus) { try { v = plus.storage.getItem(k); } catch(_) {} }
+    if (v === null || v === undefined) { try { v = localStorage.getItem(k); } catch(_) {} }
+    return v;
+  },
+  set: (k, v) => {
+    if (window.plus) { try { plus.storage.setItem(k, v); } catch(_) {} }
+    try { localStorage.setItem(k, v); } catch(_) {}
+  },
+  remove: k => {
+    if (window.plus) { try { plus.storage.removeItem(k); } catch(_) {} }
+    try { localStorage.removeItem(k); } catch(_) {}
+  }
+};
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+function formatDuration(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function fmtDate(ts) {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function fmtDateTime(ts) {
+  const d = new Date(ts);
+  return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function gpxFilename(ts) {
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2,'0');
+  return `teverun_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}.gpx`;
+}
+
+let _toastTimer = null;
+function showToast(msg, dur = 3000, variant = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.toggle('err', variant === 'err');
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), dur);
+}
+
+/* ── State ────────────────────────────────────────────────── */
+
+const state = {
+  ble: null,            // last parsed BLE data object
+  bleConnected: false,
+  useMph: false,
+  gpsAutoStart: true,
+  gpsIntervalMs: 5000,  // min spacing between recorded track points (lb_gps_interval, seconds)
+  gpsWatchId: null,
+  gpsPos: null,         // last GPS position
+  gpsSats: null,        // satellite count if available
+  currentRide: null,    // { id, startTime, points, dist, hmPlus, hmMinus }
+  routes: [],           // loaded from lb_routes
+  rideTimer: null,      // for elapsed time display
+  saveTimer: null,      // periodic save
+  streamingCfg: { host: '', port: '' },
+  pendingDeletePeriod: null,
+  confirmCb: null,
+};
+
+/* ── Theme ────────────────────────────────────────────────── */
+
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  // Swap the logo so its "App für Teverun E-Scooter" subtitle stays readable (white on dark, dark on light).
+  const logo = document.querySelector('.tb-logo');
+  if (logo) logo.src = dark ? 'logo.svg' : 'logo-light.svg';
+  // Let native screens follow the same theme.
+  if (typeof LB !== 'undefined' && LB.setTheme) { try { LB.setTheme(dark); } catch (e) {} }
+  const btn = document.getElementById('btn-theme');
+  // Sun in dark mode (click to go light), Moon in light mode (click to go dark)
+  btn.innerHTML = dark ? '&#9728;' : '&#9790;';
+  document.getElementById('toggle-dark').checked = dark;
+  storage.set('lb_theme', dark ? 'dark' : 'light');
+}
+
+function initTheme() {
+  const saved = storage.get('lb_theme');
+  const dark = saved !== 'light';
+  applyTheme(dark);
+}
+
+/* ── BLE Data ─────────────────────────────────────────────── */
+
+function parseBLE(raw) {
+  if (!raw) return null;
+  try {
+    const d = JSON.parse(raw);
+    if (!d || typeof d.ts !== 'number') return null;
+    const num = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+    return {
+      speed:    num(d.speed),
+      avgSpeed: num(d.avgSpeed),
+      maxSpeed: num(d.maxSpeed),
+      soc:      num(d.soc),
+      soh:      num(d.soh),
+      volt:     num(d.volt),
+      poleVolt: num(d.poleVolt),
+      current:  num(d.current),
+      gear:     typeof d.gear === 'number' ? d.gear : (parseInt(d.gear) || 0),
+      rCurrent: num(d.rCurrent),
+      fCurrent: num(d.fCurrent),
+      rTemp:    num(d.rTemp),
+      fTemp:    num(d.fTemp),
+      power:    num(d.power),
+      singleMile: num(d.singleMile),
+      totalMile:  num(d.totalMile),
+      fb:       num(d.fb),
+      rssi:     num(d.rssi),
+      park:     d.park === true || d.park === 1 || d.park === '1',
+      systemStatus: Array.isArray(d.systemStatus) ? d.systemStatus : [],
+      top:      Array.isArray(d.top) ? d.top : [],
+      bottom:   Array.isArray(d.bottom) ? d.bottom : [],
+      ts:       d.ts
+    };
+  } catch(e) { return null; }
+}
+
+function tempColor(t) {
+  return t > 60 ? 'var(--danger)' : t > 45 ? 'var(--warn)' : 'var(--text)';
+}
+
+// Plain-language explanation for each all-values row (keyed by the exact name FrameParser emits).
+const AV_HELP = {
+  "System Voltage": "Total battery-pack voltage measured by the BMS (all cells in series). Drops under load and as the battery discharges.",
+  "Pole Voltage": "Voltage at the controller's power terminals, after the BMS relays. Normally close to the pack voltage; a large gap can indicate relay or wiring resistance.",
+  "Current": "Instantaneous pack current. Positive = drawing power (driving); negative = charging or recuperation (energy flowing back into the battery).",
+  "SOC": "State of Charge: remaining battery capacity in percent, as estimated by the BMS.",
+  "SOH": "State of Health: current usable capacity relative to when the battery was new, in percent. Declines over the battery's life.",
+  "CELL MAX TEMP": "Highest temperature among the battery cells, reported by the BMS.",
+  "CELL MIN TEMP": "Lowest temperature among the battery cells.",
+  "Cell Count": "Number of cell groups in series that the BMS is monitoring.",
+  "Max Voltage": "Highest single-cell voltage in the pack (mV). Compare with Min Voltage to judge cell balance.",
+  "Min Voltage": "Lowest single-cell voltage in the pack (mV). A large gap to Max Voltage means the cells are out of balance.",
+  "Rated Capacity": "The battery's nominal capacity in amp-hours (Ah), stored in the BMS.",
+  "Charge Counter": "Number of charge cycles the BMS has counted over the battery's life.",
+  "Charge MOS": "State of the BMS charge MOSFET. On = the BMS allows charging current into the pack.",
+  "Discharge MOS": "State of the BMS discharge MOSFET. On = the BMS allows the pack to deliver current to the scooter.",
+  "Relay 1": "State of the BMS main relay/contactor 1. On when the pack's main power path is connected.",
+  "Relay 2": "State of the BMS main relay/contactor 2 (the second main power line). On when connected.",
+  "Relay M": "State of the BMS charge / pre-charge relay (charge mode). Engages while charging or during pre-charge; normally Off while riding.",
+  "Balance": "Which cells the BMS is currently balancing (equalizing voltage). 'none' means no cell is being balanced right now - normal unless the pack is charging and nearly full.",
+  "Charge Status": "Charging-state indicator from the BMS (the index the original app maps to its charging icon). 0 usually means 'not charging'.",
+  "Cell TEMP0": "Temperature sensor 0 inside the battery pack (cell group), in °C.",
+  "Cell TEMP1": "Temperature sensor 1 inside the battery pack (cell group), in °C.",
+  "Cell TEMP2": "Temperature sensor 2 inside the battery pack (cell group), in °C.",
+  "MOS TEMP0": "Temperature of BMS power-MOSFET sensor 0, in °C. Warms up under high current.",
+  "MOS TEMP1": "Temperature of BMS power-MOSFET sensor 1, in °C. Warms up under high current.",
+  "BMS PCB TEMP0": "Temperature of BMS circuit-board sensor 0, in °C.",
+  "BMS PCB TEMP1": "Temperature of BMS circuit-board sensor 1, in °C.",
+  "Front Motor Current": "Current the controller is delivering to the front motor, in amps.",
+  "Rear Motor Current": "Current the controller is delivering to the rear motor, in amps.",
+  "Front Motor Temp": "Front motor temperature, in °C.",
+  "Rear Motor Temp": "Rear motor temperature, in °C.",
+  "Motor Mode": "Which motor(s) are active: Dual, Rear only, or Front only.",
+  "Power": "Instantaneous output power, computed from motor current times pack voltage, in kW.",
+  "Real Speed": "Current speed derived from the motor's electrical frequency and wheel size, independent of GPS.",
+  "Reverse Gear": "Whether reverse gear is currently engaged.",
+  "Rear Control Status": "Rear-controller status bits currently set (diagnostic bitfield). 'none' = no bits set.",
+  "Front Control Status": "Front-controller status bits currently set (diagnostic bitfield). 'none' = no bits set.",
+  "Brake Fault": "Whether the controller reports a brake-sensor fault.",
+  "Warning": "General controller warning flag.",
+  "Warning 2": "Second general controller warning flag.",
+  "Tail-light Warning": "Whether the controller reports a tail-light fault.",
+  "Park": "Whether the park / standstill lock is active (scooter held stationary).",
+  "Cruise Active": "Whether cruise control is currently holding speed.",
+  "Headlight": "Headlight on/off state reported by the controller.",
+  "Turn Signal L": "Left turn-signal state.",
+  "Turn Signal R": "Right turn-signal state.",
+  "Front ECU 1": "Front-controller status bitfield 1 (diagnostic).",
+  "Front ECU 2": "Front-controller status bitfield 2 (diagnostic).",
+  "System Status 3": "Additional controller status bits (diagnostic).",
+  "Battery Lock": "Whether the electronic battery lock is engaged (anti-theft).",
+  "GPS Lock": "Whether the scooter's GPS lock feature is engaged.",
+  "Power Mode": "Performance / power-mode state reported by the VCU. Read-only over BLE: there is no documented command to switch it from the app, so it follows the scooter's own setting.",
+  "Light Sensor": "Whether the automatic light sensor is active.",
+  "Voice": "Whether voice prompts / sounds are enabled.",
+  "AT Level": "Anti-theft sensitivity level (0-3) reported by the scooter.",
+  "Custom Key": "The function currently assigned to the scooter's custom button (e.g. Turbo, Cruise, Lock). Change it under Scooter settings.",
+  "Avg Speed": "Average speed for the current trip.",
+  "Max Speed": "Maximum speed reached this trip.",
+  "Trip": "Distance of the current trip.",
+  "Odometer": "Total lifetime distance.",
+  "Recuperation": "Cumulative energy recovered through regenerative braking / coasting, fed back into the battery. Shown as 'Recuperation' on the dashboard too - same value."
+};
+
+let avHelpModal = null;
+let avHelpDelegated = false;
+
+// Build (once) the shared help popup and its close/backdrop/Escape handlers, outside #all-values.
+function ensureAvHelpModal() {
+  if (avHelpModal) return avHelpModal;
+  const overlay = document.createElement('div');
+  overlay.id = 'avhelp-overlay';
+  overlay.innerHTML =
+    '<div id="avhelp-box" role="dialog" aria-modal="true" aria-labelledby="avhelp-title">' +
+      '<h3 id="avhelp-title"></h3>' +
+      '<p id="avhelp-body"></p>' +
+      '<button type="button" id="avhelp-close">Close</button>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeAvHelp(); });
+  overlay.querySelector('#avhelp-close').addEventListener('click', closeAvHelp);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && avHelpModal && avHelpModal.classList.contains('open')) closeAvHelp();
+  });
+  avHelpModal = overlay;
+  return overlay;
+}
+
+// Generic opener: fills the shared modal with any title + body text and shows it.
+function openHelp(title, text) {
+  const overlay = ensureAvHelpModal();
+  overlay.querySelector('#avhelp-title').textContent = title || '';
+  overlay.querySelector('#avhelp-body').textContent = text || '';
+  overlay.classList.add('open');
+}
+
+function openAvHelp(name) {
+  if (!name || !Object.prototype.hasOwnProperty.call(AV_HELP, name)) return;
+  openHelp(name, AV_HELP[name]);
+}
+
+function closeAvHelp() {
+  if (avHelpModal) avHelpModal.classList.remove('open');
+}
+
+// Plain-language explanation for every app / controller / per-gear setting.
+// Keyed by the row's data-set-help attribute; reuses the same modal as AV_HELP.
+const SETTINGS_HELP = {
+  "disp-dark": { title: "Dark mode", text: "Switches this app's color theme between dark and light. Affects only the app's own display, not the scooter." },
+  "disp-mph": { title: "Unit: mph (app)", text: "Shows speed and distance IN THIS APP in mph instead of km/h. This is the app's display unit only; it does not change the scooter's own display (see Scooter settings → 'Unit: miles' for that)." },
+  "disp-fullscreen": { title: "Fullscreen", text: "Hides the Android status bar (battery, clock, notifications) for an immersive view. Turn it off to keep the status bar visible." },
+  "motor-mode": { title: "Motor mode", text: "Selects which motor(s) drive: Dual (both), Rear only, or Front only. Single-motor saves energy; Dual gives the most power and traction. This is written to the controller immediately when you tap it." },
+  "gps-auto": { title: "GPS auto start", text: "Automatically starts recording a GPS track when the scooter connects, so you don't have to start it by hand." },
+  "gps-interval": { title: "GPS interval", text: "How often a GPS point is stored for the track. A larger interval saves battery and storage; a smaller one records a more detailed route." },
+  "debug-mode": { title: "Debug mode", text: "Turns on persistent in-app logging (a red banner shows while it is active). Use 'Export debug logs' to share the log if something goes wrong - no PC or adb needed." },
+  "gear-profile": { title: "Gear / assist profile", text: "Selects which gear you are editing below. On gKFV/eKFV units the internal gears 2, 3 and 4 are shown as 1, 2 and 3 on the scooter's own display. Each gear stores its own speed limit, recuperation and start levels, so you can make e.g. one gear gentle and another sporty. IMPORTANT: if a gear's values are missing here, switch through all gears once on the scooter - the firmware only ever sends the CURRENTLY active gear to the app, so each gear has to be active once to be read. Values are read live and are NOT stored on the phone (stale values must never be written back). Edits apply to the selected gear only and are written when you press Save gear." },
+  "gear-speed": { title: "Speed limit (per gear)", text: "Top speed allowed in THIS gear, in km/h. Lower gears are usually capped lower for a calmer ride.\n\nNOTE (gKFV/eKFV): on the gKFV version every gear is hard-capped at 22 km/h - values above 22 have no effect." },
+  "gear-eabs": { title: "EABS level (per gear)", text: "Strength of the electronic regenerative brake (recuperation) in this gear. Higher = stronger motor braking when you release the throttle and more energy fed back to the battery; 0 = coast freely." },
+  "gear-fstart": { title: "Front start level (per gear)", text: "How aggressively the FRONT motor pulls away from a standstill in this gear. Higher = punchier launch; lower = smoother, gentler start." },
+  "gear-rstart": { title: "Rear start level (per gear)", text: "How aggressively the REAR motor pulls away from a standstill in this gear. Higher = punchier launch; lower = smoother." },
+  "gear-fcur": { title: "Front current (per gear)", text: "Maximum current to the FRONT motor in this gear, which sets its torque/power ceiling. Higher = more power (and more heat and battery draw)." },
+  "gear-rcur": { title: "Rear current (per gear)", text: "Maximum current to the REAR motor in this gear. Higher = more power; lower limits torque for a tamer gear." },
+  "ss-speed": { title: "Main speed limit", text: "The overall top-speed cap for the scooter in km/h, independent of the per-gear limits. The scooter will not assist beyond this.\n\nNOTE (gKFV/eKFV): the top speed is hard-capped at 22 km/h on the gKFV version - values above 22 have no effect (the controller forces 22)." },
+  "ss-gear": { title: "Gear", text: "The currently active gear (1-3). Changing it here switches the scooter's gear, the same as the gear button on the display." },
+  "ss-start": { title: "Start mode", text: "How the scooter begins moving. 'Kick start' needs a push to start assisting (zero-start off); 'Launch' lets it pull away from a standstill on throttle alone (zero-start on)." },
+  "ss-cruise": { title: "Cruise control", text: "Off = no cruise. Manual = you activate cruise yourself (holding a steady speed/button). Auto = the scooter holds speed automatically after a few seconds of constant throttle.\n\nNOTE (gKFV/eKFV): cruise control cannot be changed on the gKFV version - the controller write-protects it, so this setting has no effect." },
+  "ss-fcur": { title: "Front current limit", text: "Global maximum current to the FRONT motor (its torque/power ceiling) across all gears. Higher = more power and more heat.\n\nNOTE (gKFV/eKFV): on the gKFV version this has no effect - the motor controller reports and enforces 0, so the value stays 0 no matter what you set." },
+  "ss-rcur": { title: "Rear current limit", text: "Global maximum current to the REAR motor. Higher = more power; lower for a tamer, cooler-running setup.\n\nNOTE (gKFV/eKFV): on the gKFV version this has no effect - the motor controller reports and enforces 0 across all gears, so the value stays 0 no matter what you set." },
+  "ss-abs": { title: "ABS", text: "Enables the controller's anti-lock braking behavior: it modulates the electronic brake to reduce wheel lock-up during hard braking. (Different from EABS, which is the recuperation strength.)" },
+  "ss-packvolt": { title: "Pack voltage (nominal)", text: "The battery's nominal voltage (e.g. 60 V). The controller uses it in its power/speed calculations - set it to match your actual battery, or the math will be off." },
+  "ss-wheel": { title: "Wheel size", text: "Wheel diameter in inches. The controller converts motor RPM to speed and distance with this, so set it to your real tire size or the speedometer and odometer will read wrong.\n\nNOTE (gKFV/eKFV): on the gKFV version changing this has no effect - the controller ignores the wheel-size write (and the speed is hard-capped at 22 km/h anyway)." },
+  "ss-fstart": { title: "Front start level", text: "Global launch aggressiveness of the FRONT motor from a standstill. Higher = punchier; lower = smoother." },
+  "ss-rstart": { title: "Rear start level", text: "Global launch aggressiveness of the REAR motor from a standstill. Higher = punchier; lower = smoother." },
+  "ss-eabs": { title: "EABS level", text: "Global strength of the electronic regenerative brake (recuperation): how hard the motor brakes and recharges the battery when you let off the throttle. 0 = coast." },
+  "ss-eco": { title: "Eco mode", text: "Limits power for a smoother, longer-range ride. Good for saving battery and for beginners." },
+  "ss-unitmile": { title: "Unit: miles (scooter)", text: "Sets the SCOOTER'S OWN DISPLAY to miles instead of km. This changes the scooter itself, not just the app (the app's own unit is under Display → Unit mph)." },
+  "ss-atmode": { title: "Anti-theft", text: "Electronic lock / anti-theft mode.\n\nNOTE (gKFV/eKFV): not supported on this model - it has no GPS/immobilizer module, so toggling this has no effect (the controller silently ignores it and the switch snaps back off). The real anti-theft (remote / geofence lock) needs the GPS module this unit does not have." },
+  "ss-smart": { title: "Smart mode (TCS)", text: "Traction control. When on, 'SMART' appears on the scooter display. It reduces wheelspin and automatically manages both motors: in single-motor mode, easing off and re-applying throttle on a slope or when a wheel slips switches to dual motor; in dual-motor mode it balances front/rear speed and torque to cut slipping." },
+  "ss-save": { title: "Save settings", text: "Writes your changed controller settings to the scooter. Nothing is sent until you press this, so you can edit fields freely and then save them all at once." },
+  "gear-save": { title: "Save gear", text: "Writes the values for the currently selected gear to the scooter. Per-gear edits are only sent when you press this." },
+  "dg-recup": { title: "Recuperation", text: "Cumulative energy the scooter recovered through regenerative braking/coasting (the controller reports a bare cumulative counter - no unit)." },
+  "dg-rssi": { title: "RSSI", text: "Bluetooth signal strength between phone and scooter, in dBm. Closer to 0 = stronger." }
+};
+
+let settingsHelpDelegated = false;
+
+// One document-level delegated listener for every ".set-help" button (survives re-renders).
+function ensureSettingsHelpDelegation() {
+  if (settingsHelpDelegated) return;
+  document.addEventListener('click', e => {
+    const btn = e.target.closest && e.target.closest('.set-help');
+    if (!btn) return;
+    const key = btn.getAttribute('data-set-help');
+    const h = key && SETTINGS_HELP[key];
+    if (h) { e.preventDefault(); e.stopPropagation(); openHelp(h.title, h.text); }
+  });
+  settingsHelpDelegated = true;
+}
+
+function renderAllValues(data) {
+  data = data || {};
+  const box = document.getElementById('all-values');
+  if (!box) return;
+  // One delegated click listener on the container (rows are rebuilt ~2x/s, so per-row would be lost).
+  if (!avHelpDelegated) {
+    box.addEventListener('click', e => {
+      const btn = e.target.closest && e.target.closest('.av-help');
+      if (btn && box.contains(btn)) openAvHelp(btn.getAttribute('data-help-name'));
+    });
+    avHelpDelegated = true;
+  }
+  const rows = [];
+  (data.top || []).forEach(x => { if (x && x.name != null) rows.push([x.name, x.value]); });
+  (data.bottom || []).forEach(x => { if (x && x.name != null) rows.push([x.name, x.value]); });
+  if (!rows.length) {
+    box.innerHTML = '<div class="no-routes" id="all-values-empty">Connect the scooter to see all values</div>';
+    return;
+  }
+  box.innerHTML = rows.map(r => {
+    const help = Object.prototype.hasOwnProperty.call(AV_HELP, r[0])
+      ? '<button type="button" class="av-help" aria-label="" data-help-name="">?</button>' : '';
+    return `<div class="av-row"><span class="av-label"></span><span class="av-val"></span>${help}</div>`;
+  }).join('');
+  const rowEls = box.querySelectorAll('.av-row');
+  rows.forEach((r, i) => {
+    rowEls[i].querySelector('.av-label').textContent = r[0];
+    rowEls[i].querySelector('.av-val').textContent = r[1];
+    const hb = rowEls[i].querySelector('.av-help');
+    if (hb) {
+      // setAttribute escapes the value safely (no HTML parsing of the name).
+      hb.setAttribute('data-help-name', r[0]);
+      hb.setAttribute('aria-label', 'Explain: ' + r[0]);
+    }
+  });
+}
+
+function isFresh(ts) {
+  return ts && (Date.now() - ts < 5000);
+}
+
+// The gear tile shows only the gear NUMBER; this tag adds a P (parked) / R (reverse) state, or is
+// hidden when neither applies. No Eco/Drive/Sport words.
+function gearTag(park, reverse) {
+  if (park)    return { text: 'P', cls: 'gear-tag-na',    show: true };
+  if (reverse) return { text: 'R', cls: 'gear-tag-sport', show: true };
+  return { text: '', cls: '', show: false };
+}
+
+function hideGearTag() {
+  const el = document.getElementById('gear-tag');
+  if (el) { el.textContent = ''; el.style.display = 'none'; }
+}
+
+function convSpeed(kmh) {
+  if (state.useMph) return (kmh * 0.621371).toFixed(1);
+  return kmh.toFixed(1);
+}
+function speedUnit() { return state.useMph ? 'mph · VCU' : 'km/h · VCU'; }
+function speedUnitGPS() { return state.useMph ? 'mph · GPS' : 'km/h · GPS'; }
+
+function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+
+function updateBLEUI(data) {
+  const bleDot     = document.getElementById('ble-dot');
+
+  document.querySelector('.ble-drum .sd-unit').textContent = speedUnit();
+  document.querySelector('.gps-drum .sd-unit').textContent = speedUnitGPS();
+
+  const DASH = ['ble-speed','soc-val','gear-val','current-val','dg-avg','dg-max',
+    'dg-volt','dg-pole','dg-soh','dg-fb','dg-total','dg-single','dg-rssi',
+    'mr-temp','mr-cur','mf-temp','mf-cur','m-power','m-total-cur'];
+
+  if (!data) {
+    DASH.forEach(id => setTxt(id, '-'));
+    hideGearTag();
+    renderAllValues(null);
+    return;
+  }
+
+  const connected = isFresh(data.ts);
+  const wasConnected = state.bleConnected;
+  state.bleConnected = connected;
+  state.ble = data;
+
+  if (connected !== wasConnected) onBLEConnectionChange(connected);
+
+  bleDot.classList.toggle('connected', connected);
+  const connBtn = document.getElementById('btn-connect');
+  if (connBtn) connBtn.classList.toggle('connected', connected);
+
+  if (!connected) {
+    DASH.forEach(id => setTxt(id, '-'));
+    hideGearTag();
+    renderAllValues(null);
+    return;
+  }
+
+  // Speed
+  setTxt('ble-speed', convSpeed(data.speed));
+  setTxt('dg-avg', `${convSpeed(data.avgSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
+  setTxt('dg-max', `${convSpeed(data.maxSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
+
+  // Hero
+  setTxt('soc-val', Math.round(data.soc));
+  setTxt('gear-val', data.gear);
+  const bit = (v) => v === true || v === 1 || v === '1';
+  const gt = gearTag(bit(data.park), Array.isArray(data.systemStatus) && bit(data.systemStatus[5]));
+  const gearTagEl = document.getElementById('gear-tag');
+  if (gearTagEl) {
+    gearTagEl.textContent = gt.text;
+    gearTagEl.className = gt.show ? `hc-tag ${gt.cls}` : 'hc-tag';
+    gearTagEl.style.display = gt.show ? '' : 'none';
+  }
+  const cur = data.current;
+  const curEl = document.getElementById('current-val');
+  if (curEl) {
+    curEl.textContent = cur >= 0 ? `+${cur.toFixed(1)}` : cur.toFixed(1);
+    curEl.style.color = cur < 0 ? 'var(--good)' : 'var(--text)';
+  }
+
+  // Motors (dual motor)
+  setTxt('mr-temp', data.rTemp.toFixed(0));
+  setTxt('mf-temp', data.fTemp.toFixed(0));
+  setTxt('mr-cur', data.rCurrent.toFixed(1));
+  setTxt('mf-cur', data.fCurrent.toFixed(1));
+  const mrt = document.getElementById('mr-temp'); if (mrt) mrt.style.color = tempColor(data.rTemp);
+  const mft = document.getElementById('mf-temp'); if (mft) mft.style.color = tempColor(data.fTemp);
+  setTxt('m-power', data.power.toFixed(2));
+  setTxt('m-total-cur', (data.rCurrent + data.fCurrent).toFixed(1));
+
+  // Grid
+  setTxt('dg-volt', `${data.volt.toFixed(1)} V`);
+  setTxt('dg-pole', `${data.poleVolt.toFixed(1)} V`);
+  setTxt('dg-soh', `${Math.round(data.soh)} %`);
+  setTxt('dg-fb', data.fb.toFixed(1));
+  setTxt('dg-total', `${Math.round(data.totalMile)} km`);
+  setTxt('dg-single', `${data.singleMile.toFixed(1)} km`);
+  setTxt('dg-rssi', `${data.rssi} dBm`);
+  const rssiEl = document.getElementById('dg-rssi');
+  if (rssiEl) rssiEl.style.color = data.rssi < -85 ? 'var(--danger)' : data.rssi < -70 ? 'var(--warn)' : 'var(--good)';
+
+  // All values (battery/cells)
+  renderAllValues(data);
+}
+
+function tickBLE() {
+  const raw = storage.get('lb_live_data');
+  const data = parseBLE(raw);
+  updateBLEUI(data);
+  updateRideUI();
+  // Keep the main-screen motor-mode quick toggle mirroring the scooter (~2x/s), including
+  // its connected/disconnected enabled state.
+  reflectMotorModeMain();
+  // Accumulate per-gear/assist values and keep the gear editor live (without clobbering edits).
+  updateGearCache();
+  maybeLiveRefreshGearEditor();
+  // Keep the global scooter-settings fields live too (same clobber protection).
+  maybeLiveRefreshScooterSettings();
+}
+
+/* ── BLE Connect / Disconnect Events ──────────────────────── */
+
+function onBLEConnectionChange(nowConnected) {
+  if (nowConnected) {
+    // BLE reconnected: start new ride if auto-start enabled
+    if (state.gpsAutoStart) {
+      startGPSWatch();
+    }
+    if (!state.currentRide) {
+      startRide();
+    }
+  } else {
+    // BLE disconnected: finalize current ride
+    if (state.currentRide && state.currentRide.points.length > 0) {
+      finalizeRide();
+    }
+    stopGPSWatch();
+  }
+}
+
+/* ── Ride Management ──────────────────────────────────────── */
+
+function loadRoutes() {
+  try {
+    const raw = storage.get('lb_routes');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
+  } catch(e) { return []; }
+}
+
+function saveRoutes(routes) {
+  try {
+    storage.set('lb_routes', JSON.stringify(routes));
+  } catch(e) {}
+}
+
+function startRide() {
+  const id = `ride_${Date.now()}`;
+  state.currentRide = {
+    id,
+    startTime: Date.now(),
+    endTime: 0,
+    dist: 0,
+    hmPlus: 0,
+    hmMinus: 0,
+    points: []
+  };
+  state.routes = loadRoutes();
+  clearInterval(state.rideTimer);
+  state.rideTimer = setInterval(updateRideUI, 1000);
+  clearInterval(state.saveTimer);
+  state.saveTimer = setInterval(periodicSaveRide, 10000);
+}
+
+function finalizeRide() {
+  if (!state.currentRide) return;
+  state.currentRide.endTime = Date.now();
+  state.routes = loadRoutes().filter(r => r.id !== state.currentRide.id);
+  // Only save if ride has meaningful data
+  if (state.currentRide.points.length >= 2 || state.currentRide.dist > 0.01) {
+    state.routes.push({ ...state.currentRide });
+  }
+  saveRoutes(state.routes);
+  state.currentRide = null;
+  clearInterval(state.rideTimer);
+  clearInterval(state.saveTimer);
+  renderRoutes();
+  updateRideUI();
+}
+
+function periodicSaveRide() {
+  if (!state.currentRide) return;
+  // Save current ride as last element with endTime=0 (crash recovery)
+  state.routes = loadRoutes().filter(r => r.id !== state.currentRide.id);
+  state.routes.push({ ...state.currentRide, endTime: 0 });
+  saveRoutes(state.routes);
+  renderRoutes();
+}
+
+/* ── GPS Tracking ─────────────────────────────────────────── */
+
+function startGPSWatch() {
+  if (state.gpsWatchId !== null) return;
+  try {
+    if (window.plus) {
+      state.gpsWatchId = plus.geolocation.watchPosition(
+        onGPSSuccess, onGPSError,
+        { enableHighAccuracy: true }
+      );
+    } else {
+      // Browser fallback for testing
+      if (navigator.geolocation) {
+        state.gpsWatchId = navigator.geolocation.watchPosition(
+          pos => onGPSSuccess({
+            coords: {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              altitude: pos.coords.altitude || 0,
+              speed: pos.coords.speed || 0
+            },
+            timestamp: pos.timestamp
+          }),
+          onGPSError,
+          { enableHighAccuracy: true }
+        );
+      }
+    }
+  } catch(e) {}
+}
+
+function stopGPSWatch() {
+  if (state.gpsWatchId === null) return;
+  try {
+    if (window.plus) {
+      plus.geolocation.clearWatch(state.gpsWatchId);
+    } else if (navigator.geolocation) {
+      navigator.geolocation.clearWatch(state.gpsWatchId);
+    }
+  } catch(e) {}
+  state.gpsWatchId = null;
+  state.gpsPos = null;
+  document.getElementById('gps-speed').textContent = '-';
+  document.getElementById('dg-gps').textContent = '-';
+  document.getElementById('dg-alt').textContent = '-';
+}
+
+function onGPSSuccess(pos) {
+  const coords = pos.coords;
+  const lat = Math.round(coords.latitude  * 1e6) / 1e6;
+  const lon = Math.round(coords.longitude * 1e6) / 1e6;
+  const alt = coords.altitude != null ? Math.round(coords.altitude * 10) / 10 : null;
+  const spd = coords.speed   != null ? coords.speed * 3.6 : 0; // m/s → km/h
+  const ts  = pos.timestamp || Date.now();
+
+  state.gpsPos = { lat, lon, alt, speed: spd, ts };
+
+  // Update GPS speed display
+  const gpsSpeedEl = document.getElementById('gps-speed');
+  gpsSpeedEl.textContent = state.useMph
+    ? (spd * 0.621371).toFixed(1)
+    : spd.toFixed(1);
+
+  // Update GPS display fields
+  document.getElementById('dg-alt').textContent = alt != null ? `${alt} m` : '-';
+  document.getElementById('dg-gps').textContent = '✓ Fix';
+
+  // Record point to current ride, throttled to the configured GPS interval. watchPosition fires
+  // as fast as the OS reports; we only store a point once at least state.gpsIntervalMs have passed
+  // since the last recorded point. Reading state.gpsIntervalMs live means changing the interval
+  // takes effect for the ongoing recording without re-arming the watch.
+  if (state.currentRide && state.bleConnected) {
+    const pts = state.currentRide.points;
+    const last = pts.length ? pts[pts.length - 1] : null;
+    // 250 ms tolerance so a tick landing just shy of the interval still counts (avoids drift).
+    if (!last || (ts - last.ts) >= (state.gpsIntervalMs - 250)) {
+      addPointToRide(lat, lon, alt, ts, spd);
+    }
+  }
+}
+
+function onGPSError(err) {
+  document.getElementById('gps-speed').textContent = '-';
+  document.getElementById('dg-gps').textContent = 'No fix';
+}
+
+function addPointToRide(lat, lon, alt, ts, speed) {
+  const ride = state.currentRide;
+  const pts  = ride.points;
+  const pt   = { lat, lon, alt: alt !== null ? alt : 0, ts, speed: Math.round(speed * 10) / 10 };
+
+  if (pts.length > 0) {
+    const prev = pts[pts.length - 1];
+    const d = haversine(prev.lat, prev.lon, lat, lon);
+    ride.dist += d;
+    ride.dist = Math.round(ride.dist * 100) / 100;
+
+    if (alt !== null && prev.alt != null) {
+      const dAlt = alt - prev.alt;
+      if (dAlt > 0.5) ride.hmPlus  = Math.round(ride.hmPlus  + dAlt);
+      else if (dAlt < -0.5) ride.hmMinus = Math.round(ride.hmMinus + Math.abs(dAlt));
+    }
+  }
+
+  pts.push(pt);
+}
+
+/* ── Ride UI ──────────────────────────────────────────────── */
+
+function updateRideUI() {
+  const ride = state.currentRide;
+  if (ride) {
+    const elapsed = Date.now() - ride.startTime;
+    setTxt('dg-dist', `${ride.dist.toFixed(2)} km`);
+    setTxt('dg-time', formatDuration(elapsed));
+    // Real trip average = GPS distance / elapsed time (the scooter's own avgSpeed resets to 0 when
+    // stopped, so we compute our own). Guard divide-by-zero -> 0.
+    const avgKmh = elapsed > 0 ? (ride.dist / (elapsed / 3600000)) : 0;
+    setTxt('dg-ride-avg', `${convSpeed(avgKmh)} ${state.useMph ? 'mph' : 'km/h'}`);
+    setTxt('dg-hm', `+${ride.hmPlus}/-${ride.hmMinus} m`);
+    setTxt('dg-pts', String(ride.points.length));
+  } else {
+    setTxt('dg-dist', '-');
+    setTxt('dg-time', '-');
+    setTxt('dg-ride-avg', '-');
+    setTxt('dg-hm', '-');
+    setTxt('dg-pts', '-');
+  }
+}
+
+/* ── Route Rendering ──────────────────────────────────────── */
+
+function renderRoutes() {
+  const routes = loadRoutes();
+  state.routes = routes;
+
+  const list = document.getElementById('routes-list');
+  const noMsg = document.getElementById('no-routes-msg');
+  const countEl = document.getElementById('routes-count');
+
+  // Filter out crash-recovery in-progress entries from display
+  const finished = routes.filter(r => r.endTime > 0);
+  const inProgress = routes.find(r => r.endTime === 0);
+
+  countEl.textContent = finished.length > 0 ? `${finished.length} routes` : '';
+  const badge = document.getElementById('routes-count-badge');
+  if (badge) badge.textContent = finished.length > 0 ? String(finished.length) : '';
+
+  // Clear list
+  list.innerHTML = '';
+
+  if (finished.length === 0 && !inProgress) {
+    list.appendChild(noMsg);
+    noMsg.style.display = '';
+    return;
+  }
+
+  // Sort: newest first
+  const sorted = [...finished].sort((a,b) => b.startTime - a.startTime);
+
+  // Show in-progress ride at top if exists (from state.currentRide, more accurate)
+  const displayRide = state.currentRide || inProgress;
+  if (displayRide) {
+    const el = makeRouteItem(displayRide, true);
+    list.appendChild(el);
+  }
+
+  sorted.forEach(route => {
+    const el = makeRouteItem(route, false);
+    list.appendChild(el);
+  });
+}
+
+function makeRouteItem(route, live) {
+  const el = document.createElement('div');
+  el.className = 'route-item';
+
+  const duration = route.endTime > 0
+    ? formatDuration(route.endTime - route.startTime)
+    : formatDuration(Date.now() - route.startTime);
+
+  const dateStr = fmtDate(route.startTime);
+  const dist    = route.dist.toFixed(2);
+  const hmStr   = `+${route.hmPlus}/-${route.hmMinus}m`;
+
+  const info = document.createElement('div');
+  info.className = 'route-info';
+  info.innerHTML = `
+    <div class="route-date">${dateStr}${live ? '<span class="route-live-badge">LIVE</span>' : ''}</div>
+    <div class="route-stats">${dist} km &middot; ${duration} &middot; ${hmStr} &middot; ${route.points.length} pts</div>
+  `;
+
+  el.appendChild(info);
+
+  if (!live && route.points.length > 0) {
+    const mapsBtn = document.createElement('button');
+    mapsBtn.className = 'route-gpx-btn';
+    mapsBtn.textContent = 'Show on map';
+    mapsBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      showRouteOnOurMap(route);
+    });
+    el.appendChild(mapsBtn);
+
+    const btn = document.createElement('button');
+    btn.className = 'route-gpx-btn';
+    btn.textContent = '↓ GPX';
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      exportGPX(route);
+    });
+    el.appendChild(btn);
+  }
+
+  return el;
+}
+
+/* ── Show route on our offline map ────────────────────────── */
+
+/* Display a recorded ride on the app's own offline Mapsforge map (NavActivity) instead of
+   an external Google Maps intent. Passes the route's {lat, lon} points to the native bridge. */
+function showRouteOnOurMap(route) {
+  const src = (route && route.points) ? route.points : [];
+  if (src.length === 0) { showToast('No GPS points in this route'); return; }
+  const pts = src.map(p => ({ lat: p.lat, lon: p.lon }));
+  if (typeof LB !== 'undefined' && LB.showRouteOnMap) {
+    LB.showRouteOnMap(JSON.stringify(pts));
+  } else {
+    showToast('Only available in the app');
+  }
+}
+
+/* ── GPX Export ───────────────────────────────────────────── */
+
+function buildGPXString(route) {
+  const d = new Date(route.startTime);
+  const name = `Teverun ${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const lines = [];
+  lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+  lines.push('<gpx version="1.1" creator="TeverunLB" xmlns="http://www.topografix.com/GPX/1/1">');
+  lines.push('  <trk>');
+  lines.push(`    <name>${escXML(name)}</name>`);
+  lines.push('    <trkseg>');
+  for (const pt of route.points) {
+    lines.push(`      <trkpt lat="${pt.lat}" lon="${pt.lon}">`);
+    lines.push(`        <ele>${pt.alt}</ele>`);
+    lines.push(`        <time>${fmtDateTime(pt.ts)}</time>`);
+    lines.push(`        <extensions><speed>${pt.speed}</speed></extensions>`);
+    lines.push('      </trkpt>');
+  }
+  lines.push('    </trkseg>');
+  lines.push('  </trk>');
+  lines.push('</gpx>');
+  return lines.join('\n');
+}
+
+function escXML(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function exportGPX(route) {
+  if (!route || route.points.length === 0) {
+    showToast('No GPS points in this route');
+    return;
+  }
+  const gpxStr  = buildGPXString(route);
+  const filename = gpxFilename(route.startTime);
+
+  if (window.plus) {
+    plus.io.requestFileSystem(plus.io.PUBLIC_DOWNLOADS, function(fs) {
+      fs.root.getFile(filename, { create: true }, function(entry) {
+        entry.createWriter(function(writer) {
+          writer.onwrite = function() {
+            showToast(`Saved: ${filename}`);
+          };
+          writer.onerror = function(e) {
+            showToast('Error while saving the file');
+          };
+          writer.write(gpxStr);
+        }, function() {
+          showToast('Error: could not create writer');
+        });
+      }, function() {
+        showToast('Error: could not create file');
+      });
+    }, function() {
+      showToast('Error: no access to the downloads folder');
+    });
+  } else {
+    // Browser fallback: download via blob
+    const blob = new Blob([gpxStr], { type: 'application/gpx+xml' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Download: ${filename}`);
+  }
+}
+
+/* ── Delete Routes ────────────────────────────────────────── */
+
+function deleteRoutesByPeriod(period) {
+  const now = Date.now();
+  let cutoff = 0;
+
+  if (period === '24h') cutoff = now - 24 * 3600 * 1000;
+  else if (period === '7d')  cutoff = now - 7  * 86400 * 1000;
+  else if (period === '30d') cutoff = now - 30 * 86400 * 1000;
+  else if (period === 'all') cutoff = Infinity;
+
+  let routes = loadRoutes();
+
+  if (period === 'all') {
+    // Keep only currently recording in-progress ride
+    if (state.currentRide) {
+      routes = [{ ...state.currentRide, endTime: 0 }];
+    } else {
+      routes = [];
+    }
+  } else {
+    routes = routes.filter(r => {
+      // Keep in-progress (endTime=0) always
+      if (r.endTime === 0) return true;
+      // Keep if startTime is NEWER than cutoff
+      return r.startTime > cutoff;
+    });
+  }
+
+  saveRoutes(routes);
+  state.routes = routes;
+  renderRoutes();
+  showToast('Routes deleted');
+}
+
+function confirmDelete(period) {
+  const labels = {
+    '24h': 'the last 24 hours',
+    '7d':  'the last 7 days',
+    '30d': 'the last 30 days',
+    'all': 'ALL routes'
+  };
+  document.getElementById('confirm-title').textContent = 'Delete routes?';
+  document.getElementById('confirm-msg').textContent =
+    `All routes from ${labels[period]} will be permanently deleted.`;
+  state.confirmCb = () => deleteRoutesByPeriod(period);
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+/* ── Settings ─────────────────────────────────────────────── */
+
+function loadSettings() {
+  // Theme
+  const theme = storage.get('lb_theme');
+  const dark = theme !== 'light';
+  applyTheme(dark);
+
+  // mph
+  const mphVal = storage.get('lb_units');
+  state.useMph = mphVal === 'mph';
+  document.getElementById('toggle-mph').checked = state.useMph;
+
+  // GPS auto
+  const gpsAuto = storage.get('lb_gps_auto');
+  state.gpsAutoStart = gpsAuto !== 'off';
+  document.getElementById('toggle-gps-auto').checked = state.gpsAutoStart;
+
+  // GPS recording interval (seconds; default 5). Applied as a throttle in onGPSSuccess.
+  const gpsIntSaved = parseInt(storage.get('lb_gps_interval'), 10);
+  const gpsIntSec = (gpsIntSaved > 0) ? gpsIntSaved : 5;
+  state.gpsIntervalMs = gpsIntSec * 1000;
+  const gpsIntSel = document.getElementById('gps-interval-sel');
+  if (gpsIntSel) gpsIntSel.value = String(gpsIntSec);
+
+  // Fullscreen (native immersive mode; reflect the persisted native flag into the toggle).
+  try {
+    if (typeof LB !== 'undefined' && LB.isFullscreen) {
+      const fs = document.getElementById('toggle-fullscreen');
+      if (fs) fs.checked = !!LB.isFullscreen();
+    }
+  } catch (e) {}
+
+  // SRT streaming URL (encrypted at rest, read from this WebView's localStorage).
+  const surl = srtDecrypt(storage.get('lb_srt_url'));
+  if (surl) { const el = document.getElementById('stream-url'); if (el) el.value = surl; }
+
+  // Debug mode: read the persisted native flag to set the toggle and show/hide the banner.
+  syncDebugUI();
+}
+
+/* ── SRT streaming (native module via the LB bridge) ──────────── */
+
+/* Store the URL encrypted at rest (RC4 stream cipher, synchronous so it always
+   works in the local webview - crypto.subtle is not available there). The key lives
+   in the app (no user password), so this is encryption at rest: the storage DB no
+   longer holds plaintext, but it is not protection against reverse-engineering. */
+const SRT_KEY = [
+  0x8f,0x2a,0x71,0x3c,0x9e,0x14,0xb5,0x60, 0xd7,0x22,0x4e,0xa9,0x63,0x1f,0x88,0xc0,
+  0x35,0xf7,0x1b,0x6d,0x40,0x2c,0x91,0x5a, 0x0e,0xb8,0x77,0xd3,0x64,0xaf,0x19,0x52
+];
+
+function _b64enc(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+function _b64dec(str) {
+  const s = atob(str);
+  const b = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
+  return b;
+}
+function _rc4(key, data) {
+  const s = [];
+  for (let i = 0; i < 256; i++) s[i] = i;
+  let j = 0;
+  for (let i = 0; i < 256; i++) {
+    j = (j + s[i] + key[i % key.length]) & 255;
+    const t = s[i]; s[i] = s[j]; s[j] = t;
+  }
+  const out = new Uint8Array(data.length);
+  let a = 0; j = 0;
+  for (let k = 0; k < data.length; k++) {
+    a = (a + 1) & 255;
+    j = (j + s[a]) & 255;
+    const t = s[a]; s[a] = s[j]; s[j] = t;
+    out[k] = data[k] ^ s[(s[a] + s[j]) & 255];
+  }
+  return out;
+}
+
+function srtEncrypt(plain) {
+  if (!plain) return '';
+  // Prefer the native Android Keystore via the LB bridge (LB.encrypt -> "k1:"+base64).
+  // Fall back to the RC4-at-rest scheme when the bridge is missing or returns nothing.
+  if (typeof LB !== 'undefined' && LB.encrypt) {
+    try {
+      const enc = LB.encrypt(plain);
+      if (enc && ('' + enc).length) return '' + enc;
+    } catch (e) {}
+  }
+  return 'r:' + _b64enc(_rc4(SRT_KEY, new TextEncoder().encode(plain)));
+}
+function srtDecrypt(stored) {
+  if (!stored) return '';
+  if (stored.slice(0, 3) === 'k1:') {
+    // Native Keystore value: only LB.decrypt can read it.
+    if (typeof LB !== 'undefined' && LB.decrypt) {
+      try {
+        const dec = LB.decrypt(stored);
+        if (dec) return '' + dec;
+      } catch (e) {}
+    }
+    return '';
+  }
+  if (stored.slice(0, 2) === 'r:') {
+    try { return new TextDecoder().decode(_rc4(SRT_KEY, _b64dec(stored.slice(2)))); }
+    catch (e) { return ''; }
+  }
+  if (stored.slice(0, 5) === 'srt:/' || stored.slice(0, 6) === 'srtla:') return stored; // legacy plaintext
+  return '';
+}
+
+function srtSaveUrl(url) {
+  // Never wipe a stored URL with an empty value - a blur/change on an empty field
+  // used to overwrite the saved URL with nothing.
+  if (!url) return;
+  const enc = srtEncrypt(url);
+  storage.set('lb_srt_url', enc); // WebView localStorage survives restarts here
+}
+
+/* Read the real status the native StreamService reports via the LB bridge
+   (idle / connecting / live / failed: reason / stopped). */
+function readStreamStatus() {
+  if (typeof LB === 'undefined' || !LB.streamStatus) return '';
+  try {
+    const v = LB.streamStatus();
+    return (v === undefined || v === null) ? '' : ('' + v);
+  } catch (e) { return ''; }
+}
+
+function setStreamStatus(txt) {
+  const el = document.getElementById('stream-status');
+  if (el) el.textContent = 'Status: ' + txt;
+}
+
+function startSrtStream() {
+  const url = document.getElementById('stream-url').value.trim();
+  if (!url) { showToast('Enter the SRT push URL'); return; }
+  srtSaveUrl(url);
+  if (typeof LB === 'undefined' || !LB.startStream) { showToast('Only available in the app'); return; }
+  try {
+    LB.startStream(url);
+    setStreamStatus('requesting screen capture - tap "Start now"');
+    showToast('Confirm the screen-capture prompt');
+  } catch(e) {
+    showToast('Error: ' + e);
+    setStreamStatus('error');
+  }
+}
+
+function stopSrtStream() {
+  if (typeof LB === 'undefined' || !LB.stopStream) { showToast('Only available in the app'); return; }
+  try {
+    LB.stopStream();
+    setStreamStatus('stopped');
+    showToast('Stream stopped');
+  } catch(e) { showToast('Error: ' + e); }
+}
+
+function openSettings() {
+  document.getElementById('settings-overlay').classList.add('open');
+  document.getElementById('settings-sheet').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('open');
+  document.getElementById('settings-sheet').classList.remove('open');
+}
+
+/* ── Version Info & Disclaimer modal ──────────────────────── */
+
+// Fill the app version (native LB.appVersion, same source as the Info page) and open the modal.
+function openVersionInfo() {
+  let ver = '-';
+  try {
+    if (typeof LB !== 'undefined' && LB.appVersion) { const v = LB.appVersion(); if (v) ver = '' + v; }
+  } catch (e) {}
+  const vEl = document.getElementById('verinfo-ver');
+  if (vEl) vEl.textContent = ver;
+  const o = document.getElementById('verinfo-overlay');
+  if (o) o.classList.add('open');
+}
+function closeVersionInfo() {
+  const o = document.getElementById('verinfo-overlay');
+  if (o) o.classList.remove('open');
+}
+
+/* ── Connect page (BLE scan / connect / disconnect via LB bridge) ── */
+
+function openConnectPage() {
+  document.getElementById('connect-page').classList.add('open');
+  maybeAutoConnectKnown();
+}
+function closeConnectPage() {
+  document.getElementById('connect-page').classList.remove('open');
+}
+
+/* Show the remembered scooter as a pinned "Last device" row and auto-reconnect to it once. */
+function maybeAutoConnectKnown() {
+  const wrap = document.getElementById('known-wrap');
+  const box  = document.getElementById('known-device');
+  if (!wrap || !box) return;
+  if (typeof LB === 'undefined' || !LB.lastDevice) { wrap.style.display='none'; return; }
+  let dev = null;
+  try { const j = LB.lastDevice(); if (j) dev = JSON.parse(j); } catch (e) {}
+  if (!dev || !dev.address) { wrap.style.display='none'; return; }
+  // render a tap-to-reconnect row
+  box.innerHTML = '';
+  const el = document.createElement('div'); el.className = 'scan-item';
+  const info = document.createElement('div'); info.className = 'route-info';
+  const nm = document.createElement('div'); nm.className = 'scan-name'; nm.textContent = dev.name || '(saved scooter)';
+  const ad = document.createElement('div'); ad.className = 'scan-addr'; ad.textContent = dev.address;
+  info.appendChild(nm); info.appendChild(ad);
+  const rc = document.createElement('div'); rc.className = 'scan-rssi'; rc.textContent = 'Reconnect';
+  el.appendChild(info); el.appendChild(rc);
+  el.addEventListener('click', () => { try { LB.connect(dev.address, dev.name || ''); showToast('Reconnecting to ' + (dev.name || dev.address)); } catch (e) {} });
+  box.appendChild(el);
+  wrap.style.display = 'block';
+  // auto-attempt once if not already connected
+  if (!state.bleConnected && LB.connect) {
+    try { LB.connect(dev.address, dev.name || ''); showToast('Reconnecting to ' + (dev.name || dev.address)); } catch (e) {}
+  }
+}
+
+function startScan() {
+  if (typeof LB === 'undefined' || !LB.scan) { showToast('Only available in the app'); return; }
+  const list = document.getElementById('scan-list');
+  if (list) list.innerHTML = '<div class="no-routes">Scanning…</div>';
+  try { LB.scan(); } catch (e) { showToast('Error: ' + e); }
+}
+
+function doDisconnect() {
+  if (typeof LB === 'undefined' || !LB.disconnect) { showToast('Only available in the app'); return; }
+  try { LB.disconnect(); showToast('Disconnecting'); } catch (e) { showToast('Error: ' + e); }
+}
+
+/* Native pushes discovered devices here: [{name, address, rssi}]. */
+window.__onBleScan = function(listArg) {
+  let arr = [];
+  try { arr = (typeof listArg === 'string') ? JSON.parse(listArg) : (listArg || []); }
+  catch (e) { arr = []; }
+  const box = document.getElementById('scan-list');
+  if (!box) return;
+  if (!Array.isArray(arr) || arr.length === 0) {
+    box.innerHTML = '<div class="no-routes">No devices found - tap Scan again</div>';
+    return;
+  }
+  box.innerHTML = '';
+  arr.forEach(dev => {
+    if (!dev) return;
+    const el = document.createElement('div');
+    el.className = 'scan-item';
+    const info = document.createElement('div');
+    info.className = 'route-info';
+    const nm = document.createElement('div'); nm.className = 'scan-name';
+    nm.textContent = dev.name || '(unknown)';
+    const ad = document.createElement('div'); ad.className = 'scan-addr';
+    ad.textContent = dev.address || '';
+    info.appendChild(nm); info.appendChild(ad);
+    const rs = document.createElement('div'); rs.className = 'scan-rssi';
+    rs.textContent = (dev.rssi != null && dev.rssi !== '') ? (dev.rssi + ' dBm') : '';
+    el.appendChild(info); el.appendChild(rs);
+    el.addEventListener('click', () => {
+      if (typeof LB === 'undefined' || !LB.connect) { showToast('Only available in the app'); return; }
+      try { LB.connect(dev.address, dev.name || ''); showToast('Connecting to ' + (dev.name || dev.address)); }
+      catch (e) { showToast('Error: ' + e); }
+    });
+    box.appendChild(el);
+  });
+};
+
+/* Native pushes connection state here: {connected, name, address, status}. */
+window.__onBleState = function(stArg) {
+  let s = stArg;
+  try { if (typeof stArg === 'string') s = JSON.parse(stArg); } catch (e) { s = {}; }
+  s = s || {};
+  const connected = !!s.connected;
+  const cs = document.getElementById('conn-state');
+  if (cs) {
+    if (connected) {
+      cs.innerHTML = 'Connected: <b>' + escXML(s.name || s.address || 'scooter') + '</b>' +
+        (s.status ? ' · ' + escXML(s.status) : '');
+    } else {
+      cs.textContent = 'Not connected' + (s.status ? ' · ' + s.status : '');
+    }
+  }
+  const dot = document.getElementById('ble-dot');
+  if (dot) dot.classList.toggle('connected', connected);
+  const connBtn = document.getElementById('btn-connect');
+  if (connBtn) connBtn.classList.toggle('connected', connected);
+};
+
+/* ── Scooter settings (writable settings via LB.sendSetting) ── */
+
+function liveRaw() {
+  try { const o = JSON.parse(storage.get('lb_live_data')); return (o && typeof o === 'object') ? o : {}; }
+  catch (e) { return {}; }
+}
+function pick(d, keys) {
+  for (const k of keys) { if (d[k] !== undefined && d[k] !== null && d[k] !== '') return d[k]; }
+  return undefined;
+}
+function setSegActive(sel, val) {
+  document.querySelectorAll(sel + ' button').forEach(b => {
+    const raw = (b.dataset.val != null) ? b.dataset.val : b.dataset.mode;
+    b.classList.toggle('active', parseInt(raw, 10) === val);
+  });
+}
+
+/* Send one partial settings object; native merges it onto the maintained state and
+   emits a full 0x18 frame (BRIDGE field names). Returns true when dispatched. */
+function pushSetting(key, val) {
+  if (typeof LB === 'undefined' || !LB.sendSetting) { showToast('Only available in the app'); return false; }
+  if (!state.bleConnected) { showToast('Connect the scooter first'); return false; }
+  try { const o = {}; o[key] = val; LB.sendSetting(JSON.stringify(o)); return true; }
+  catch (e) { showToast('Error: ' + e); return false; }
+}
+
+function openScooterPage() {
+  ssDirty.clear();                 // fresh load: no unsaved global-setting edits yet
+  prefillScooterSettings();
+  updateGearCache();
+  prefillGearEditor(activeGear() || gsSelectedGear || 2);
+  document.getElementById('scooter-page').classList.add('open');
+}
+function closeScooterPage() {
+  document.getElementById('scooter-page').classList.remove('open');
+}
+
+/* ── Error reports (active faults / warnings from live BLE data) ── */
+
+// 55 54 battery/BMS error code -> text. Mirrors the original app's getNameByIndex, which maps
+// error array index `code` to the i18n key warn.type{code+1}.
+const ERROR_CODE_TEXT = {
+  0: 'DHG Over TEMP', 1: 'DHG UNDER TEMP', 2: 'CHG HIGH TEMP', 3: 'CHG UNDER TEMP',
+  4: 'CELL OVER VOLTAGE', 5: 'CELL UNDER VOLTAGE', 6: 'PACK OVER VOLTAGE', 7: 'PACK UNDER VOLTAGE',
+  8: 'DHG OVER CURRENT', 9: 'CHG OVER CURRENT', 10: 'DEL VOLTAGE', 11: 'DEL TEMP',
+  12: 'SOC UNDER', 13: 'MOS1 OVER TEMP', 14: 'MOS2 OVER TEMP', 15: 'Charging State', 16: 'PACK CL1'
+};
+
+// Read a fault flag: prefer the explicit boolean emitted by FrameParser, else fall back to the
+// ecuStatus bit array (BLE_PROTOCOL §2.4).
+function errBool(d, key, bitArrKey, bitIdx) {
+  if (d[key] !== undefined && d[key] !== null) return d[key] === true || d[key] === 1 || d[key] === '1';
+  const arr = d[bitArrKey];
+  return Array.isArray(arr) && (arr[bitIdx] === 1 || arr[bitIdx] === '1');
+}
+
+// Build the list of currently active errors/faults, applying the original app's warn thresholds
+// for the 55 54 battery array plus the ECU fault bits.
+function collectErrors() {
+  const d = liveRaw();
+  const items = [];
+
+  // Battery / BMS errors (55 54). App rule: skip index 16; index 0/2 need severity>1; others >2.
+  const errs = Array.isArray(d.errors) ? d.errors : [];
+  errs.forEach(e => {
+    const code = (e && e.code != null) ? Number(e.code) : -1;
+    const sev = (e && e.severity != null) ? Number(e.severity) : 0;
+    if (code < 0 || code === 16 || sev <= 0) return;
+    const active = (code === 0 || code === 2) ? sev > 1 : sev > 2;
+    if (!active) return;
+    items.push({
+      kind: 'fault',
+      title: ERROR_CODE_TEXT[code] || ('Error code ' + code),
+      sub: 'Battery / BMS · severity ' + sev
+    });
+  });
+
+  // Controller / ECU fault bits (ecuStatus1 / ecuStatus2).
+  if (errBool(d, 'brakeFault', 'ecuStatus1', 0))
+    items.push({ kind: 'fault', title: 'Brake fault', sub: 'Controller · ecuStatus1[0]' });
+  if (errBool(d, 'warning', 'ecuStatus1', 3))
+    items.push({ kind: 'fault', title: 'Warning', sub: 'Controller · ecuStatus1[3]' });
+  if (errBool(d, 'warning2', 'ecuStatus1', 4))
+    items.push({ kind: 'fault', title: 'Warning 2', sub: 'Controller · ecuStatus1[4]' });
+  if (errBool(d, 'tailLightWarning', 'ecuStatus1', 2))
+    items.push({ kind: 'warn', title: 'Tail-light warning', sub: 'Controller · ecuStatus1[2]' });
+  if (errBool(d, 'park', 'ecuStatus1', 7))
+    items.push({ kind: 'info', title: 'Parking mode (P)', sub: 'Controller · park active' });
+
+  return items;
+}
+
+function renderErrorReports() {
+  const list = document.getElementById('err-list');
+  const empty = document.getElementById('err-empty');
+  if (!list || !empty) return;
+  const items = collectErrors();
+  list.innerHTML = '';
+  if (!items.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  items.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'err-item sev-' + it.kind;
+    const dot = document.createElement('div');
+    dot.className = 'err-dot';
+    const body = document.createElement('div');
+    body.className = 'err-body';
+    const title = document.createElement('div');
+    title.className = 'err-title';
+    title.textContent = it.title;
+    const sub = document.createElement('div');
+    sub.className = 'err-sub';
+    sub.textContent = it.sub;
+    body.appendChild(title);
+    body.appendChild(sub);
+    row.appendChild(dot);
+    row.appendChild(body);
+    list.appendChild(row);
+  });
+}
+
+let _errTimer = null;
+function openErrorReports() {
+  renderErrorReports();
+  document.getElementById('error-reports-page').classList.add('open');
+  clearInterval(_errTimer);
+  _errTimer = setInterval(renderErrorReports, 1000);
+}
+function closeErrorReports() {
+  document.getElementById('error-reports-page').classList.remove('open');
+  clearInterval(_errTimer);
+  _errTimer = null;
+}
+
+/* ── Scooter info page (identity + firmware from live BLE data) ── */
+
+// Render the info fields from lb_live_data; show "-" for anything not yet received.
+function renderInfoPage() {
+  const d = liveRaw();
+  const dash = v => (v === undefined || v === null || v === '') ? '-' : ('' + v);
+  // Bluetooth advertised name (this IS the full FIN, read from the scooter over BLE).
+  setTxt('info-btname',  dash(d.btName));
+  // Frame number (VCU): the number the scooter actually reports.
+  setTxt('info-serial',  dash(d.frameNum));
+  setTxt('info-swver',   dash(d.swVer));
+  setTxt('info-hwver',   dash(d.hwVer));
+  syncBtNameEditor();
+}
+
+/* ── Change VCU identity / BLE name (cmd 0x1f, Gate-1 toggle) ──
+   The advertised BLE name IS the VCU identity/FIN. Its first 3 chars gate the eKFV speed clamp
+   ("TDE" = limited). Set writes a new identity (region code swapped, serial kept); Reset restores
+   the identity as first seen this session (re-lock). Only clears Gate 1 - the display still clamps. */
+let _btNamePrefilled = false;    // reset on each info-page open so the field re-fills with the current FIN
+
+// Prefill the editor with the full current FIN so you just edit it and press Set. Also keep a silent
+// write-once record of the original locked FIN (when a "TDE..." name is seen) in localStorage, so the
+// true original is never lost even though the editor lets you overwrite the whole name. Never clobbers
+// what you are typing.
+function syncBtNameEditor() {
+  const cur = liveRaw().btName;
+  if (cur === undefined || cur === null || cur === '') return;
+  const s = '' + cur;
+  try {
+    if (s.slice(0, 3).toUpperCase() === 'TDE') localStorage.setItem('lb_orig_fin', s);
+    else if (!localStorage.getItem('lb_orig_fin')) localStorage.setItem('lb_orig_fin', s);
+  } catch (e) {}
+  const inp = document.getElementById('info-btname-input');
+  if (inp && !_btNamePrefilled && document.activeElement !== inp) {
+    inp.value = s;
+    _btNamePrefilled = true;
+  }
+}
+
+// Validate the full identity and send it (cmd 0x1f). Non-destructive and reversible (edit it back).
+function setBleName() {
+  const inp = document.getElementById('info-btname-input');
+  if (!inp) return;
+  const v = (inp.value || '').trim();
+  if (typeof LB === 'undefined' || !LB.setBleName) { showToast('Only available in the app'); return; }
+  if (!state.bleConnected) { showToast('Connect the scooter first'); return; }
+  if (!v) { showToast('Enter a FIN first', 3000, 'err'); return; }
+  if (v.length > 16) { showToast('Name too long (max 16 chars)', 3500, 'err'); return; }
+  if (!/^[\x20-\x7e]+$/.test(v)) { showToast('ASCII characters only', 3000, 'err'); return; }
+  try { LB.setBleName(v); showToast('Identity sent - scooter renames and reconnects...', 4000); }
+  catch (e) { showToast('Error: ' + e); }
+}
+
+// Copy the Bluetooth advertised name (from live BLE data) to the Android clipboard.
+function copyBtName() {
+  const bt = liveRaw().btName;
+  if (bt === undefined || bt === null || bt === '') { showToast('No Bluetooth name yet'); return; }
+  if (typeof LB === 'undefined' || !LB.copyClipboard) { showToast('Only available in the app'); return; }
+  try { LB.copyClipboard('' + bt); showToast('Bluetooth name copied'); }
+  catch (e) { showToast('Error: ' + e); }
+}
+
+// Copy the serial number (frameNum) to the Android clipboard via the native bridge.
+function copySerial() {
+  const d = liveRaw();
+  const serial = d.frameNum;
+  if (serial === undefined || serial === null || serial === '') { showToast('No serial number yet'); return; }
+  if (typeof LB === 'undefined' || !LB.copyClipboard) { showToast('Only available in the app'); return; }
+  try { LB.copyClipboard('' + serial); showToast('Serial copied'); }
+  catch (e) { showToast('Error: ' + e); }
+}
+
+/* ── Ride log (Scooter info page): opt-in local recording owned by the native side.
+   Every LB.* call is guarded so the page still works when opened outside the app. ── */
+
+// Reflect the native recording state onto the toggle.
+function renderRideLogToggle() {
+  const t = document.getElementById('toggle-ridelog');
+  if (!t) return;
+  let on = false;
+  try {
+    if (typeof LB !== 'undefined' && LB.isRideLogging) on = !!LB.isRideLogging();
+  } catch (e) {}
+  t.checked = on;
+}
+
+// Human-friendly ride duration, e.g. "23 min" or "1 h 04 min".
+function fmtRideDuration(sec) {
+  const total = Math.max(0, Math.round(sec || 0));
+  const mins = Math.round(total / 60);
+  if (mins < 60) return mins + ' min';
+  const h = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return h + ' h ' + (rem < 10 ? '0' : '') + rem + ' min';
+}
+
+// Build the "Last 3 rides" list from LB.listRides() (JSON array string, newest first, <=3).
+function renderRideList() {
+  const list = document.getElementById('ridelog-list');
+  if (!list) return;
+  list.textContent = '';
+  let rides = [];
+  try {
+    if (typeof LB !== 'undefined' && LB.listRides) {
+      const raw = LB.listRides();
+      if (raw) rides = JSON.parse(raw) || [];
+    }
+  } catch (e) { rides = []; }
+  if (!Array.isArray(rides) || rides.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'settings-row-sublabel';
+    empty.textContent = 'No rides recorded yet.';
+    list.appendChild(empty);
+    return;
+  }
+  rides.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'route-item';
+    const info = document.createElement('div');
+    info.className = 'route-info';
+    const date = document.createElement('div');
+    date.className = 'route-date';
+    date.textContent = new Date(r.start).toLocaleString();
+    const stats = document.createElement('div');
+    stats.className = 'route-stats';
+    const km = (typeof r.distanceKm === 'number' ? r.distanceKm : 0).toFixed(1) + ' km';
+    stats.textContent = fmtRideDuration(r.durationSec) + ' · ' + km;
+    info.appendChild(date);
+    info.appendChild(stats);
+    const btns = document.createElement('div');
+    btns.style.cssText = 'display:flex;gap:6px;flex:0 0 auto';
+    const csv = document.createElement('button');
+    csv.className = 'route-gpx-btn';
+    csv.textContent = 'CSV';
+    csv.addEventListener('click', () => exportRide(r.id, 'csv'));
+    const json = document.createElement('button');
+    json.className = 'route-gpx-btn';
+    json.textContent = 'JSON';
+    json.addEventListener('click', () => exportRide(r.id, 'json'));
+    const del = document.createElement('button');
+    del.className = 'route-gpx-btn';
+    del.textContent = '🗑';
+    del.setAttribute('aria-label', 'Delete ride');
+    del.style.color = 'var(--danger)';
+    del.addEventListener('click', () => confirmDeleteRide(r.id));
+    btns.appendChild(csv);
+    btns.appendChild(json);
+    btns.appendChild(del);
+    row.appendChild(info);
+    row.appendChild(btns);
+    list.appendChild(row);
+  });
+}
+
+// Confirm (via the shared confirm dialog) then delete one recorded ride through the native bridge,
+// and refresh the list.
+function confirmDeleteRide(id) {
+  document.getElementById('confirm-title').textContent = 'Delete ride?';
+  document.getElementById('confirm-msg').textContent = 'This ride will be permanently deleted.';
+  state.confirmCb = () => {
+    if (typeof LB !== 'undefined' && LB.deleteRide) {
+      try { LB.deleteRide('' + id); } catch (e) { showToast('Error: ' + e); }
+    } else {
+      showToast('Only available in the app');
+    }
+    renderRideList();
+  };
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+// Open an external URL in the system browser via the native bridge (no-op-safe outside the app).
+function openExt(url) {
+  if (typeof LB !== 'undefined' && LB.openUrl) { try { LB.openUrl(url); return; } catch (e) {} }
+  showToast(url);
+}
+
+// Ask the native side to export one ride as "csv" or "json".
+function exportRide(id, format) {
+  if (typeof LB === 'undefined' || !LB.exportRide) { showToast('Only available in the app'); return; }
+  try { LB.exportRide('' + id, format); }
+  catch (e) { showToast('Error: ' + e); }
+}
+
+// Refresh both the toggle state and the last-3-rides list (called whenever the page opens).
+function renderRideLog() {
+  renderRideLogToggle();
+  renderRideList();
+}
+
+let _infoTimer = null;
+function openInfoPage() {
+  _btNamePrefilled = false;   // re-prefill the identity editor with the current FIN on open
+  renderInfoPage();
+  renderRideLog();                                  // toggle state + last-3-rides list, refreshed on open
+  document.getElementById('info-page').classList.add('open');
+  clearInterval(_infoTimer);
+  _infoTimer = setInterval(renderInfoPage, 1000);   // keep values live while the page is open
+}
+function closeInfoPage() {
+  document.getElementById('info-page').classList.remove('open');
+  clearInterval(_infoTimer);
+  _infoTimer = null;
+}
+
+/* Global scooter-setting field maps (control id -> controller key). Editing a field only marks
+   it dirty; nothing is written to the controller until the user presses "Save settings". */
+const SS_NUM_FIELDS = [
+  ['ss-speed', 'speedLimit'], ['ss-gear', 'gear'], ['ss-wheel', 'wheel'],
+  ['ss-packvolt', 'packVolt'], ['ss-fcur', 'fCurrent'], ['ss-rcur', 'rCurrent'],
+  ['ss-fstart', 'fStartLevel'], ['ss-rstart', 'rStartLevel'], ['ss-eabs', 'eabsLevel']
+];
+const SS_BOOL_FIELDS = [
+  ['ss-abs', 'abs'], ['ss-start', 'startMode'], ['ss-eco', 'enfEcon'],
+  ['ss-unitmile', 'isUnitMile'], ['ss-atmode', 'atMode'], ['ss-smart', 'isSmart']
+];
+/* Controller keys the user has changed since the last load/save (cruise is the seg control). */
+const ssDirty = new Set();
+
+/* Prefill the controls from the current lb_live_data (best-effort). Scalar fields are
+   read directly; the flag/cruise/abs/start booleans fall back to the systemStatus /
+   rControlStatus bit arrays (BLE_PROTOCOL §2.4).
+   When `live` is true this is a per-tick refresh: never clobber a field the user is currently
+   editing (focused) or has changed but not yet saved (in the dirty set). */
+function prefillScooterSettings(live) {
+  const d = liveRaw();
+  const sys = Array.isArray(d.systemStatus) ? d.systemStatus : [];
+  const rc  = Array.isArray(d.rControlStatus) ? d.rControlStatus : [];
+  const b = v => v === true || v === 1 || v === '1';
+  const focused = id => { const ae = document.activeElement; return !!ae && ae.id === id; };
+  const skip = (id, key) => !!live && (focused(id) || ssDirty.has(key));
+  const setV = (id, key, v) => { if (skip(id, key)) return; const el = document.getElementById(id); if (el && v != null && v !== '') el.value = v; };
+  const setC = (id, key, v) => { if (skip(id, key)) return; const el = document.getElementById(id); if (el) el.checked = !!v; };
+
+  setV('ss-speed',    'speedLimit',   pick(d, ['speedLimit']));
+  setV('ss-gear',     'gear',         pick(d, ['gear']));
+  setV('ss-wheel',    'wheel',        pick(d, ['wheel']));
+  setV('ss-packvolt', 'packVolt',     pick(d, ['packVolt']));
+  setV('ss-fcur',     'fCurrent',     pick(d, ['fCurrentLimit']));   // 55 71 setting, NOT live motor current
+  setV('ss-rcur',     'rCurrent',     pick(d, ['rCurrentLimit']));   // 55 71 setting, NOT live motor current
+  setV('ss-fstart',   'fStartLevel',  pick(d, ['fStartLevel']));
+  setV('ss-rstart',   'rStartLevel',  pick(d, ['rStartLevel']));
+  setV('ss-eabs',     'eabsLevel',    pick(d, ['eabsLevel']));
+
+  let eco   = pick(d, ['enfEcon']);    if (eco   == null) eco   = b(sys[0]);
+  let um    = pick(d, ['isUnitMile']); if (um    == null) um    = b(sys[1]);
+  let at    = pick(d, ['atMode']);     if (at    == null) at    = b(sys[2]);
+  let sm    = pick(d, ['isSmart']);    if (sm    == null) sm    = b(sys[4]);
+  let abs   = pick(d, ['abs']);        if (abs   == null) abs   = b(rc[3]);
+  let start = pick(d, ['startMode']);  if (start == null) start = b(rc[6]);
+  setC('ss-eco', 'enfEcon', eco); setC('ss-unitmile', 'isUnitMile', um); setC('ss-atmode', 'atMode', at);
+  setC('ss-smart', 'isSmart', sm); setC('ss-abs', 'abs', abs); setC('ss-start', 'startMode', start);
+
+  let cr = pick(d, ['cruise']);
+  if (cr == null) { cr = ((b(rc[2]) ? 1 : 0) << 1) | (b(rc[1]) ? 1 : 0); if (cr > 2) cr = 0; }
+  if (!(live && ssDirty.has('cruise'))) setSegActive('#ss-cruise', parseInt(cr, 10) || 0);
+}
+
+/* Currently selected cruise value from the segmented control (0 = off). */
+function ssCruiseValue() {
+  const active = document.querySelector('#ss-cruise button.active');
+  const v = active ? parseInt(active.dataset.val, 10) : 0;
+  return isNaN(v) ? 0 : v;
+}
+
+/* Explicit save: write ONLY the fields the user changed since the last load/save (dirty set),
+   one LB.sendSetting call per key. Editing a field never writes on its own. */
+function saveScooterSettings() {
+  if (typeof LB === 'undefined' || !LB.sendSetting) { showToast('Only available in the app'); return; }
+  if (!state.bleConnected) { showToast('Connect the scooter first'); return; }
+  if (ssDirty.size === 0) { showToast('No changes to save'); return; }
+
+  const numById = {}; SS_NUM_FIELDS.forEach(p => { numById[p[1]] = p[0]; });
+  const boolById = {}; SS_BOOL_FIELDS.forEach(p => { boolById[p[1]] = p[0]; });
+
+  ssDirty.forEach(key => {
+    if (numById[key]) {
+      const el = document.getElementById(numById[key]);
+      const v = parseFloat(el && el.value);
+      if (!isNaN(v)) pushSetting(key, v);
+    } else if (boolById[key]) {
+      const el = document.getElementById(boolById[key]);
+      if (el) {
+        // Smart/TCS uses a dedicated native write mode; route it through LB.setSmart, not sendSetting.
+        if (key === 'isSmart' && typeof LB !== 'undefined' && LB.setSmart) {
+          try { LB.setSmart(el.checked); } catch (e) { showToast('Error: ' + e); }
+        } else {
+          pushSetting(key, el.checked);
+        }
+      }
+    } else if (key === 'cruise') {
+      pushSetting('cruise', ssCruiseValue());
+    }
+  });
+  ssDirty.clear();
+  showToast('Settings saved');
+}
+
+/* While the scooter-settings page is open, refresh the global fields from live data every tick,
+   without clobbering fields the user is editing (focused) or has changed but not saved (dirty). */
+function maybeLiveRefreshScooterSettings() {
+  const page = document.getElementById('scooter-page');
+  if (!page || !page.classList.contains('open')) return;
+  prefillScooterSettings(true);
+}
+
+function wireScooterSettings() {
+  // Editing a global field only flags it dirty - the controller is written on Save, not on change.
+  SS_NUM_FIELDS.forEach(pair => {
+    const el = document.getElementById(pair[0]);
+    if (!el) return;
+    el.addEventListener('change', () => { ssDirty.add(pair[1]); });
+  });
+  SS_BOOL_FIELDS.forEach(pair => {
+    const el = document.getElementById(pair[0]);
+    if (!el) return;
+    el.addEventListener('change', () => { ssDirty.add(pair[1]); });
+  });
+  document.querySelectorAll('#ss-cruise button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = parseInt(btn.dataset.val, 10);
+      setSegActive('#ss-cruise', v);   // UI only - not sent until Save
+      ssDirty.add('cruise');
+    });
+  });
+  const saveBtn = document.getElementById('ss-save');
+  if (saveBtn) saveBtn.addEventListener('click', saveScooterSettings);
+}
+
+/* ── Per-gear (assist) settings - mirrors the original app's per-gear assistList ──
+   The 55 71 frame only ever reports the CURRENTLY ACTIVE gear, so we cache each gear's values
+   as the rider switches gears (exactly how the original app accumulates assist1..assist5). The
+   editor prefills the selected gear from that cache and writes via LB.sendGearSetting. */
+/* Per-gear values are cached in memory for the CURRENT SESSION ONLY - never persisted to disk. Stale
+   per-gear values must never be shown or written back to the controller, so the cache is always
+   rebuilt live from the scooter. The firmware sends only the active gear's values, so each gear's
+   cache fills the first time that gear is the active one this session. */
+const gearCache = {};
+let gsSelectedGear = null;
+
+/* Read the currently active gear (raw controller index from 55 71 t[3]) from live data. */
+function activeGear() {
+  const d = liveRaw();
+  const g = (typeof d.gear === 'number') ? d.gear : parseInt(d.gear, 10);
+  return (g && g >= 1 && g <= 9) ? g : null;
+}
+
+/* Cache the active gear's per-gear/assist values from the latest live-data frame. */
+function updateGearCache() {
+  const d = liveRaw();
+  const g = activeGear();
+  if (g == null) return;
+  if (d.assistSpeedLimit == null && d.eabsLevel == null) return; // no 55 71 state yet
+  gearCache[g] = {
+    speedLimit:  Number(pick(d, ['assistSpeedLimit'])) || 0,
+    eabsLevel:   Number(pick(d, ['eabsLevel'])) || 0,
+    fStartLevel: Number(pick(d, ['fStartLevel'])) || 0,
+    rStartLevel: Number(pick(d, ['rStartLevel'])) || 0,
+    fCurrent:    Number(pick(d, ['fCurrentLimit'])) || 0,
+    rCurrent:    Number(pick(d, ['rCurrentLimit'])) || 0
+  };
+}
+
+/* Update only the info note (active gear + whether the selected gear has been read yet). */
+function refreshGearNote() {
+  const note = document.getElementById('gs-note');
+  if (!note) return;
+  const ag = activeGear();
+  const dispMap = n => (n >= 2 && n <= 4) ? (' (display ' + (n - 1) + ')') : '';
+  const known = (gsSelectedGear != null && gearCache[gsSelectedGear]) ? ''
+    : ' - not read yet: switch through ALL gears on the scooter once (the firmware only ever sends the currently active gear to the app)';
+  note.textContent = 'Active gear: ' + (ag == null ? '-' : ag + dispMap(ag))
+    + '. Editing gear ' + (gsSelectedGear == null ? '-' : gsSelectedGear + dispMap(gsSelectedGear)) + known
+    + '. gKFV/eKFV: internal gears 2/3/4 show as 1/2/3 on the scooter display. Values are read live, never stored.';
+}
+
+/* Select a gear and prefill the six fields from the cache (blank if that gear is unread). */
+function prefillGearEditor(gear) {
+  gsSelectedGear = gear;
+  setSegActive('#gs-gear', gear);
+  const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); };
+  const c = gearCache[gear];
+  if (c) {
+    setV('gs-speed', c.speedLimit); setV('gs-eabs', c.eabsLevel);
+    setV('gs-fstart', c.fStartLevel); setV('gs-rstart', c.rStartLevel);
+    setV('gs-fcur', c.fCurrent); setV('gs-rcur', c.rCurrent);
+  } else {
+    ['gs-speed', 'gs-eabs', 'gs-fstart', 'gs-rstart', 'gs-fcur', 'gs-rcur'].forEach(id => setV(id, ''));
+  }
+  refreshGearNote();
+}
+
+/* While the settings page is open, let live values flow into the editor for the active gear -
+   but never clobber a field the user is currently typing in. */
+function maybeLiveRefreshGearEditor() {
+  const page = document.getElementById('scooter-page');
+  if (!page || !page.classList.contains('open')) return;
+  const ae = document.activeElement;
+  if (ae && ae.id && ae.id.indexOf('gs-') === 0) { refreshGearNote(); return; }
+  const ag = activeGear();
+  if (ag != null && gsSelectedGear === ag) prefillGearEditor(ag);
+  else refreshGearNote();
+}
+
+function wireGearEditor() {
+  document.querySelectorAll('#gs-gear button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const g = parseInt(btn.dataset.val, 10);
+      if (g) prefillGearEditor(g);
+    });
+  });
+  const save = document.getElementById('gs-save');
+  if (save) save.addEventListener('click', () => {
+    if (typeof LB === 'undefined' || !LB.sendGearSetting) { showToast('Only available in the app'); return; }
+    if (!state.bleConnected) { showToast('Connect the scooter first'); return; }
+    const gear = gsSelectedGear || activeGear() || 1;
+    const numOrNull = id => { const el = document.getElementById(id); const v = parseInt(el && el.value, 10); return isNaN(v) ? null : v; };
+    const o = {};
+    const add = (k, id) => { const v = numOrNull(id); if (v != null) o[k] = v; };
+    add('speedLimit', 'gs-speed'); add('eabsLevel', 'gs-eabs');
+    add('fStartLevel', 'gs-fstart'); add('rStartLevel', 'gs-rstart');
+    add('fCurrent', 'gs-fcur'); add('rCurrent', 'gs-rcur');
+    try {
+      LB.sendGearSetting(gear, JSON.stringify(o));
+      showToast('Saved gear ' + gear);
+      gearCache[gear] = Object.assign({}, gearCache[gear] || {}, o); // optimistic local update (session only)
+    } catch (e) { showToast('Error: ' + e); }
+  });
+}
+
+/* ── Motor mode (Dual / Rear-only / Front-only via LB.setMotorMode) ── */
+
+function setMotorMode(mode) {
+  if (typeof LB === 'undefined' || !LB.setMotorMode) { showToast('Only available in the app'); return; }
+  if (!state.bleConnected) { showToast('Connect the scooter first'); return; }
+  try { LB.setMotorMode(mode); setSegActive('#motor-mode-seg', mode); showToast('Motor mode set'); }
+  catch (e) { showToast('Error: ' + e); }
+}
+
+/* ── Main-screen motor-mode quick toggle ──────────────────────
+   Mirrors the settings-sheet #motor-mode-seg: Front/Rear/Both reuse setMotorMode() with
+   the SAME data-mode codes (2/1/0), Smart toggles TCS (isSmart). Reflects the scooter's
+   live state every tick and greys out / disables itself when not connected. */
+
+// Current isSmart (TCS) state from live data, with the systemStatus[4] bit as fallback.
+function liveSmartOn() {
+  const d = liveRaw();
+  const b = v => v === true || v === 1 || v === '1';
+  let sm = pick(d, ['isSmart']);
+  if (sm == null) { const sys = Array.isArray(d.systemStatus) ? d.systemStatus : []; sm = b(sys[4]); }
+  return b(sm);
+}
+
+// Toggle Smart (TCS) via the bridge, sending the opposite of the current state.
+function toggleSmartMain() {
+  if (typeof LB === 'undefined' || !LB.setSmart) { showToast('Only available in the app'); return; }
+  if (!state.bleConnected) { showToast('Connect the scooter first'); return; }
+  const next = !liveSmartOn();
+  try { LB.setSmart(next); showToast(next ? 'Smart on' : 'Smart off'); }
+  catch (e) { showToast('Error: ' + e); }
+}
+
+// Reflect the scooter's motor mode + Smart state onto the main-screen quick toggle, and
+// enable/disable the whole control based on the BLE connection (called every tickBLE).
+function reflectMotorModeMain() {
+  const wrap = document.getElementById('motor-quick');
+  if (!wrap) return;
+  const connected = !!state.bleConnected;
+  wrap.classList.toggle('mq-disabled', !connected);
+
+  const d = liveRaw();
+  const dm = pick(d, ['doubleMotor']);
+  const rm = pick(d, ['rmStatus']);
+  const b = v => v === true || v === 1 || v === '1';
+  let mode = -1;
+  if (connected && dm !== undefined && rm !== undefined) {
+    if (b(rm) && b(dm)) mode = 0;         // both / dual
+    else if (b(rm) && !b(dm)) mode = 1;   // rear only
+    else if (!b(rm) && b(dm)) mode = 2;   // front only
+  }
+  wrap.querySelectorAll('.mq-btn[data-mm]').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.mm, 10) === mode);
+  });
+  const smartBtn = wrap.querySelector('.mq-smart');
+  if (smartBtn) smartBtn.classList.toggle('active', connected && liveSmartOn());
+}
+
+/* ── Event Wiring ─────────────────────────────────────────── */
+
+function wireEvents() {
+  // Connect icon in the topbar: open the Connect page (scan / connect / disconnect).
+  document.getElementById('btn-connect').addEventListener('click', openConnectPage);
+  document.getElementById('btn-connect-back').addEventListener('click', closeConnectPage);
+  document.getElementById('btn-scan').addEventListener('click', startScan);
+  document.getElementById('btn-disconnect').addEventListener('click', doDisconnect);
+
+  // Routes sub-page open/close
+  document.getElementById('btn-open-routes').addEventListener('click', () => {
+    closeSettings();
+    renderRoutes();
+    document.getElementById('routes-page').classList.add('open');
+  });
+  document.getElementById('btn-routes-back').addEventListener('click', () => {
+    document.getElementById('routes-page').classList.remove('open');
+  });
+
+  // Streaming page open/close
+  document.getElementById('btn-streaming').addEventListener('click', () => {
+    setStreamStatus(readStreamStatus() || 'idle');
+    document.getElementById('streaming-page').classList.add('open');
+  });
+  document.getElementById('btn-streaming-back').addEventListener('click', () => {
+    document.getElementById('streaming-page').classList.remove('open');
+  });
+
+  // Theme toggle button (sun/moon in topbar)
+  document.getElementById('btn-theme').addEventListener('click', () => {
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    applyTheme(!isDark);
+    document.getElementById('toggle-dark').checked = !isDark;
+  });
+
+  // Settings open/close
+  document.getElementById('btn-settings').addEventListener('click', openSettings);
+  document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
+  document.getElementById('settings-overlay').addEventListener('click', closeSettings);
+
+  // Connect scooter (settings sheet): open the Connect page.
+  document.getElementById('btn-connect-scooter').addEventListener('click', () => {
+    closeSettings();
+    openConnectPage();
+  });
+
+  // Scooter settings: open the in-app scooter settings page (requires a connected scooter).
+  document.getElementById('btn-scooter-settings').addEventListener('click', () => {
+    if (!state.bleConnected) { showToast('Connect a scooter first', 3000, 'err'); return; }
+    closeSettings();
+    openScooterPage();
+  });
+  document.getElementById('btn-scooter-back').addEventListener('click', closeScooterPage);
+  wireScooterSettings();
+  wireGearEditor();
+
+  // Read error reports: show current active faults/errors from live BLE data (requires connection).
+  document.getElementById('btn-error-reports').addEventListener('click', () => {
+    if (!state.bleConnected) { showToast('Connect a scooter first', 3000, 'err'); return; }
+    closeSettings();
+    openErrorReports();
+  });
+  document.getElementById('btn-error-reports-back').addEventListener('click', closeErrorReports);
+
+  // Scooter info: identity + firmware/app versions read from live BLE data.
+  document.getElementById('btn-info').addEventListener('click', () => {
+    closeSettings();
+    openInfoPage();
+  });
+  document.getElementById('btn-info-back').addEventListener('click', closeInfoPage);
+  document.getElementById('btn-copy-btname').addEventListener('click', copyBtName);
+  document.getElementById('btn-copy-serial').addEventListener('click', copySerial);
+  // Change identity (cmd 0x1f): Set writes the full edited FIN. Prefilled with the current FIN.
+  document.getElementById('btn-set-btname').addEventListener('click', setBleName);
+
+  // Ride log opt-in toggle: mirror the change straight to the native recorder.
+  document.getElementById('toggle-ridelog').addEventListener('change', e => {
+    if (typeof LB !== 'undefined' && LB.setRideLogging) {
+      try { LB.setRideLogging(!!e.target.checked); } catch (err) {}
+    }
+  });
+
+  // Navigation: hand off to the native navigation screen (implemented by the app).
+  document.getElementById('btn-navigation').addEventListener('click', () => {
+    if (window.LB && LB.openNavigation) LB.openNavigation();
+    else showToast('Only available in the app');
+  });
+
+  // Main-screen motor-mode quick toggle: Front/Rear/Both reuse setMotorMode(); Smart toggles TCS.
+  // (When disconnected the control has pointer-events:none, so these never fire.)
+  document.querySelectorAll('#motor-quick .mq-btn[data-mm]').forEach(btn => {
+    btn.addEventListener('click', () => setMotorMode(parseInt(btn.dataset.mm, 10)));
+  });
+  const mqSmart = document.querySelector('#motor-quick .mq-smart');
+  if (mqSmart) mqSmart.addEventListener('click', toggleSmartMain);
+
+  // Version Info & Disclaimer (side-menu footer): open the modal (Close / backdrop / Escape).
+  document.getElementById('btn-version-info').addEventListener('click', () => {
+    closeSettings();
+    openVersionInfo();
+  });
+  document.getElementById('verinfo-close').addEventListener('click', closeVersionInfo);
+  document.getElementById('verinfo-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('verinfo-overlay')) closeVersionInfo();
+  });
+  document.addEventListener('keydown', e => {
+    const o = document.getElementById('verinfo-overlay');
+    if (e.key === 'Escape' && o && o.classList.contains('open')) closeVersionInfo();
+  });
+
+  // Dark mode toggle in settings
+  document.getElementById('toggle-dark').addEventListener('change', e => {
+    applyTheme(e.target.checked);
+  });
+
+  // mph toggle
+  document.getElementById('toggle-mph').addEventListener('change', e => {
+    state.useMph = e.target.checked;
+    storage.set('lb_units', state.useMph ? 'mph' : 'kmh');
+  });
+
+  // GPS auto
+  document.getElementById('toggle-gps-auto').addEventListener('change', e => {
+    state.gpsAutoStart = e.target.checked;
+    storage.set('lb_gps_auto', state.gpsAutoStart ? 'on' : 'off');
+  });
+
+  // GPS recording interval: persist and apply live to the ongoing/next recording.
+  const gpsIntSel = document.getElementById('gps-interval-sel');
+  if (gpsIntSel) gpsIntSel.addEventListener('change', e => {
+    const sec = parseInt(e.target.value, 10) || 5;
+    state.gpsIntervalMs = sec * 1000;
+    storage.set('lb_gps_interval', String(sec));
+  });
+
+  // Fullscreen toggle: hide/show the Android status bar via the native bridge (persisted natively).
+  const fsToggle = document.getElementById('toggle-fullscreen');
+  if (fsToggle) fsToggle.addEventListener('change', e => {
+    try {
+      if (typeof LB !== 'undefined' && LB.setFullscreen) LB.setFullscreen(e.target.checked);
+      else showToast('Only available in the app');
+    } catch (err) {}
+  });
+
+  // Debug mode toggle: persist via native (survives restarts) then reflect the banner state.
+  const dbgToggle = document.getElementById('toggle-debug');
+  if (dbgToggle) dbgToggle.addEventListener('change', e => {
+    try {
+      if (typeof LB !== 'undefined' && LB.setDebug) LB.setDebug(e.target.checked);
+      else showToast('Only available in the app');
+    } catch (err) {}
+    syncDebugUI();
+  });
+
+  // Export debug logs: share the recorded log file via the native chooser.
+  const dbgExport = document.getElementById('btn-export-logs');
+  if (dbgExport) dbgExport.addEventListener('click', () => {
+    try {
+      if (typeof LB !== 'undefined' && LB.exportLogs) LB.exportLogs();
+      else showToast('Only available in the app');
+    } catch (err) {}
+  });
+
+  // SRT streaming: store URL encrypted on every edit (input fires on paste too) + start/stop
+  const _saveUrl = () => srtSaveUrl(document.getElementById('stream-url').value.trim());
+  document.getElementById('stream-url').addEventListener('input', _saveUrl);
+  document.getElementById('stream-url').addEventListener('change', _saveUrl);
+  document.getElementById('stream-url').addEventListener('blur', _saveUrl);
+  document.getElementById('btn-stream-start').addEventListener('click', startSrtStream);
+  document.getElementById('btn-stream-stop').addEventListener('click', stopSrtStream);
+
+  // Delete buttons
+  document.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      confirmDelete(btn.dataset.period);
+    });
+  });
+
+  // Confirm dialog
+  document.getElementById('confirm-ok').addEventListener('click', () => {
+    document.getElementById('confirm-overlay').classList.remove('open');
+    if (state.confirmCb) { state.confirmCb(); state.confirmCb = null; }
+  });
+  document.getElementById('confirm-cancel').addEventListener('click', () => {
+    document.getElementById('confirm-overlay').classList.remove('open');
+    state.confirmCb = null;
+  });
+
+  // "?" help buttons on every setting row (delegated once, survives re-renders).
+  ensureSettingsHelpDelegation();
+}
+
+/* ── Initialisation ───────────────────────────────────────── */
+
+function applyStatusBarInset() {
+  // The webview covers the whole screen including the Android status bar.
+  // plus.navigator.getStatusbarHeight() returns the height in CSS px - set it as
+  // --sat so the topbar/buttons below it are visible & clickable.
+  try {
+    if (window.plus && plus.navigator && plus.navigator.getStatusbarHeight) {
+      const h = plus.navigator.getStatusbarHeight();
+      if (h && h > 0) {
+        document.documentElement.style.setProperty('--sat', h + 'px');
+      }
+    }
+  } catch(e) {}
+}
+
+function init() {
+  // Keep the screen awake while this view is open - no screensaver while riding.
+  try { if (window.plus) plus.device.setWakelock(true); } catch (e) {}
+  // Show the app version (read natively from the package) in the streaming build-info line.
+  // The settings footer version now lives in the Version Info & Disclaimer modal.
+  try {
+    const ver = (window.LB && LB.appVersion) ? LB.appVersion() : '';
+    const bi = document.getElementById('build-info');
+    if (bi) bi.textContent = ver || '';
+  } catch (e) {}
+  applyStatusBarInset();
+  loadSettings();
+  wireEvents();
+  renderRoutes();
+
+  // Start BLE polling
+  tickBLE();
+  setInterval(tickBLE, 500);
+
+  // Poll the native stream status while the streaming page is open
+  setInterval(() => {
+    const page = document.getElementById('streaming-page');
+    if (page && page.classList.contains('open')) {
+      const s = readStreamStatus();
+      if (s) setStreamStatus(s);
+    }
+  }, 1500);
+
+  // Check initial BLE state and start GPS if connected
+  const raw = storage.get('lb_live_data');
+  const data = parseBLE(raw);
+  if (data && isFresh(data.ts)) {
+    state.bleConnected = true;
+    if (state.gpsAutoStart) startGPSWatch();
+    startRide();
+  }
+}
+
+// Wait for 5+ runtime or just run
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>

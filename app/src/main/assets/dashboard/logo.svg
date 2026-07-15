@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Laufbursche Edition in-app logo (original artwork, matches the launcher icon).
+  Side-profile kick e-scooter whose steering column is a lightning bolt, in a dark badge,
+  next to the "Laufbursche Edition" wordmark (in the lime->teal accent) over the descriptive
+  line "App fuer Teverun E-Scooter" in white. This is an independent app for Teverun e-scooters,
+  deliberately not branded as "Teverun". Self-contained; the dashboard can <img>/inline it later.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 108" width="470" height="108"
+     fill="none" role="img" aria-label="Laufbursche Edition - app for Teverun e-scooters">
+  <defs>
+    <radialGradient id="lbBadge" gradientUnits="userSpaceOnUse" cx="54" cy="49" r="80">
+      <stop offset="0" stop-color="#1A222C"/>
+      <stop offset="0.6" stop-color="#101418"/>
+      <stop offset="1" stop-color="#0A0D11"/>
+    </radialGradient>
+    <linearGradient id="lbBolt" gradientUnits="userSpaceOnUse" x1="63" y1="34" x2="69" y2="70">
+      <stop offset="0" stop-color="#D8FF57"/>
+      <stop offset="1" stop-color="#2FEBA2"/>
+    </linearGradient>
+    <linearGradient id="lbMono" gradientUnits="userSpaceOnUse" x1="248" y1="34" x2="330" y2="70">
+      <stop offset="0" stop-color="#BCEB39"/>
+      <stop offset="1" stop-color="#2FEBA2"/>
+    </linearGradient>
+  </defs>
+
+  <!-- dark badge -->
+  <rect x="0" y="0" width="108" height="108" rx="24" fill="url(#lbBadge)"/>
+
+  <!-- scooter mark (same geometry as the launcher icon) -->
+  <g stroke="#BCEB39" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M26.5,71 a8.5,8.5 0 1,0 17,0 a8.5,8.5 0 1,0 -17,0"/>
+    <path d="M57.5,71 a8.5,8.5 0 1,0 17,0 a8.5,8.5 0 1,0 -17,0"/>
+    <path d="M24,67 L58,67 L66,71"/>
+    <path d="M61,36 L79,33"/>
+  </g>
+  <path d="M70,34 L60,55 L66,55 L64,70 L75,48 L68,48 Z" fill="url(#lbBolt)"/>
+
+  <!-- wordmark: "Laufbursche Edition" (colored) over the descriptive line "App fuer Teverun E-Scooter".
+       Deliberately NOT branded as "Teverun" - this is an independent app FOR Teverun e-scooters. -->
+  <g font-family="'Segoe UI', Roboto, system-ui, Arial, sans-serif">
+    <text x="130" y="50" font-size="31" font-weight="800" letter-spacing="0.3" fill="url(#lbMono)">Laufbursche Edition</text>
+    <text x="131" y="79" font-size="23" font-weight="600" letter-spacing="0.4" fill="#FFFFFF">App für Teverun E-Scooter</text>
+  </g>
+</svg>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  TR-LB Edition launcher foreground - ORIGINAL artwork (not derived from any
+  existing/trademarked logo). Motif: a side-profile kick e-scooter whose
+  steering column is a lightning bolt (electric + speed / telemetry theme).
+  Lime frame (#BCEB39) with a teal->lime bolt (#2FEBA2). Composed inside the
+  adaptive-icon safe zone (roughly the central 66% circle around 54,54).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Rear wheel (open hub / tire ring), center 35,71 r8.5 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#BCEB39"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M26.5,71 a8.5,8.5 0 1,0 17,0 a8.5,8.5 0 1,0 -17,0" />
+
+    <!-- Front wheel, center 66,71 r8.5 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#BCEB39"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M57.5,71 a8.5,8.5 0 1,0 17,0 a8.5,8.5 0 1,0 -17,0" />
+
+    <!-- Deck / footboard + front fork strut down to the front hub -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#BCEB39"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M24,67 L58,67 L66,71" />
+
+    <!-- Handlebar (round caps read as grips) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#BCEB39"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M61,36 L79,33" />
+
+    <!-- Steering column drawn as a lightning bolt (teal -> lime energy) -->
+    <path android:pathData="M70,34 L60,55 L66,55 L64,70 L75,48 L68,48 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="63" android:startY="34"
+                android:endX="69" android:endY="70">
+                <item android:offset="0" android:color="#D8FF57" />
+                <item android:offset="1" android:color="#2FEBA2" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
