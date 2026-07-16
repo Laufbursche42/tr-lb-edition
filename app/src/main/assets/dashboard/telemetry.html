@@ -642,6 +642,7 @@ html, body {
   background: var(--bg); color: var(--text); font-size: 13px;
 }
 select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; }
+.set-ctrl:disabled { opacity: 0.55; }
 
 /* Per-gear settings save button */
 .gs-save-btn {
@@ -744,8 +745,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
         <div class="dg-cell"><span class="dg-label">Max speed</span><span class="dg-value" id="dg-max">-</span></div>
       </div>
       <div class="dg-row">
-        <div class="dg-cell"><span class="dg-label">Voltage</span><span class="dg-value" id="dg-volt">-</span></div>
-        <div class="dg-cell"><span class="dg-label">Pole volt</span><span class="dg-value" id="dg-pole">-</span></div>
+        <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label">Voltage</span><button type="button" class="set-help" data-set-help="dg-volt" aria-label="What is this?">?</button></span><span class="dg-value" id="dg-volt">-</span></div>
+        <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label">Pole volt</span><button type="button" class="set-help" data-set-help="dg-pole" aria-label="What is this?">?</button></span><span class="dg-value" id="dg-pole">-</span></div>
       </div>
       <div class="dg-row">
         <div class="dg-cell"><span class="dg-label">Battery SOH</span><span class="dg-value" id="dg-soh">-</span></div>
@@ -776,8 +777,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
         <div class="dg-cell"><span class="dg-label">Elev +/-</span><span class="dg-value" id="dg-hm">-</span></div>
       </div>
       <div class="dg-row">
-        <div class="dg-cell"><span class="dg-label">GPS fix</span><span class="dg-value" id="dg-gps">-</span></div>
-        <div class="dg-cell"><span class="dg-label">Points</span><span class="dg-value" id="dg-pts">-</span></div>
+        <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label">GPS fix</span><button type="button" class="set-help" data-set-help="dg-gps" aria-label="What is this?">?</button></span><span class="dg-value" id="dg-gps">-</span></div>
+        <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label">Points</span><button type="button" class="set-help" data-set-help="dg-pts" aria-label="What is this?">?</button></span><span class="dg-value" id="dg-pts">-</span></div>
       </div>
     </div>
 
@@ -1042,7 +1043,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label">Gear</div></div>
         <button type="button" class="set-help" data-set-help="ss-gear" aria-label="What is this?">?</button>
-        <select class="set-ctrl" id="ss-gear">
+        <select class="set-ctrl" id="ss-gear" disabled>
           <option value="0">0</option><option value="1">1</option><option value="2">2</option>
           <option value="3">3</option><option value="4">4</option><option value="5">5</option>
         </select>
@@ -1068,12 +1069,12 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label">Front current limit</div></div>
         <button type="button" class="set-help" data-set-help="ss-fcur" aria-label="What is this?">?</button>
-        <input class="set-ctrl" id="ss-fcur" type="number" min="0" max="255" step="1" inputmode="numeric">
+        <input class="set-ctrl" id="ss-fcur" type="number" min="0" max="255" step="1" inputmode="numeric" disabled>
       </div>
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label">Rear current limit</div></div>
         <button type="button" class="set-help" data-set-help="ss-rcur" aria-label="What is this?">?</button>
-        <input class="set-ctrl" id="ss-rcur" type="number" min="0" max="255" step="1" inputmode="numeric">
+        <input class="set-ctrl" id="ss-rcur" type="number" min="0" max="255" step="1" inputmode="numeric" disabled>
       </div>
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label">ABS</div></div>
@@ -1632,11 +1633,11 @@ const SETTINGS_HELP = {
   "gear-fcur": { title: "Front current (per gear)", text: "Maximum current to the FRONT motor in this gear, which sets its torque/power ceiling. Higher = more power (and more heat and battery draw)." },
   "gear-rcur": { title: "Rear current (per gear)", text: "Maximum current to the REAR motor in this gear. Higher = more power; lower limits torque for a tamer gear." },
   "ss-speed": { title: "Main speed limit", text: "The overall top-speed cap for the scooter in km/h, independent of the per-gear limits. The scooter will not assist beyond this.\n\nNOTE (eKFV): the top speed is hard-capped at 22 km/h on the eKFV version - values above 22 have no effect (the controller forces 22)." },
-  "ss-gear": { title: "Gear", text: "The currently active gear (1-3). Changing it here switches the scooter's gear, the same as the gear button on the display." },
+  "ss-gear": { title: "Gear", text: "Read-only - shows the currently active gear. On eKFV units the internal gears 2/3/4 appear as 1/2/3 on the scooter display. The gear is switched with the physical gear button on the scooter, not from the app." },
   "ss-start": { title: "Start mode", text: "How the scooter begins moving. 'Kick start' needs a push to start assisting (zero-start off); 'Launch' lets it pull away from a standstill on throttle alone (zero-start on)." },
   "ss-cruise": { title: "Cruise control", text: "Off = no cruise. Manual = you activate cruise yourself (holding a steady speed/button). Auto = the scooter holds speed automatically after a few seconds of constant throttle.\n\nNOTE (eKFV): cruise control cannot be changed on the eKFV version - the controller write-protects it, so this setting has no effect." },
-  "ss-fcur": { title: "Front current limit", text: "Global maximum current to the FRONT motor (its torque/power ceiling) across all gears. Higher = more power and more heat.\n\nNOTE (eKFV): on the eKFV version this has no effect - the motor controller reports and enforces 0, so the value stays 0 no matter what you set." },
-  "ss-rcur": { title: "Rear current limit", text: "Global maximum current to the REAR motor. Higher = more power; lower for a tamer, cooler-running setup.\n\nNOTE (eKFV): on the eKFV version this has no effect - the motor controller reports and enforces 0 across all gears, so the value stays 0 no matter what you set." },
+  "ss-fcur": { title: "Front current limit", text: "Read-only - shows the FRONT motor current limit of the currently active gear. It is a per-gear value: to change it, edit the front current in the per-gear editor and Save there. On eKFV units it stays 0 (the motor controller reports and enforces 0)." },
+  "ss-rcur": { title: "Rear current limit", text: "Read-only - shows the REAR motor current limit of the currently active gear. It is a per-gear value: to change it, edit the rear current in the per-gear editor and Save there. On eKFV units it stays 0 (the motor controller reports and enforces 0)." },
   "ss-abs": { title: "ABS", text: "Enables the controller's anti-lock braking behavior: it modulates the electronic brake to reduce wheel lock-up during hard braking. (Different from EABS, which is the recuperation strength.)" },
   "ss-packvolt": { title: "Pack voltage (nominal)", text: "The battery's nominal voltage (e.g. 60 V). The controller uses it in its power/speed calculations - set it to match your actual battery, or the math will be off." },
   "ss-wheel": { title: "Wheel size", text: "Wheel diameter in inches. The controller converts motor RPM to speed and distance with this, so set it to your real tire size or the speedometer and odometer will read wrong.\n\nNOTE (eKFV): on the eKFV version changing this has no effect - the controller ignores the wheel-size write (and the speed is hard-capped at 22 km/h anyway)." },
@@ -1650,7 +1651,11 @@ const SETTINGS_HELP = {
   "ss-save": { title: "Save settings", text: "Writes your changed controller settings to the scooter. Nothing is sent until you press this, so you can edit fields freely and then save them all at once." },
   "gear-save": { title: "Save gear", text: "Writes the values for the currently selected gear to the scooter. Per-gear edits are only sent when you press this." },
   "dg-recup": { title: "Recuperation", text: "Cumulative energy the scooter recovered through regenerative braking/coasting (the controller reports a bare cumulative counter - no unit)." },
-  "dg-rssi": { title: "RSSI", text: "Bluetooth signal strength between phone and scooter, in dBm. Closer to 0 = stronger." }
+  "dg-rssi": { title: "RSSI", text: "Bluetooth signal strength between phone and scooter, in dBm. Closer to 0 = stronger." },
+  "dg-volt": { title: "Voltage", text: "The battery pack voltage measured by the BMS across all cells in series. It sags under load and falls as the battery discharges. It normally reads almost the same as Pole volt because both measure the same pack." },
+  "dg-pole": { title: "Pole volt", text: "The voltage at the controller's power terminals, after the BMS relays. It normally matches Voltage closely; a large gap points to relay or wiring resistance between the pack and the controller." },
+  "dg-gps": { title: "GPS fix", text: "Whether the phone's GPS currently has a position fix. It reads 'Fix' once a location is received or 'No fix' while searching or on error; a dash means GPS tracking is off." },
+  "dg-pts": { title: "Points", text: "The number of GPS track points recorded so far for the current ride. A new point is added at most once per GPS interval, so it grows as you ride." }
 };
 
 let settingsHelpDelegated = false;
@@ -2257,6 +2262,7 @@ function confirmDelete(period) {
   document.getElementById('confirm-msg').textContent =
     `All routes from ${labels[period]} will be permanently deleted.`;
   state.confirmCb = () => deleteRoutesByPeriod(period);
+  document.getElementById('confirm-ok').textContent = 'Delete';
   document.getElementById('confirm-overlay').classList.add('open');
 }
 
@@ -2856,6 +2862,7 @@ function confirmDeleteRide(id) {
     }
     renderRideList();
   };
+  document.getElementById('confirm-ok').textContent = 'Delete';
   document.getElementById('confirm-overlay').classList.add('open');
 }
 
@@ -2895,9 +2902,11 @@ function closeInfoPage() {
 
 /* Global scooter-setting field maps (control id -> controller key). Editing a field only marks
    it dirty; nothing is written to the controller until the user presses "Save settings". */
+// ss-gear, ss-fcur and ss-rcur are read-only display fields (the controller does not accept
+// writes for them), so they are intentionally not in this list and are not written on Save.
 const SS_NUM_FIELDS = [
-  ['ss-speed', 'speedLimit'], ['ss-gear', 'gear'], ['ss-wheel', 'wheel'],
-  ['ss-packvolt', 'packVolt'], ['ss-fcur', 'fCurrent'], ['ss-rcur', 'rCurrent'],
+  ['ss-speed', 'speedLimit'], ['ss-wheel', 'wheel'],
+  ['ss-packvolt', 'packVolt'],
   ['ss-fstart', 'fStartLevel'], ['ss-rstart', 'rStartLevel'], ['ss-eabs', 'eabsLevel']
 ];
 const SS_BOOL_FIELDS = [
@@ -2999,7 +3008,23 @@ function wireScooterSettings() {
   SS_NUM_FIELDS.forEach(pair => {
     const el = document.getElementById(pair[0]);
     if (!el) return;
-    el.addEventListener('change', () => { ssDirty.add(pair[1]); });
+    if (pair[0] === 'ss-packvolt') {
+      el.addEventListener('focus', () => { el.dataset.prev = el.value; });
+      el.addEventListener('change', () => {
+        const newVal = el.value;
+        const prevVal = (el.dataset.prev != null) ? el.dataset.prev : newVal;
+        if (newVal === prevVal) return;
+        el.value = prevVal;   // revert first - only applied after the user confirms
+        document.getElementById('confirm-title').textContent = 'Change pack voltage?';
+        document.getElementById('confirm-msg').textContent =
+          'The pack voltage feeds the controller power and speed calculations. A wrong value makes the speed and range readings and the controller limits wrong. Only change it to match your actual battery. Apply ' + newVal + ' V?';
+        document.getElementById('confirm-ok').textContent = 'Apply';
+        state.confirmCb = () => { el.value = newVal; el.dataset.prev = newVal; ssDirty.add('packVolt'); };
+        document.getElementById('confirm-overlay').classList.add('open');
+      });
+    } else {
+      el.addEventListener('change', () => { ssDirty.add(pair[1]); });
+    }
   });
   SS_BOOL_FIELDS.forEach(pair => {
     const el = document.getElementById(pair[0]);
