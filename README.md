@@ -78,7 +78,7 @@ Everything below is implemented and shipping in the app.
 
 - **Full settings with an explicit Save button** - nothing is written to the scooter until you press **Save**.
 - **A "?" help popup on EVERY setting.**
-- **Per-gear settings editor** - per-gear speed limit, EABS / recuperation, start levels and currents. On gKFV/eKFV units the internal gears 2/3/4 are shown as 1/2/3 on the scooter's own display. The controller sends only the CURRENTLY active gear to the app, so if a gear's values are missing you have to switch through all gears once on the scooter to load them. The app reads these values live and never stores them on the phone, because a stale gear value must never be shown or written back to the controller.
+- **Per-gear settings editor** - per-gear speed limit, EABS / recuperation, start levels and currents. On eKFV units the internal gears 2/3/4 are shown as 1/2/3 on the scooter's own display. The controller sends only the CURRENTLY active gear to the app, so if a gear's values are missing you have to switch through all gears once on the scooter to load them. The app reads these values live and never stores them on the phone, because a stale gear value must never be shown or written back to the controller.
 - **Live 1 s refresh** while the settings screen is open, without clobbering edits you are making in the app or changes made on the scooter's own display.
 - **Motor mode** (Dual / Rear / Front) and **Smart mode** (TCS traction control).
 - **Manufacturer-locked settings cannot be changed** - the app can only change settings the controller actually allows. Any setting the manufacturer has locked in the controller cannot be changed from this app or from any other app. This limit does not apply when the controller runs custom or open firmware.
@@ -542,7 +542,7 @@ frames.forEach(function (f) {
 
 `systemStatus` bits (`t[17]`, LSB-first): `[0]`=eco/`enfEcon`, `[1]`=`isUnitMile`, `[2]`=`atMode`, `[4]`=`isSmart`, `[5]`=reverse gear, `[6]`=hardware flag (TDE), `[7]`=DV/monitor.
 
-This frame reports only the CURRENTLY active gear (`t[3]`) together with that gear's per-gear/assist values (`t[8]`-`t[13]`). There is no bulk read of all gears, so to populate every gear's values in the editor the scooter has to be switched through each gear once (the app caches them per session in memory only, never on disk). On gKFV/eKFV (TDE) units the internal gears 2/3/4 map to 1/2/3 on the scooter display.
+This frame reports only the CURRENTLY active gear (`t[3]`) together with that gear's per-gear/assist values (`t[8]`-`t[13]`). There is no bulk read of all gears, so to populate every gear's values in the editor the scooter has to be switched through each gear once (the app caches them per session in memory only, never on disk). On eKFV (TDE) units the internal gears 2/3/4 map to 1/2/3 on the scooter display.
 
 `rControlStatus` bits (`t[4]`, LSB-first): cruise level = `(bit2 << 1) | bit1` (`parseInt(rControlStatus[2]+rControlStatus[1],2)`), `[3]`=ABS, `[6]`=`startMode` (launch).
 
@@ -834,7 +834,7 @@ Read-back (cmd 0x72):
 
 ## Firmware (reverse engineering)
 
-This section documents what was found by reverse-engineering the scooter's own firmware - the VCU controller and the display - as distinct from the BLE app protocol above. It explains why the 22 km/h eKFV speed limit cannot be lifted over Bluetooth alone, what the app can and cannot change and where the remaining limits actually live. It is a research and educational record of how the hardware works; read the legal and safety note at the end before acting on any of it. Findings are firmware-verified for the gKFV / eKFV (TDE) Fighter Mini Pro line unless noted otherwise.
+This section documents what was found by reverse-engineering the scooter's own firmware - the VCU controller and the display - as distinct from the BLE app protocol above. It explains why the 22 km/h eKFV speed limit cannot be lifted over Bluetooth alone, what the app can and cannot change and where the remaining limits actually live. It is a research and educational record of how the hardware works; read the legal and safety note at the end before acting on any of it. Findings are firmware-verified for the eKFV (TDE) Fighter Mini Pro line unless noted otherwise.
 
 ### The double-gated 22 km/h speed clamp
 
@@ -884,7 +884,7 @@ Critical constraint on this unit: the stock VCU application firmware has NO disp
 
 ### Region write-protection - locked vs free settings
 
-When the identity is `TDE` the VCU latches a country / region write-protection. The app can display every setting the controller supports, but the controller silently refuses to store the protected ones. The table below is firmware-verified for the gKFV / eKFV (TDE) Fighter Mini Pro.
+When the identity is `TDE` the VCU latches a country / region write-protection. The app can display every setting the controller supports, but the controller silently refuses to store the protected ones. The table below is firmware-verified for the eKFV (TDE) Fighter Mini Pro.
 
 | Setting | State | Where the limit lives |
 |---------|-------|-----------------------|
