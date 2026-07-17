@@ -14,6 +14,11 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.0.6
+
+- Firmware update: reworked the flash to match the original app exactly, which fixes it stalling after a few packets on some controllers. Data packets now go out fire-and-forget at a fixed pace (no waiting on write acknowledgements) and the app no longer requests a fast connection interval.
+- Firmware update log: OTA lines are now written to the debug log too (when Debug mode is on), so a flash done away from the computer can be reviewed afterwards.
+
 ## 1.0.5
 
 - Firmware update: fixed the flash stalling after a few packets. It now writes to the controller without response (like the original app) with a self-healing per-packet watchdog, so a full flash runs to the end.

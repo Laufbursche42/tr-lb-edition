@@ -8,7 +8,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -138,9 +137,8 @@ final class OtaEngine {
     private int packetRetries = 0;            // re-drives of the current packet (stall recovery)
     private boolean hasBreak = false;         // a PACKDATA error stalls the current burst
 
-    // outbound write pump
-    private final ArrayDeque<byte[]> writeQueue = new ArrayDeque<>();
-    private boolean writing = false;
+    // outbound: scheduled PACKDATA frame runnables (so a re-drive can cancel them)
+    private final List<Runnable> pendingSends = new ArrayList<>();
 
     // timers (kept so they can be cancelled)
     private Runnable startRetry, stepResend, stuckTimer, watchdog, startCheckState, finishCheck;
@@ -215,8 +213,9 @@ final class OtaEngine {
                 + allData.length + " bytes, CRC " + calc);
         host.progress(0, 0, packets.size(), "Preparing");
 
-        // Fast connection interval for the whole flash (restored in cleanup()).
-        try { host.setHighPriority(true); } catch (Throwable ignored) {}
+        // NOTE: do NOT request a HIGH connection priority - the original app runs at the default
+        // interval. A faster interval pushes frames at the controller quicker than its BLE-module
+        // UART forwards them, which overran it after a few packets (the VCU then stopped answering).
 
         // Step 0 - prepare / erase, then START after 1500 ms (startCheck()).
         sendPrepare();
@@ -238,9 +237,9 @@ final class OtaEngine {
         main.post(() -> { if (running) handleNotify(copy); });
     }
 
-    /** Write completed (binder thread) -> advance the pump on the main looper. */
+    /** Kept for the BleManager routing; the fire-and-forget writer does not use write completions. */
     void onWriteComplete() {
-        main.post(this::onWriteCompleteMain);
+        // no-op
     }
 
     // ── File parse (sendFile) ──
@@ -402,7 +401,7 @@ final class OtaEngine {
             for (int i = 0; i < 18; i++) out[1 + i] = (byte) q[i];
             out[19] = (byte) CommandBuilder.crc8(q, 18);
         }
-        enqueue(out);
+        otaWrite(out);
     }
 
     private void cilpPackage() {
@@ -414,7 +413,7 @@ final class OtaEngine {
                 @Override public void run() {
                     if (!running) return;
                     // frame [START_ID, aa*8]
-                    enqueue(wire(frame(config.START, fill(8, 0xaa))));
+                    otaWrite(wire(frame(config.START, fill(8, 0xaa))));
                     if (retryCount < START_MAX_RETRIES) {
                         retryCount++;
                         main.postDelayed(this, START_RETRY_MS);
@@ -480,6 +479,7 @@ final class OtaEngine {
         }
         if (match(idHi, idLo, config.PACKINFO_RESP)) {
             cancel(stepResend);
+            host.log("Packet " + (backIndex + 1) + " info-ack");
             pumpPackData();
             return;
         }
@@ -532,8 +532,8 @@ final class OtaEngine {
         payload[6] = (crc >> 8) & 0xFF; payload[7] = crc & 0xFF;
 
         host.log("Start upgrade");
-        enqueue(wire(frame(config.INFO, payload)));
-        armStepResend(() -> enqueue(wire(frame(config.INFO, payload))));
+        otaWrite(wire(frame(config.INFO, payload)));
+        armStepResend(() -> otaWrite(wire(frame(config.INFO, payload))));
     }
 
     private void sendPackInfo() {
@@ -548,23 +548,26 @@ final class OtaEngine {
 
         host.log("Send package " + (backIndex + 1) + "/" + packets.size());
         byte[] frame = wire(frame(config.PACKINFO, payload));
-        enqueue(frame);
-        armStepResend(() -> enqueue(frame));
+        otaWrite(frame);
+        armStepResend(() -> otaWrite(frame));
     }
 
     private void pumpPackData() {
         hasBreak = false;
+        clearPendingSends();
         byte[] data = hexToBytes(packets.get(backIndex).data);
         int frameCount = data.length / 7 + 1;
-        int dataIndex = 0;
+        host.log("Packet " + (backIndex + 1) + ": sending " + frameCount + " data frames");
         int pos = 0;
         for (int m = 0; m < frameCount; m++) {
             int[] payload = new int[8];
-            payload[0] = dataIndex & 0xFF;
+            payload[0] = m & 0xFF;                            // dataIndex
             for (int k = 1; k < 8; k++) payload[k] = 0xFF;   // default 0xff for the 7 data slots
             for (int k = 0; k < 7 && pos < data.length; k++) payload[1 + k] = data[pos++] & 0xFF;
-            enqueue(wire(frame(config.PACKDATA, payload)));
-            dataIndex++;
+            final byte[] out = wire(frame(config.PACKDATA, payload));
+            final Runnable r = () -> { if (running && !hasBreak) otaWrite(out); };
+            pendingSends.add(r);
+            main.postDelayed(r, (long) (m + 1) * INTERFRAME_MS);   // scheduled spValue apart
         }
         // The VCU answers with one PACKDATA response (07 54) once it has received the whole packet.
     }
@@ -572,6 +575,7 @@ final class OtaEngine {
     private void sendNextBack() {
         if (!running) return;
         cancel(stuckTimer);
+        clearPendingSends();   // cancel any scheduled PACKDATA from a stalled packet before re-driving
         reportProgress("Sending");
         if (backIndex < packets.size()) {
             sendPackInfo();
@@ -600,8 +604,8 @@ final class OtaEngine {
             // all packets done -> FINISH
             host.log("Finishing");
             byte[] finish = wire(frame(config.FINISH, fill(8, 0xaa)));
-            enqueue(finish);
-            armStepResend(() -> { enqueue(finish); startCheckUpgrade(""); });
+            otaWrite(finish);
+            armStepResend(() -> { otaWrite(finish); startCheckUpgrade(""); });
         }
     }
 
@@ -643,45 +647,33 @@ final class OtaEngine {
     private void finish(boolean success, String state, String message) {
         running = false;
         clearAllTimers();
-        synchronized (writeQueue) { writeQueue.clear(); writing = false; }
+        clearPendingSends();
         try { host.setHighPriority(false); } catch (Throwable ignored) {}
         host.state(state, message);
         try { host.finished(success); } catch (Throwable ignored) {}
     }
 
-    // ── write pump ──
+    // ── writer (fire-and-forget, exactly like the original app) ──
+    // No-response writes are NOT chained on the write-completion callback: the VCU bootloader does
+    // not reliably deliver that callback for no-response writes across a whole flash, which stalled
+    // the old pump after a few packets. Instead control frames are written immediately (a lost one
+    // is recovered by the 3 s step-resend) and PACKDATA frames are scheduled spValue apart, matching
+    // the original's setTimeout pacing.
 
-    private void enqueue(byte[] frame) {
+    /** Write one frame fire-and-forget; one quick retry if the stack was momentarily busy. */
+    private void otaWrite(byte[] frame) {
         if (frame == null) return;
-        synchronized (writeQueue) { writeQueue.add(frame); }
-        pumpWrite();
+        boolean ok = false;
+        try { ok = host.writeFrame(frame); } catch (Throwable t) { Log.e(TAG, "writeFrame failed", t); }
+        if (!ok) main.postDelayed(() -> {
+            if (running) { try { host.writeFrame(frame); } catch (Throwable ignored) {} }
+        }, 25);
     }
 
-    private void pumpWrite() {
-        byte[] frame;
-        synchronized (writeQueue) {
-            if (writing) return;
-            frame = writeQueue.peek();
-            if (frame == null) return;
-            writing = true;
-        }
-        boolean started = false;
-        try { started = host.writeFrame(frame); } catch (Throwable t) { Log.e(TAG, "writeFrame failed", t); }
-        if (!started) {
-            synchronized (writeQueue) { writing = false; }
-            main.postDelayed(this::pumpWrite, 50);
-        }
-    }
-
-    private void onWriteCompleteMain() {
-        boolean more;
-        synchronized (writeQueue) {
-            if (!writing) return;         // stray completion (e.g. a normal write in flight at start)
-            writeQueue.poll();            // drop the frame we just sent
-            writing = false;
-            more = !writeQueue.isEmpty();
-        }
-        if (more) main.postDelayed(this::pumpWrite, INTERFRAME_MS);
+    /** Cancel any scheduled-but-unsent PACKDATA frames (on packet advance, re-drive or finish). */
+    private void clearPendingSends() {
+        for (Runnable r : pendingSends) main.removeCallbacks(r);
+        pendingSends.clear();
     }
 
     // ── timers ──
@@ -711,7 +703,7 @@ final class OtaEngine {
     private void resetState() {
         upGradeType = false; upGradeState = 0; backIndex = 0; retryCount = 0;
         restarts = 0; hasBreak = false;
-        synchronized (writeQueue) { writeQueue.clear(); writing = false; }
+        clearPendingSends();
     }
 
     private void reportProgress(String phase) {

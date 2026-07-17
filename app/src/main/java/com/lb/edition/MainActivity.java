@@ -215,8 +215,11 @@ public class MainActivity extends Activity {
 
         @Override
         public void onOtaLog(String line) {
-            String q = org.json.JSONObject.quote(line == null ? "" : line);
-            runJs("(function(){try{if(window.__onOtaLog)window.__onOtaLog(" + q + ");}catch(e){}})();");
+            String s = line == null ? "" : line;
+            // Persist OTA log lines to the debug log too (when enabled), so a flash done away from the
+            // PC can be pulled afterwards: adb pull the debug log or export it in-app.
+            try { if (debugLog != null && debugLog.isEnabled()) debugLog.append("[ota] " + s); } catch (Throwable ignored) {}
+            runJs("(function(){try{if(window.__onOtaLog)window.__onOtaLog(" + org.json.JSONObject.quote(s) + ");}catch(e){}})();");
         }
 
         @Override
