@@ -537,13 +537,13 @@ html, body {
 #streaming-scroller > * { flex-shrink: 0; }
 #btn-connect.connected { color: var(--good); }
 #ble-dot { pointer-events: none; }
-#btn-scooter-settings, #btn-connect-scooter, #btn-export-logs, #btn-error-reports, #btn-navigation, #btn-info, #btn-version-info {
+#btn-scooter-settings, #btn-connect-scooter, #btn-export-logs, #btn-error-reports, #btn-navigation, #btn-info, #btn-firmware, #btn-version-info {
   width: 100%; padding: 12px; border: 1px solid var(--border);
   background: var(--bg); color: var(--text); font-size: 14px; font-weight: 600;
   border-radius: 9px; cursor: pointer; text-align: center;
   -webkit-tap-highlight-color: transparent;
 }
-#btn-scooter-settings:active, #btn-connect-scooter:active, #btn-export-logs:active, #btn-error-reports:active, #btn-navigation:active, #btn-info:active, #btn-version-info:active { background: var(--border); }
+#btn-scooter-settings:active, #btn-connect-scooter:active, #btn-export-logs:active, #btn-error-reports:active, #btn-navigation:active, #btn-info:active, #btn-firmware:active, #btn-version-info:active { background: var(--border); }
 #btn-stream-start, #btn-stream-stop {
   padding: 12px; border: 1px solid var(--border); border-radius: 9px;
   background: var(--bg); color: var(--text); font-size: 14px; font-weight: 700;
@@ -875,8 +875,6 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <div class="settings-row-sublabel" style="margin:6px 0 10px">Active scooter faults and battery warnings (scooter must be connected)</div>
     <button id="btn-info">&#8505; Scooter info</button>
     <div class="settings-row-sublabel" style="margin:6px 0 10px">Serial number, firmware and app versions</div>
-    <button id="btn-firmware">&#8681; Firmware update</button>
-    <div class="settings-row-sublabel" style="margin:6px 0 10px">Flash a controller .hex over Bluetooth (scooter must be connected)</div>
     <button id="btn-navigation">&#129517; Navigation</button>
     <div class="settings-row-sublabel" style="margin:6px 0 10px">Open the navigation screen</div>
     <button id="btn-open-routes">&#128506; Saved routes<span id="routes-count-badge"></span></button>
@@ -968,6 +966,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 
   <!-- Version info + disclaimer (opens a modal) -->
   <div class="settings-group" style="border-top:1px solid var(--border)">
+    <button id="btn-firmware">&#9889; Firmware update</button>
+    <div class="settings-row-sublabel" style="margin:6px 0 10px">Flash a controller .hex over Bluetooth (scooter must be connected)</div>
     <button id="btn-version-info">&#8505; Version Info &amp; Disclaimer</button>
   </div>
 </div>
