@@ -101,10 +101,14 @@ final class OtaEngine {
     private static final long FINISH_CHECK_MS = 10_000;   // final success check
     private static final long CORRUPT_NUDGE_MS = 100;     // bad-crc cc frame -> re-drive
     private static final long PACKDATA_ERR_RETRY_MS = 200;// PACKDATA error -> retry packet
-    // Inter-frame floor for the write pump. Writes are with-response (self-paced by the connection
-    // interval), so a small floor is enough; the original schedules PACKDATA frames spValue=30 ms
-    // apart. HIGH connection priority + this floor keeps the whole flash well under the 30-min budget.
-    private static final long INTERFRAME_MS = 10;
+    // Inter-frame delay for the write pump = the original app's spValue default (30 ms). The writes
+    // are no-response (fire-and-forget at the ATT layer), so this floor prevents overrunning the
+    // bootloader; the RF connection interval caps the real rate anyway (~60 ms/frame on hardware).
+    private static final long INTERFRAME_MS = 30;
+    // Per-packet stall watchdog: if a packet gets no PACKDATA response within this many 5 s ticks,
+    // re-drive it (resend PACKINFO). MAX packet re-drives before giving up.
+    private static final int PACKET_STALL_TICKS = 2;      // ~10 s of no response -> re-drive
+    private static final int PACKET_MAX_RETRIES = 5;
     // Safety cap on the auto-restart-from-START recovery so a persistently failing flash cannot loop
     // forever (the original relies only on the 30-min watchdog).
     private static final int MAX_RESTARTS = 2;
@@ -131,6 +135,7 @@ final class OtaEngine {
     private int backIndex = 0;                // current packet
     private int retryCount = 0;               // START resend counter
     private int restarts = 0;
+    private int packetRetries = 0;            // re-drives of the current packet (stall recovery)
     private boolean hasBreak = false;         // a PACKDATA error stalls the current burst
 
     // outbound write pump
@@ -457,6 +462,7 @@ final class OtaEngine {
 
         if (match(idHi, idLo, config.START_RESP) && status == 0x55) {
             // START accepted.
+            host.log("Update start accepted");
             upGradeState = 3;
             armGlobalWatchdog();
             cancel(stepResend);
@@ -464,8 +470,10 @@ final class OtaEngine {
             return;
         }
         if (match(idHi, idLo, config.INFO_RESP)) {
+            host.log("Info accepted - sending " + packets.size() + " packets");
             cancel(stepResend);
             backIndex = 0;
+            packetRetries = 0;
             reportProgress("Sending");
             sendPackInfo();
             return;
@@ -478,12 +486,18 @@ final class OtaEngine {
         if (match(idHi, idLo, config.PACKDATA_RESP)) {
             if (status == 0xaa) {
                 backIndex++;
+                packetRetries = 0;
                 sendNextBack();
             } else {
                 // reason: 01 = receive timeout, 02 = frame loss, 03 = flash write fail
-                host.log("Packet error (" + Integer.toHexString(status) + "/" + Integer.toHexString(reason)
-                        + ") - retrying");
+                host.log("Packet " + (backIndex + 1) + " error (" + Integer.toHexString(status) + "/"
+                        + Integer.toHexString(reason) + ")");
                 hasBreak = true;
+                if (packetRetries >= PACKET_MAX_RETRIES) {
+                    fail("Packet " + (backIndex + 1) + "/" + packets.size() + " failed repeatedly - aborting");
+                    return;
+                }
+                packetRetries++;
                 main.postDelayed(this::sendNextBack, PACKDATA_ERR_RETRY_MS);
             }
             return;
@@ -561,12 +575,24 @@ final class OtaEngine {
         reportProgress("Sending");
         if (backIndex < packets.size()) {
             sendPackInfo();
-            // stuck-recovery: if a packet stalls (hasBreak), re-drive it every 5 s.
+            // Per-packet stall watchdog. Ticks every 5 s and re-drives this packet if it errored
+            // (hasBreak) or got no PACKDATA response within PACKET_STALL_TICKS. A stale tick (the
+            // packet already advanced) no-ops. After PACKET_MAX_RETRIES on one packet, give up.
+            final int pkt = backIndex;
             stuckTimer = new Runnable() {
+                int ticks = 0;
                 @Override public void run() {
-                    if (!running) return;
-                    if (hasBreak) sendNextBack();
-                    else main.postDelayed(this, STUCK_RECOVERY_MS);
+                    if (!running || backIndex != pkt) return;   // packet advanced -> stale timer
+                    boolean stalled = hasBreak || (++ticks >= PACKET_STALL_TICKS);
+                    if (!stalled) { main.postDelayed(this, STUCK_RECOVERY_MS); return; }
+                    if (packetRetries >= PACKET_MAX_RETRIES) {
+                        fail("Packet " + (pkt + 1) + "/" + packets.size()
+                                + " got no response - is the scooter on and in range?");
+                        return;
+                    }
+                    packetRetries++;
+                    host.log("Packet " + (pkt + 1) + " stuck - re-sending (attempt " + (packetRetries + 1) + ")");
+                    sendNextBack();   // re-drive the same packet (backIndex unchanged)
                 }
             };
             main.postDelayed(stuckTimer, STUCK_RECOVERY_MS);

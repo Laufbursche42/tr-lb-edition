@@ -588,8 +588,19 @@ html, body {
 .fw-badge { display: inline-block; min-width: 16px; text-align: center; padding: 1px 6px; border-radius: 999px; font-size: 11px; font-weight: 700; }
 .fw-badge.ok { background: color-mix(in srgb, var(--ble) 22%, transparent); color: var(--ble); }
 .fw-badge.warn { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); }
-#btn-fw-start { background: var(--danger); color: #fff; font-weight: 600; }
-#btn-fw-start:disabled { background: var(--border); color: var(--label); }
+/* Firmware page action buttons - same action-button language as #btn-scan / .gs-save-btn:
+   full width, 12px pad, 9px radius, 14/700 type. Pick = neutral card, Start = primary fill,
+   Cancel = destructive outline. */
+#btn-fw-pick, #btn-fw-start, #btn-fw-cancel {
+  width: 100%; padding: 12px; border-radius: 9px; border: 1px solid var(--border);
+  font-size: 14px; font-weight: 700; cursor: pointer; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+#btn-fw-pick   { background: var(--card); color: var(--text); }
+#btn-fw-start  { background: var(--btnfill); color: #0A0C10; border-color: var(--btnfill); }
+#btn-fw-cancel { background: var(--bg); color: var(--danger); border-color: var(--danger); }
+#btn-fw-start:disabled { background: var(--border); color: var(--label); border-color: var(--border); cursor: default; }
+#btn-fw-pick:active, #btn-fw-start:active, #btn-fw-cancel:active { opacity: .75; }
 .fw-bar { height: 12px; border-radius: 999px; background: var(--border); overflow: hidden; }
 #fw-bar-fill { height: 100%; width: 0; background: var(--ble); transition: width .25s ease; }
 #fw-progress-text { font-size: 13px; font-weight: 600; text-align: center; margin: 6px 0; font-variant-numeric: tabular-nums; }
@@ -870,7 +881,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <button id="btn-connect-scooter"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="vertical-align:-2px;fill:currentColor"><path d="M17.71 7.71 12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z"/></svg> Connect scooter</button>
     <div class="settings-row-sublabel" style="margin:6px 0 10px">Scan and connect over Bluetooth</div>
     <button id="btn-scooter-settings">&#9881; Scooter settings</button>
-    <div class="settings-row-sublabel" style="margin:6px 0 10px">Speed limit, gears, currents, cruise, timers (scooter must be connected)</div>
+    <div class="settings-row-sublabel" style="margin:6px 0 10px">Power limit, gears, currents, cruise, timers (scooter must be connected)</div>
     <button id="btn-error-reports">&#9888; Read error reports</button>
     <div class="settings-row-sublabel" style="margin:6px 0 10px">Active scooter faults and battery warnings (scooter must be connected)</div>
     <button id="btn-info">&#8505; Scooter info</button>
@@ -1012,7 +1023,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     </div>
 
     <!-- Per-gear (assist) settings - mirrors the original app's per-gear assistList
-         (0 speed limit, 1 EABS, 2 front start, 3 rear start, 4 front current, 5 rear current). -->
+         (0 power limit, 1 EABS, 2 front start, 3 rear start, 4 front current, 5 rear current). -->
     <div class="section-hdr sub-hdr">Per-gear settings</div>
     <div class="settings-group" style="padding-top:4px">
       <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:8px">
@@ -1031,9 +1042,9 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
         </div>
       </div>
       <div class="settings-row">
-        <div class="settings-row-left"><div class="settings-row-label">Speed limit</div><div class="settings-row-sublabel">Per-gear (km/h)</div></div>
+        <div class="settings-row-left"><div class="settings-row-label">Power limit</div><div class="settings-row-sublabel">Per-gear (%)</div></div>
         <button type="button" class="set-help" data-set-help="gear-speed" aria-label="What is this?">?</button>
-        <input class="set-ctrl" id="gs-speed" type="number" min="0" max="127" step="1" inputmode="numeric">
+        <input class="set-ctrl" id="gs-speed" type="number" min="0" max="100" step="1" inputmode="numeric">
       </div>
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label">EABS level</div><div class="settings-row-sublabel">0-5 · recuperation</div></div>
@@ -1070,9 +1081,9 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <div class="section-hdr sub-hdr">Speed &amp; drive</div>
     <div class="settings-group" style="padding-top:4px">
       <div class="settings-row">
-        <div class="settings-row-left"><div class="settings-row-label">Main speed limit</div><div class="settings-row-sublabel">km/h</div></div>
+        <div class="settings-row-left"><div class="settings-row-label">Main power limit</div><div class="settings-row-sublabel">%</div></div>
         <button type="button" class="set-help" data-set-help="ss-speed" aria-label="What is this?">?</button>
-        <input class="set-ctrl" id="ss-speed" type="number" min="1" max="120" step="1" inputmode="numeric">
+        <input class="set-ctrl" id="ss-speed" type="number" min="0" max="100" step="1" inputmode="numeric">
       </div>
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label">Gear</div></div>
@@ -1705,14 +1716,14 @@ const SETTINGS_HELP = {
   "gps-auto": { title: "GPS auto start", text: "Automatically starts recording a GPS track when the scooter connects, so you don't have to start it by hand." },
   "gps-interval": { title: "GPS interval", text: "How often a GPS point is stored for the track. A larger interval saves battery and storage; a smaller one records a more detailed route." },
   "debug-mode": { title: "Debug mode", text: "Turns on persistent in-app logging (a red banner shows while it is active). Use 'Export debug logs' to share the log if something goes wrong - no PC or adb needed." },
-  "gear-profile": { title: "Gear / assist profile", text: "Selects which gear you are editing below. On eKFV units the internal gears 2, 3 and 4 are shown as 1, 2 and 3 on the scooter's own display. Each gear stores its own speed limit, recuperation and start levels, so you can make e.g. one gear gentle and another sporty. IMPORTANT: if a gear's values are missing here, switch through all gears once on the scooter - the firmware only ever sends the CURRENTLY active gear to the app, so each gear has to be active once to be read. Values are read live and are NOT stored on the phone (stale values must never be written back). Edits apply to the selected gear only and are written when you press Save gear." },
-  "gear-speed": { title: "Speed limit (per gear)", text: "Top speed allowed in THIS gear, in km/h. Lower gears are usually capped lower for a calmer ride.\n\nNOTE (eKFV): on the eKFV version every gear is hard-capped at 22 km/h - values above 22 have no effect." },
+  "gear-profile": { title: "Gear / assist profile", text: "Selects which gear you are editing below. On eKFV units the internal gears 2, 3 and 4 are shown as 1, 2 and 3 on the scooter's own display. Each gear stores its own power limit, recuperation and start levels, so you can make e.g. one gear gentle and another sporty. IMPORTANT: if a gear's values are missing here, switch through all gears once on the scooter - the firmware only ever sends the CURRENTLY active gear to the app, so each gear has to be active once to be read. Values are read live and are NOT stored on the phone (stale values must never be written back). Edits apply to the selected gear only and are written when you press Save gear." },
+  "gear-speed": { title: "Power limit (per gear)", text: "Power output allowed in THIS gear, in percent (0-100). At 100 the motor gives full power in this gear; at 50 it is limited to 50%. This is NOT a km/h speed cap - it scales how much power the gear delivers. Lower gears are usually set lower for a calmer ride." },
   "gear-eabs": { title: "EABS level (per gear)", text: "Strength of the electronic regenerative brake (recuperation) in this gear. Higher = stronger motor braking when you release the throttle and more energy fed back to the battery; 0 = coast freely." },
   "gear-fstart": { title: "Front start level (per gear)", text: "How aggressively the FRONT motor pulls away from a standstill in this gear. Higher = punchier launch; lower = smoother, gentler start." },
   "gear-rstart": { title: "Rear start level (per gear)", text: "How aggressively the REAR motor pulls away from a standstill in this gear. Higher = punchier launch; lower = smoother." },
   "gear-fcur": { title: "Front current (per gear)", text: "Maximum current to the FRONT motor in this gear, which sets its torque/power ceiling. Higher = more power (and more heat and battery draw)." },
   "gear-rcur": { title: "Rear current (per gear)", text: "Maximum current to the REAR motor in this gear. Higher = more power; lower limits torque for a tamer gear." },
-  "ss-speed": { title: "Main speed limit", text: "The overall top-speed cap for the scooter in km/h, independent of the per-gear limits. The scooter will not assist beyond this.\n\nNOTE (eKFV): the top speed is hard-capped at 22 km/h on the eKFV version - values above 22 have no effect (the controller forces 22)." },
+  "ss-speed": { title: "Main power limit", text: "The overall power cap for the scooter in percent (0-100), independent of the per-gear limits. At 100 the scooter gives full power; lower values scale it down (50 = 50%). This is NOT a km/h speed cap." },
   "ss-gear": { title: "Gear", text: "Read-only - shows the currently active gear. On eKFV units the internal gears 2/3/4 appear as 1/2/3 on the scooter display. The gear is switched with the physical gear button on the scooter, not from the app." },
   "ss-start": { title: "Start mode", text: "How the scooter begins moving. 'Kick start' needs a push to start assisting (zero-start off); 'Launch' lets it pull away from a standstill on throttle alone (zero-start on)." },
   "ss-cruise": { title: "Cruise control", text: "Off = no cruise. Manual = you activate cruise yourself (holding a steady speed/button). Auto = the scooter holds speed automatically after a few seconds of constant throttle.\n\nNOTE (eKFV): cruise control cannot be changed on the eKFV version - the controller write-protects it, so this setting has no effect." },
@@ -1853,6 +1864,13 @@ function updateBLEUI(data) {
 
   // Speed
   setTxt('ble-speed', convSpeed(data.speed));
+  // VCU speed colour = FIN lock state: red when the FIN has NO "TDE" (Gate 1 off / speed unlocked),
+  // default green when "TDE" is present (locked). Triple-tap the VCU tile to toggle (toggleFinLock).
+  {
+    const finU = ((liveRaw().btName || '') + '').toUpperCase();
+    const spEl = document.getElementById('ble-speed');
+    if (spEl) spEl.style.color = (finU && !finU.includes('TDE')) ? 'var(--danger)' : '';
+  }
   setTxt('dg-avg', `${convSpeed(data.avgSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
   setTxt('dg-max', `${convSpeed(data.maxSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
 
@@ -2828,6 +2846,31 @@ function setBleName() {
   catch (e) { showToast('Error: ' + e); }
 }
 
+/* Hidden gesture on the VCU speed tile: triple-tap toggles the Gate-1 speed lock by removing/adding
+   "DE" in the FIN (cmd 0x1f). On the Gate-2-patched firmware the FIN is the live speed lock, so this
+   is an instant lock/unlock. Locked FIN starts with "TDE" -> remove the "DE" ("TDE.." -> "T..") to
+   unlock; add it back to re-lock. The tile colour (updateBLEUI) shows the state. */
+let _finTapCount = 0, _finTapTimer = null;
+function onVcuTileTap() {
+  _finTapCount++;
+  clearTimeout(_finTapTimer);
+  if (_finTapCount >= 3) { _finTapCount = 0; toggleFinLock(); return; }
+  _finTapTimer = setTimeout(() => { _finTapCount = 0; }, 700);
+}
+function toggleFinLock() {
+  if (typeof LB === 'undefined' || !LB.setBleName) { showToast('Only available in the app'); return; }
+  if (!state.bleConnected) { showToast('Connect the scooter first', 3000, 'err'); return; }
+  const fin = ((liveRaw().btName || '') + '').trim();
+  if (!fin) { showToast('FIN not read yet - open Scooter info once', 3500, 'err'); return; }
+  const up = fin.toUpperCase();
+  let next, msg;
+  if (up.startsWith('TDE')) { next = 'T' + fin.slice(3); msg = 'Unlocking - removing DE from the FIN'; }
+  else if (up.startsWith('T')) { next = 'TDE' + fin.slice(1); msg = 'Locking - restoring DE in the FIN'; }
+  else { next = 'TDE' + fin; msg = 'Locking - restoring DE in the FIN'; }
+  try { LB.setBleName(next); showToast(msg + ' (scooter renames and reconnects)', 4000); }
+  catch (e) { showToast('Error: ' + e); }
+}
+
 // Copy the Bluetooth advertised name (from live BLE data) to the Android clipboard.
 function copyBtName() {
   const bt = liveRaw().btName;
@@ -3644,6 +3687,10 @@ function wireEvents() {
   });
   const mqSmart = document.querySelector('#motor-quick .mq-smart');
   if (mqSmart) mqSmart.addEventListener('click', toggleSmartMain);
+
+  // Hidden gesture: triple-tap the VCU speed tile to toggle the FIN speed lock (add/remove "DE").
+  const vcuTile = document.querySelector('#speed-row .ble-drum');
+  if (vcuTile) vcuTile.addEventListener('click', onVcuTileTap);
 
   // Version Info & Disclaimer (side-menu footer): open the modal (Close / backdrop / Escape).
   document.getElementById('btn-version-info').addEventListener('click', () => {

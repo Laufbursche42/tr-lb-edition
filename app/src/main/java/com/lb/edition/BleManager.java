@@ -736,6 +736,33 @@ final class BleManager {
         }
     }
 
+    /**
+     * OTA characteristic write - forces WRITE_TYPE_NO_RESPONSE (falling back to default only if the
+     * characteristic cannot do no-response). The VCU bootloader flashes with no-response writes just
+     * like the original app; write-with-response is NOT sustained by the bootloader's minimal ATT
+     * stack across a whole flash (after a few hundred writes it stops ACKing and a with-response
+     * pump stalls waiting for the completion callback). No-response is fire-and-forget at the ATT
+     * layer, which is what the bootloader expects.
+     */
+    private boolean doWriteOta(byte[] frame) {
+        try {
+            BluetoothGatt g = gatt;
+            BluetoothGattCharacteristic wc = writeChar;
+            if (g == null || wc == null || frame == null) return false;
+            int props = wc.getProperties();
+            if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) {
+                wc.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+            } else {
+                wc.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+            }
+            wc.setValue(frame);
+            return g.writeCharacteristic(wc);
+        } catch (Throwable t) {
+            Log.e(TAG, "doWriteOta failed", t);
+            return false;
+        }
+    }
+
     // ── High-level commands (from the JS bridge) ──
 
     void sendSetting(String json) {
@@ -871,7 +898,7 @@ final class BleManager {
     private final OtaEngine.Host otaHost = new OtaEngine.Host() {
         @Override
         public boolean writeFrame(byte[] frame) {
-            return doWrite(frame);   // reuse the same characteristic write (with-response) path
+            return doWriteOta(frame);   // OTA path: write WITHOUT response (matches the original app)
         }
 
         @Override
