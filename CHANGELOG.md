@@ -14,6 +14,10 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.0.7
+
+- Firmware update: fixed the flash always aborting around the 4th or 5th packet with "No response to the update request". The internal start-retry loop was not stopped once the controller accepted the start, so it kept counting in the background and aborted the flash after about ten seconds. The flash now runs to the end.
+
 ## 1.0.6
 
 - Firmware update: reworked the flash to match the original app exactly, which fixes it stalling after a few packets on some controllers. Data packets now go out fire-and-forget at a fixed pace (no waiting on write acknowledgements) and the app no longer requests a fast connection interval.

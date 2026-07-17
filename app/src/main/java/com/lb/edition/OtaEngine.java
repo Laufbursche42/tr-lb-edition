@@ -460,7 +460,11 @@ final class OtaEngine {
         int idHi = n[0], idLo = n[1], status = n[2], reason = n[3];
 
         if (match(idHi, idLo, config.START_RESP) && status == 0x55) {
-            // START accepted.
+            // START accepted. Stop the START-retry loop (the original clears its timer here) - if it
+            // is left running it keeps re-sending START every 1 s in the background and, after 10
+            // tries (~10 s = about packet 4-5), aborts the flash with "No response to the update
+            // request". THIS was the deterministic packet-4/5 abort, independent of write pacing.
+            cancel(startRetry);
             host.log("Update start accepted");
             upGradeState = 3;
             armGlobalWatchdog();
