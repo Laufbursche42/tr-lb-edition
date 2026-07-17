@@ -46,6 +46,25 @@ final class CommandBuilder {
         return crc & 0xFF;
     }
 
+    // ── CRC-16 / MODBUS (poly 0xA001, init 0xFFFF, reflected) - firmware-image integrity ──
+
+    /**
+     * CRC-16/MODBUS over {@code data[0..len-1]}: polynomial 0xA001 (reflected 0x8005), init 0xFFFF,
+     * refin/refout true, no final XOR. Replicates the original app's getCrc()/CRC16() from the
+     * OTA bundle EXACTLY (utils/upgrade.js). Returned as a 0..0xFFFF int; the OTA INFO frame and the
+     * file-trailer integrity check transmit it big-endian (hi = (crc>>8)&0xFF, lo = crc&0xFF).
+     */
+    static int crc16Modbus(byte[] data, int len) {
+        int crc = 0xFFFF;
+        for (int i = 0; i < len; i++) {
+            crc ^= (data[i] & 0xFF);
+            for (int n = 0; n < 8; n++) {
+                crc = ((crc & 1) != 0) ? ((crc >>> 1) ^ 0xA001) : (crc >>> 1);
+            }
+        }
+        return crc & 0xFFFF;
+    }
+
     // ── Bit helpers (as documented, BLE_PROTOCOL §3.4 / §5) ──
 
     /** LSB-first: index 0 = bit0. value = sum(bits[i] << i). */

@@ -25,7 +25,10 @@ import androidx.core.content.FileProvider;
 
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,6 +46,13 @@ public class MainActivity extends Activity {
 
     private static final String TAG = "lbedition";
     private static final int REQ_PERMS = 4711;
+    private static final int REQ_OTA_FILE = 4712;
+
+    // Picked firmware file, held natively until the user starts the flash (never round-trips through
+    // JS - only its metadata does). Guarded by the main thread (set in onActivityResult, read in the
+    // otaStart bridge). max ~200 KB of hex text.
+    private volatile String otaHexText = null;
+    private volatile String otaFileName = null;
 
     private WebView webView;
     private BleManager ble;
@@ -195,6 +205,25 @@ public class MainActivity extends Activity {
                 Log.e(TAG, "ride live-data wiring failed", t);
             }
         }
+
+        // ── Firmware update (OTA) -> WebView ──
+        @Override
+        public void onOtaProgress(String json) {
+            if (json == null) return;
+            runJs("(function(){try{if(window.__onOtaProgress)window.__onOtaProgress(" + json + ");}catch(e){}})();");
+        }
+
+        @Override
+        public void onOtaLog(String line) {
+            String q = org.json.JSONObject.quote(line == null ? "" : line);
+            runJs("(function(){try{if(window.__onOtaLog)window.__onOtaLog(" + q + ");}catch(e){}})();");
+        }
+
+        @Override
+        public void onOtaState(String json) {
+            if (json == null) return;
+            runJs("(function(){try{if(window.__onOtaState)window.__onOtaState(" + json + ");}catch(e){}})();");
+        }
     };
 
     // ── Runtime permissions ──
@@ -229,6 +258,65 @@ public class MainActivity extends Activity {
             for (int i = 0; i < permissions.length; i++) {
                 Log.i(TAG, "perm " + permissions[i] + " -> " + grantResults[i]);
             }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQ_OTA_FILE) return;
+        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
+            pushOtaFile("{\"ok\":false,\"cancelled\":true}");
+            return;
+        }
+        Uri uri = data.getData();
+        try {
+            String name = queryDisplayName(uri);
+            byte[] bytes = readAllBytes(uri);
+            // Intel-HEX is ASCII; the original reads it as Latin-1 (byte -> char). Match that so the
+            // trailer/line parsing is byte-identical.
+            String text = new String(bytes, StandardCharsets.ISO_8859_1);
+            otaHexText = text;
+            otaFileName = name;
+            // Report parsed metadata (no BLE, no side effects) so the UI can show version/CRC/target.
+            String meta = OtaEngine.inspect(text, name);
+            pushOtaFile(meta);
+        } catch (Throwable t) {
+            Log.e(TAG, "ota file read failed", t);
+            otaHexText = null;
+            otaFileName = null;
+            pushOtaFile("{\"ok\":false,\"error\":\"read failed\"}");
+        }
+    }
+
+    /** Push the picked-file metadata (JSON) to the WebView (window.__onOtaFile). */
+    private void pushOtaFile(String json) {
+        runJs("(function(){try{if(window.__onOtaFile)window.__onOtaFile(" + json + ");}catch(e){}})();");
+    }
+
+    private String queryDisplayName(Uri uri) {
+        try (android.database.Cursor c = getContentResolver().query(uri, null, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                int idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                if (idx >= 0) {
+                    String n = c.getString(idx);
+                    if (n != null && !n.isEmpty()) return n;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        String last = uri.getLastPathSegment();
+        return last == null ? "firmware.hex" : last;
+    }
+
+    private byte[] readAllBytes(Uri uri) throws Exception {
+        try (InputStream in = getContentResolver().openInputStream(uri)) {
+            if (in == null) throw new Exception("no stream");
+            ByteArrayOutputStream out = new ByteArrayOutputStream(131072);
+            byte[] buf = new byte[8192];
+            int r;
+            while ((r = in.read(buf)) != -1) out.write(buf, 0, r);
+            return out.toByteArray();
         }
     }
 
@@ -390,6 +478,63 @@ public class MainActivity extends Activity {
                 if (ble != null) ble.setBleName(name);
             } catch (Throwable t) {
                 Log.e(TAG, "setBleName bridge failed", t);
+            }
+        }
+
+        // ── Firmware update (OTA) ──
+
+        /** Open the system file picker to choose a firmware .hex; result comes back via __onOtaFile. */
+        @JavascriptInterface
+        public void otaPickFile() {
+            Log.i(TAG, "LB.otaPickFile()");
+            runOnUiThread(() -> {
+                try {
+                    Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("*/*");   // .hex has no registered MIME; accept any and parse/validate it
+                    startActivityForResult(i, REQ_OTA_FILE);
+                } catch (Throwable t) {
+                    Log.e(TAG, "otaPickFile failed", t);
+                    pushOtaFile("{\"ok\":false,\"error\":\"no file picker\"}");
+                }
+            });
+        }
+
+        /** Begin flashing the previously picked firmware file. Progress via __onOtaProgress/State/Log. */
+        @JavascriptInterface
+        public void otaStart() {
+            Log.i(TAG, "LB.otaStart()");
+            try {
+                final String text = otaHexText;
+                final String name = otaFileName;
+                if (text == null || text.isEmpty()) {
+                    runJs("(function(){try{if(window.__onOtaState)window.__onOtaState({state:'failed',message:'Pick a firmware file first'});}catch(e){}})();");
+                    return;
+                }
+                if (ble != null) ble.startOta(text, name);
+            } catch (Throwable t) {
+                Log.e(TAG, "otaStart failed", t);
+            }
+        }
+
+        /** Abort a running flash. The controller stays in bootloader receive-mode (re-flashable). */
+        @JavascriptInterface
+        public void otaCancel() {
+            Log.i(TAG, "LB.otaCancel()");
+            try {
+                if (ble != null) ble.cancelOta();
+            } catch (Throwable t) {
+                Log.e(TAG, "otaCancel failed", t);
+            }
+        }
+
+        /** @return true while a firmware flash is in progress. */
+        @JavascriptInterface
+        public boolean isOtaActive() {
+            try {
+                return ble != null && ble.isOtaActive();
+            } catch (Throwable t) {
+                return false;
             }
         }
 

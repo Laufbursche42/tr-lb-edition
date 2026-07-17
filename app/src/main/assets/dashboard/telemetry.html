@@ -555,18 +555,50 @@ html, body {
   border-radius: 8px; padding: 8px; font-family: monospace; }
 
 /* ── Connect / Scooter-settings subpages (reuse the streaming-page pattern) ── */
-#connect-page, #scooter-page, #error-reports-page, #info-page {
+#connect-page, #scooter-page, #error-reports-page, #info-page, #firmware-page {
   position: fixed; inset: 0; z-index: 120; background: var(--bg);
   display: flex; flex-direction: column;
   transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
 }
-#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open { transform: translateX(0); }
-#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller {
+#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #firmware-page.open { transform: translateX(0); }
+#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #firmware-scroller {
   flex: 1; min-height: 0; overflow-y: auto; padding: var(--gap);
   display: flex; flex-direction: column; gap: 4px;
   padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px) + 12px);
 }
-#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > * { flex-shrink: 0; }
+#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > *, #firmware-scroller > * { flex-shrink: 0; }
+
+/* Firmware update page */
+.fw-warn {
+  border: 1px solid var(--danger); border-radius: 10px; padding: 10px 12px; margin-bottom: 4px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent); font-size: 12px; line-height: 1.5;
+}
+.fw-warn b { color: var(--danger); }
+#fw-fileinfo { font-size: 12px; line-height: 1.6; margin-top: 8px; word-break: break-word; }
+#fw-fileinfo .fw-row { display: flex; justify-content: space-between; gap: 10px; }
+#fw-fileinfo .fw-k { color: var(--label); }
+.fw-checks { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.fw-check { display: flex; align-items: flex-start; gap: 8px; }
+.fw-check > span:last-child { flex: 1; }
+.fw-verdict { margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+.fw-verdict.ok  { background: color-mix(in srgb, var(--ble) 16%, transparent); color: var(--ble); }
+.fw-verdict.bad { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+#fw-override-wrap { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 10px; font-size: 12px; line-height: 1.5; color: var(--danger); }
+#fw-override-wrap input { margin-top: 2px; flex: 0 0 auto; }
+.fw-badge { display: inline-block; min-width: 16px; text-align: center; padding: 1px 6px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.fw-badge.ok { background: color-mix(in srgb, var(--ble) 22%, transparent); color: var(--ble); }
+.fw-badge.warn { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); }
+#btn-fw-start { background: var(--danger); color: #fff; font-weight: 600; }
+#btn-fw-start:disabled { background: var(--border); color: var(--label); }
+.fw-bar { height: 12px; border-radius: 999px; background: var(--border); overflow: hidden; }
+#fw-bar-fill { height: 100%; width: 0; background: var(--ble); transition: width .25s ease; }
+#fw-progress-text { font-size: 13px; font-weight: 600; text-align: center; margin: 6px 0; font-variant-numeric: tabular-nums; }
+#fw-phase { font-size: 12px; color: var(--label); text-align: center; }
+#fw-log {
+  margin-top: 6px; font-family: monospace; font-size: 11px; line-height: 1.6;
+  background: var(--card, var(--border)); border-radius: 8px; padding: 8px 10px;
+  max-height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+}
 
 /* Error report rows */
 .err-item {
@@ -843,6 +875,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <div class="settings-row-sublabel" style="margin:6px 0 10px">Active scooter faults and battery warnings (scooter must be connected)</div>
     <button id="btn-info">&#8505; Scooter info</button>
     <div class="settings-row-sublabel" style="margin:6px 0 10px">Serial number, firmware and app versions</div>
+    <button id="btn-firmware">&#8681; Firmware update</button>
+    <div class="settings-row-sublabel" style="margin:6px 0 10px">Flash a controller .hex over Bluetooth (scooter must be connected)</div>
     <button id="btn-navigation">&#129517; Navigation</button>
     <div class="settings-row-sublabel" style="margin:6px 0 10px">Open the navigation screen</div>
     <button id="btn-open-routes">&#128506; Saved routes<span id="routes-count-badge"></span></button>
@@ -1279,6 +1313,52 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       <div class="settings-row-sublabel" style="margin:8px 0 0">View the exported CSV/JSON as graphs with the <span onclick="openExt('https://github.com/Laufbursche42/leat')" style="color:var(--ble);text-decoration:underline;cursor:pointer">Laufbursche Edition Analysis Tool (leat)</span>.</div>
       <div class="settings-row-sublabel" style="margin:10px 0 6px">Last 3 rides</div>
       <div id="ridelog-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Firmware update page ───────────────────────── -->
+<div id="firmware-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-firmware-back" aria-label="Back">&#8592;</button>
+    </div>
+    <span class="tb-title">Firmware update</span>
+    <div class="tb-right"><span style="width:40px"></span></div>
+  </div>
+  <div id="firmware-scroller">
+    <div class="fw-warn">
+      <b>Read this first.</b> Flashing controller firmware over Bluetooth takes about 13 minutes.
+      During the update: keep the scooter switched on and within range, keep this app in the
+      foreground (the screen stays on), and do not turn the scooter off. If the flash is interrupted
+      the controller stays in update mode and can simply be flashed again - it is not bricked. Only
+      flash a .hex that matches your controller.
+    </div>
+
+    <div class="settings-group" style="padding-top:6px">
+      <div class="settings-group-title">Firmware file</div>
+      <button id="btn-fw-pick">&#128193; Choose firmware file (.hex)</button>
+      <div id="fw-fileinfo">No file selected.</div>
+    </div>
+
+    <div class="settings-group" style="border-top:1px solid var(--border)">
+      <label id="fw-override-wrap" style="display:none">
+        <input type="checkbox" id="fw-override">
+        <span>The compatibility check did not pass. I am sure this is the right firmware for this controller - flash anyway.</span>
+      </label>
+      <button id="btn-fw-start" disabled>Start update</button>
+      <div class="settings-row-sublabel" id="fw-start-hint" style="margin:6px 0 0">
+        Choose a valid firmware file and connect the scooter to enable the update.
+      </div>
+
+      <div id="fw-progress-wrap" style="display:none;margin-top:12px">
+        <div class="fw-bar"><div id="fw-bar-fill"></div></div>
+        <div id="fw-progress-text">0%</div>
+        <div id="fw-phase">Preparing</div>
+        <button id="btn-fw-cancel" style="margin-top:10px">Cancel update</button>
+      </div>
+
+      <div id="fw-log" style="display:none"></div>
     </div>
   </div>
 </div>
@@ -2900,6 +2980,263 @@ function closeInfoPage() {
   _infoTimer = null;
 }
 
+/* ── Firmware update (OTA) ────────────────────────────────── */
+/* Native OtaEngine drives the flash; this only picks a file, shows the pre-flight check and renders
+   progress/log/state pushed back via window.__onOta*. The flash keeps running natively even if this
+   page is closed (the app-wide FLAG_KEEP_SCREEN_ON keeps the screen awake throughout). */
+
+const fwState = { meta: null, compat: null, running: false };
+
+function openFirmwarePage() {
+  let active = false;
+  try { active = (typeof LB !== 'undefined' && LB.isOtaActive && LB.isOtaActive()); } catch (e) {}
+  if (active) {
+    // A flash is already running (page was reopened) - restore the in-progress view, keep the log.
+    fwState.running = true;
+    const pw = document.getElementById('fw-progress-wrap'); if (pw) pw.style.display = 'block';
+  } else {
+    fwState.running = false;
+    fwState.meta = null;
+    fwResetUi();
+  }
+  document.getElementById('firmware-page').classList.add('open');
+  fwSyncStartEnabled();
+}
+function closeFirmwarePage() {
+  document.getElementById('firmware-page').classList.remove('open');
+}
+
+function fwResetUi() {
+  const info = document.getElementById('fw-fileinfo'); if (info) info.textContent = 'No file selected.';
+  const ov = document.getElementById('fw-override'); if (ov) ov.checked = false;
+  const ovw = document.getElementById('fw-override-wrap'); if (ovw) ovw.style.display = 'none';
+  const bar = document.getElementById('fw-bar-fill'); if (bar) bar.style.width = '0%';
+  const pt = document.getElementById('fw-progress-text'); if (pt) pt.textContent = '0%';
+  const ph = document.getElementById('fw-phase'); if (ph) ph.textContent = 'Preparing';
+  const pw = document.getElementById('fw-progress-wrap'); if (pw) pw.style.display = 'none';
+  const log = document.getElementById('fw-log'); if (log) { log.textContent = ''; log.style.display = 'none'; }
+}
+
+function fwPick() {
+  if (typeof LB === 'undefined' || !LB.otaPickFile) { showToast('Only available in the app'); return; }
+  try { LB.otaPickFile(); } catch (e) { showToast('Error: ' + e); }
+}
+
+/* The original app's isComplyRules, filename only: whether the ORIGINAL app would accept this name.
+   Kept faithful (AWVCU/AWIVCU prefix; split("_")[2] generation digit; TDE -> "5"). */
+function fwNameGate(meta, isTde, swVer) {
+  const up = (meta.name || '').toUpperCase();
+  const isDigit = c => c >= '0' && c <= '9';
+  if (up.startsWith('AWE')) return true;                     // BMS file
+  if (!(up.startsWith('AWVCU') || up.startsWith('AWIVCU'))) return false;
+  const seg = (meta.name || '').split('_')[2] || '';
+  const a = seg.slice(-2, -1), o = seg.slice(-1);
+  if (isTde) return (!isDigit(a) && isDigit(o) && o === '5');
+  if (swVer.startsWith('2')) return (!isDigit(a) && o === '2');
+  if (swVer.startsWith('3') || swVer.startsWith('4')) return (!isDigit(a) && (o === '3' || o === '4'));
+  return true;                                               // other SW -> fallback (as in the app)
+}
+
+/* Multi-signal compatibility verdict. The controller bootloader itself does NOT check model/version
+   (only CRC + address range), so this is the real guard against flashing the wrong firmware. It is
+   content-based where possible (trailer version vs the installed version, target address) so it is
+   both safer AND less brittle than the original filename-only gate.
+   Returns { ok, noOverride, checks:[{ok,crit,noOverride,label,detail}] }.
+   - crit checks decide `ok`; a failing crit check with noOverride (CRC) can never be flashed.
+   - non-crit checks (filename) are informational only. */
+function fwCompat(meta) {
+  const d = liveRaw();
+  const swVer = (d.swVer || '') + '';
+  const devMajor = swVer ? parseInt(swVer.split('.')[0], 10) : NaN;
+  const isTde = ((d.btName || '') + '').toUpperCase().startsWith('TDE');
+  const checks = [];
+
+  // 1) Integrity (native-computed). Critical; a corrupt file is never flashable (no override).
+  checks.push({ ok: !!meta.crcOk, crit: true, noOverride: true,
+    label: meta.crcOk ? 'Integrity OK' : 'Integrity failed (CRC mismatch)',
+    detail: meta.crcOk ? 'File data matches its own CRC.' : 'The file is corrupt or was altered without a valid CRC - it cannot be flashed.' });
+
+  // 2) App image: a VCU app starts at flash 0x08007000 (offset 0x7000); anything below is the
+  //    protected bootloader. Critical (the native engine also hard-refuses this).
+  const addrOk = meta.targetIsVcu ? (meta.firstAddr >= 0x7000 && meta.firstAddr < 0x20000) : true;
+  checks.push({ ok: addrOk, crit: true,
+    label: addrOk ? 'Controller app image' : 'Not a controller app image',
+    detail: addrOk ? 'Targets the controller app region.'
+      : 'First address 0x' + ((meta.firstAddr>>>0).toString(16)) + ' is outside the app region - this is not controller app firmware.' });
+
+  // 3) Type: we are connected to the VCU. A BMS (AWE) file is battery firmware. Critical.
+  checks.push({ ok: !!meta.targetIsVcu, crit: true,
+    label: meta.targetIsVcu ? 'Controller (VCU) firmware' : 'Battery (BMS) firmware',
+    detail: meta.targetIsVcu ? '' : 'This is BMS (battery) firmware, not controller firmware. The controller will not accept it.' });
+
+  // 4) Generation: content-based major-version match (name-independent). Falls back to the filename
+  //    gate only when the installed version has not been read yet. Critical.
+  let genOk, genDetail;
+  if (!isNaN(devMajor) && meta.fileVerMajor > 0) {
+    genOk = (meta.fileVerMajor === devMajor);
+    genDetail = genOk
+      ? 'File R' + meta.fileVerMajor + ' matches the installed R' + devMajor + '.'
+      : 'File is R' + meta.fileVerMajor + ' but the scooter runs R' + devMajor + ' firmware (wrong generation).';
+  } else {
+    genOk = fwNameGate(meta, isTde, swVer);
+    genDetail = genOk
+      ? 'Installed version not read yet - filename matches the expected pattern.'
+      : 'Installed version not read yet and the filename does not identify a matching R-series file.';
+  }
+  checks.push({ ok: genOk, crit: true,
+    label: genOk ? 'Generation match' : 'Generation mismatch', detail: genDetail });
+
+  // 5) Filename (the original app's isComplyRules). Informational only - a naming quirk is not a
+  //    safety problem when the content checks above pass.
+  const nameOk = fwNameGate(meta, isTde, swVer);
+  checks.push({ ok: nameOk, crit: false,
+    label: nameOk ? 'Filename OK' : 'Filename unusual',
+    detail: nameOk ? 'The original app would accept this filename.'
+      : 'The original app would reject this filename (naming only, not a safety issue on its own).' });
+
+  const ok = checks.every(c => !c.crit || c.ok);
+  const noOverride = checks.some(c => c.noOverride && !c.ok);
+  return { ok, noOverride, checks };
+}
+
+window.__onOtaFile = function(metaArg) {
+  let m = metaArg;
+  try { if (typeof metaArg === 'string') m = JSON.parse(metaArg); } catch (e) { m = null; }
+  if (!m || m.cancelled) return;   // picker cancelled: keep whatever was there
+  const info = document.getElementById('fw-fileinfo');
+  if (!m.ok) {
+    fwState.meta = null;
+    fwState.compat = null;
+    if (info) info.innerHTML = '<span class="fw-badge warn">invalid</span> Not a readable firmware file (no valid packets or trailer).';
+    fwSyncStartEnabled();
+    return;
+  }
+  fwState.meta = m;
+  const c = fwCompat(m);
+  fwState.compat = c;
+  const kb = (m.sizeBytes / 1024).toFixed(1);
+  const rows =
+    '<div class="fw-row"><span class="fw-k">File</span><span>' + escXML(m.name) + '</span></div>' +
+    '<div class="fw-row"><span class="fw-k">Target</span><span>' + (m.targetIsVcu ? 'Controller (VCU)' : 'Battery (BMS)') + '</span></div>' +
+    '<div class="fw-row"><span class="fw-k">Version</span><span>' + escXML(m.fileVer || '-') + '</span></div>' +
+    '<div class="fw-row"><span class="fw-k">Size</span><span>' + kb + ' KB &middot; ' + m.packets + ' packets</span></div>';
+  // Compatibility checklist: one line per check with an OK / warn badge and a short explanation.
+  let list = '<div class="fw-checks">';
+  c.checks.forEach(ch => {
+    list += '<div class="fw-check">' +
+      '<span class="fw-badge ' + (ch.ok ? 'ok' : 'warn') + '">' + (ch.ok ? '&#10003;' : '!') + '</span>' +
+      '<span><b>' + escXML(ch.label) + '</b>' + (ch.detail ? ' <span style="color:var(--label)">' + escXML(ch.detail) + '</span>' : '') + '</span>' +
+      '</div>';
+  });
+  list += '</div>';
+  const verdict = c.ok
+    ? '<div class="fw-verdict ok">Compatible - ready to flash.</div>'
+    : (c.noOverride
+        ? '<div class="fw-verdict bad">This file cannot be flashed.</div>'
+        : '<div class="fw-verdict bad">Compatibility check did NOT pass. Only flash this if you are certain it is the right file.</div>');
+  if (info) info.innerHTML = rows + list + verdict;
+  fwSyncStartEnabled();
+};
+
+function fwSyncStartEnabled() {
+  const btn = document.getElementById('btn-fw-start');
+  const hint = document.getElementById('fw-start-hint');
+  const ovWrap = document.getElementById('fw-override-wrap');
+  const ov = document.getElementById('fw-override');
+  if (!btn) return;
+  const m = fwState.meta, c = fwState.compat;
+  let ok = true, msg = '', showOverride = false;
+  if (fwState.running) { ok = false; msg = 'Update in progress...'; }
+  else if (!state.bleConnected) { ok = false; msg = 'Connect the scooter first.'; }
+  else if (!m || !m.ok) { ok = false; msg = 'Choose a valid firmware file.'; }
+  else if (c && c.noOverride) { ok = false; msg = 'This file cannot be flashed (failed the integrity check).'; }
+  else if (c && !c.ok) {
+    // Compatibility mismatch (not corruption): allow an explicit, informed override.
+    showOverride = true;
+    const forced = ov && ov.checked;
+    ok = !!forced;
+    msg = forced
+      ? 'Override active - flashing despite the compatibility warning. Be sure this is the right file.'
+      : 'Compatibility check did not pass - review the warnings above.';
+  } else {
+    msg = 'Ready. The update takes about 13 minutes.';
+  }
+  if (ovWrap) ovWrap.style.display = showOverride ? 'flex' : 'none';
+  if (!showOverride && ov) ov.checked = false;
+  btn.disabled = !ok;
+  if (hint) hint.textContent = msg;
+}
+
+function fwStart() {
+  const m = fwState.meta, c = fwState.compat;
+  if (!m || !m.ok || !m.crcOk) { showToast('Choose a valid firmware file first', 3000, 'err'); return; }
+  if (!state.bleConnected) { showToast('Connect the scooter first', 3000, 'err'); return; }
+  const ov = document.getElementById('fw-override');
+  const overriding = c && !c.ok && !c.noOverride && ov && ov.checked;
+  if (c && !c.ok && !overriding) { showToast('Compatibility check did not pass', 3000, 'err'); return; }
+  document.getElementById('confirm-title').textContent = overriding ? 'Flash despite warning?' : 'Start firmware update?';
+  document.getElementById('confirm-msg').textContent =
+    (overriding
+      ? 'This file did NOT pass the compatibility check. Flashing the wrong firmware can require a recovery re-flash. Continue only if you are certain this is the right file for this controller.\n\n'
+      : '') +
+    'This flashes ' + m.name + ' to the ' + (m.targetIsVcu ? 'controller' : 'battery') +
+    ' and takes about 13 minutes. Keep the scooter on and in range and keep the app open. Do not turn the scooter off.';
+  document.getElementById('confirm-ok').textContent = overriding ? 'Flash anyway' : 'Start';
+  state.confirmCb = () => {
+    try { if (typeof LB !== 'undefined' && LB.otaStart) LB.otaStart(); }
+    catch (e) { showToast('Error: ' + e); }
+  };
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+function fwCancel() {
+  document.getElementById('confirm-title').textContent = 'Cancel the update?';
+  document.getElementById('confirm-msg').textContent =
+    'The controller will stay in update mode and must be flashed again before you ride. Cancel now?';
+  document.getElementById('confirm-ok').textContent = 'Cancel update';
+  state.confirmCb = () => { try { if (LB.otaCancel) LB.otaCancel(); } catch (e) {} };
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+function fwLog(line) {
+  const log = document.getElementById('fw-log');
+  if (!log) return;
+  log.style.display = 'block';
+  const atBottom = (log.scrollHeight - log.scrollTop - log.clientHeight) < 24;
+  log.textContent += (log.textContent ? '\n' : '') + line;
+  if (atBottom) log.scrollTop = log.scrollHeight;
+}
+
+window.__onOtaLog = function(line) { try { fwLog('' + line); } catch (e) {} };
+
+window.__onOtaProgress = function(pArg) {
+  let p = pArg;
+  try { if (typeof pArg === 'string') p = JSON.parse(pArg); } catch (e) { return; }
+  if (!p) return;
+  const pct = Math.max(0, Math.min(100, parseInt(p.percent, 10) || 0));
+  const fill = document.getElementById('fw-bar-fill'); if (fill) fill.style.width = pct + '%';
+  const txt = document.getElementById('fw-progress-text');
+  if (txt) txt.textContent = pct + '%' + (p.count ? '  (packet ' + p.packet + '/' + p.count + ')' : '');
+  const ph = document.getElementById('fw-phase'); if (ph && p.phase) ph.textContent = p.phase;
+};
+
+window.__onOtaState = function(sArg) {
+  let s = sArg;
+  try { if (typeof sArg === 'string') s = JSON.parse(sArg); } catch (e) { return; }
+  if (!s) return;
+  const st = s.state || '';
+  if (st === 'running') {
+    fwState.running = true;
+    const pw = document.getElementById('fw-progress-wrap'); if (pw) pw.style.display = 'block';
+  } else {
+    fwState.running = false;
+    if (st === 'success') showToast(s.message || 'Firmware updated');
+    else if (st === 'failed') showToast(s.message || 'Update failed', 5000, 'err');
+    else if (st === 'cancelled') showToast(s.message || 'Update cancelled', 4000, 'err');
+  }
+  fwSyncStartEnabled();
+};
+
 /* Global scooter-setting field maps (control id -> controller key). Editing a field only marks
    it dirty; nothing is written to the controller until the user presses "Save settings". */
 // ss-gear, ss-fcur and ss-rcur are read-only display fields (the controller does not accept
@@ -3274,6 +3611,18 @@ function wireEvents() {
   document.getElementById('btn-copy-serial').addEventListener('click', copySerial);
   // Change identity (cmd 0x1f): Set writes the full edited FIN. Prefilled with the current FIN.
   document.getElementById('btn-set-btname').addEventListener('click', setBleName);
+
+  // Firmware update: pick a .hex and flash the controller over BLE (native OtaEngine). Opening is
+  // allowed offline so a file can be inspected; Start is gated on a connected scooter + valid CRC.
+  document.getElementById('btn-firmware').addEventListener('click', () => {
+    closeSettings();
+    openFirmwarePage();
+  });
+  document.getElementById('btn-firmware-back').addEventListener('click', closeFirmwarePage);
+  document.getElementById('btn-fw-pick').addEventListener('click', fwPick);
+  document.getElementById('btn-fw-start').addEventListener('click', fwStart);
+  document.getElementById('btn-fw-cancel').addEventListener('click', fwCancel);
+  document.getElementById('fw-override').addEventListener('change', fwSyncStartEnabled);
 
   // Ride log opt-in toggle: mirror the change straight to the native recorder.
   document.getElementById('toggle-ridelog').addEventListener('change', e => {

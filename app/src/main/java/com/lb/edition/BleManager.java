@@ -68,6 +68,11 @@ final class BleManager {
         void onScanResults(String jsonArray);
         void onState(String json);
         void onLiveData(String json);
+        // Firmware-update (OTA) callbacks. json fields: progress {percent,packet,count,phase};
+        // state {state,message}. Log is a plain line. All are null/exception-safe on the far side.
+        void onOtaProgress(String json);
+        void onOtaLog(String line);
+        void onOtaState(String json);
     }
 
     private final Context appCtx;
@@ -100,6 +105,10 @@ final class BleManager {
     // write serialisation
     private final ArrayDeque<byte[]> writeQueue = new ArrayDeque<>();
     private boolean writing = false;
+
+    // Firmware-update engine. Non-null and running while a flash is in progress; during that time
+    // notifications and write-completions are routed to it and the normal keep-alive / push are paused.
+    private volatile OtaEngine ota;
 
     BleManager(Context ctx, Listener listener) {
         this.appCtx = ctx.getApplicationContext();
@@ -403,6 +412,9 @@ final class BleManager {
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic c, int status) {
+            // During a flash the OTA engine owns the write pump (its own queue + pacing).
+            OtaEngine o = ota;
+            if (o != null && o.isRunning()) { o.onWriteComplete(); return; }
             synchronized (writeQueue) { writing = false; }
             main.postDelayed(BleManager.this::drainWriteQueue, WRITE_GAP_MS);
         }
@@ -439,6 +451,10 @@ final class BleManager {
             try {
                 byte[] v = c.getValue();
                 if (v != null) {
+                    // During a flash, OTA responses (0xcc frames) go to the engine, not the telemetry
+                    // parser. The VCU stops streaming 0x55 telemetry once it enters the bootloader.
+                    OtaEngine o = ota;
+                    if (o != null && o.isRunning()) { o.onNotify(v); return; }
                     parser.onNotify(v);
                     if (frameCount++ % 50 == 0) Log.i(TAG, "rx frames=" + frameCount + " last=" + v.length + "b");
                 }
@@ -805,6 +821,109 @@ final class BleManager {
             Log.e(TAG, "sendGearSetting failed", t);
         }
     }
+
+    // ── Firmware update (OTA) ──
+
+    /** @return true while a firmware flash is in progress (JS/UI guards on this). */
+    boolean isOtaActive() {
+        OtaEngine o = ota;
+        return o != null && o.isRunning();
+    }
+
+    /**
+     * Begin flashing {@code hexText} (raw Intel-HEX file text; {@code fileName} only selects the
+     * VCU/BMS target). Pauses the keep-alive and live-push for the whole flash so nothing injects a
+     * 0xAA command into the OTA stream, hands the write/notify path to {@link OtaEngine}, and lets
+     * any in-flight normal write drain first. Null/exception-safe. Requires a live connection.
+     */
+    void startOta(final String hexText, final String fileName) {
+        try {
+            if (isOtaActive()) return;
+            if (!connected || !notifyReady) {
+                if (listener != null) {
+                    listener.onOtaState("{\"state\":\"failed\",\"message\":\"Connect the scooter first\"}");
+                }
+                return;
+            }
+            stopKeepAlive();
+            stopPush();
+            synchronized (writeQueue) { writeQueue.clear(); writing = false; }
+            final OtaEngine engine = new OtaEngine(otaHost);
+            ota = engine;
+            // Let any in-flight normal write complete on the normal path before the engine takes over
+            // (isRunning() stays false until start()); then begin.
+            main.postDelayed(() -> { if (ota == engine) engine.start(hexText, fileName); }, 300);
+        } catch (Throwable t) {
+            Log.e(TAG, "startOta failed", t);
+        }
+    }
+
+    /** User-initiated abort of a running flash. The bootloader stays in receive-mode (re-flashable). */
+    void cancelOta() {
+        try {
+            OtaEngine o = ota;
+            if (o != null) o.cancel();
+        } catch (Throwable t) {
+            Log.e(TAG, "cancelOta failed", t);
+        }
+    }
+
+    private final OtaEngine.Host otaHost = new OtaEngine.Host() {
+        @Override
+        public boolean writeFrame(byte[] frame) {
+            return doWrite(frame);   // reuse the same characteristic write (with-response) path
+        }
+
+        @Override
+        public void setHighPriority(boolean high) {
+            try {
+                BluetoothGatt g = gatt;
+                if (g != null) {
+                    g.requestConnectionPriority(high
+                            ? BluetoothGatt.CONNECTION_PRIORITY_HIGH
+                            : BluetoothGatt.CONNECTION_PRIORITY_BALANCED);
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        @Override
+        public void progress(int percent, int packet, int count, String phase) {
+            try {
+                JSONObject o = new JSONObject();
+                o.put("percent", percent);
+                o.put("packet", packet);
+                o.put("count", count);
+                o.put("phase", phase == null ? "" : phase);
+                if (listener != null) listener.onOtaProgress(o.toString());
+            } catch (Throwable ignored) {}
+        }
+
+        @Override
+        public void log(String line) {
+            try { if (listener != null) listener.onOtaLog(line == null ? "" : line); } catch (Throwable ignored) {}
+        }
+
+        @Override
+        public void state(String state, String message) {
+            try {
+                JSONObject o = new JSONObject();
+                o.put("state", state == null ? "" : state);
+                o.put("message", message == null ? "" : message);
+                if (listener != null) listener.onOtaState(o.toString());
+            } catch (Throwable ignored) {}
+        }
+
+        @Override
+        public void finished(boolean success) {
+            ota = null;
+            // Resume normal traffic if the link is still up. On success the VCU reboots and the link
+            // drops -> auto-reconnect restarts the keep-alive / push by itself.
+            if (connected && notifyReady) {
+                startKeepAlive();
+                startPush();
+            }
+        }
+    };
 
     // ── State reporting ──
 
