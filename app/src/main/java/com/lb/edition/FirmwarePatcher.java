@@ -102,35 +102,29 @@ final class FirmwarePatcher {
     }
 
     // ─────────────────────────── R5.4.19 patches ───────────────────────────
-    // Per builder: {cbz, bit5_orr, clamp_region, movs}.  (r5_4_19_features._BUILDERS)
-    private static final int[][] R5_BUILDERS = {
-            {0x08010052, 0x08010054, 0x08010058, 0x0801005C},
-            {0x08010202, 0x08010204, 0x08010208, 0x0801020C},
-            {0x080103AA, 0x080103AC, 0x080103B0, 0x080103B4},
-            {0x080105CA, 0x080105CC, 0x080105D0, 0x080105D4},
-    };
-    private static final int[] BIT5_OLD = {0x46},       BIT5_NEW = {0x26};
-    private static final int[] MOVS_OLD = {0x16, 0x27}, MOVS_NOP = {0x00, 0xBF};
-    private static final int[] GATE2_OLD = {0x01, 0x20}, GATE2_NEW = {0x00, 0x20};         // @0x0800F9C8
+    // Clamp flag 0x2000030C = (identity=="TDE") OR (display[6]&4). It gates the speed clamp + bit5 (kick)
+    // in the 4 motor builders AND whether the cruise sync-block runs. Flag=0 -> full speed + bit5=0
+    // (kickstart released) + cruise. See teverun/R5419_PATCH_MATRIX.md for the full analysis.
+    private static final int[] MOVS_OLD = {0x16, 0x27}, MOVS_NOP = {0x00, 0xBF};             // movs r7,#0x16 -> nop (D5 only)
+    private static final int[] GATE_FLAG_OLD = {0x72, 0x48}, GATE_FLAG_NEW = {0x0E, 0xE0};   // @0x0800F99C (Gate 1 / TDE identity)
+    private static final int[] GATE2_OLD = {0x01, 0x20}, GATE2_NEW = {0x00, 0x20};           // @0x0800F9C8 (Gate 2 / display bit)
     private static final int[] BLINKER_OLD = {0xFF, 0xF7, 0x90, 0xFF}, BLINKER_NEW = {0x00, 0xBF, 0x00, 0xBF};
 
     /**
-     * "Full unlock" speed mode: remove the hard 22 km/h clamp so the natural (full) speed is sent.
-     * With {@code zerostart} it also forces bit5=0 on all four motor builders - what the very first
-     * "Charge-1" production batch needs for kickstart. Later batches toggle kickstart at runtime via
-     * the display setting, so the patch is only for Charge-1. Cruise needs NO patch: it opens together
-     * with the unlock (the VCU cruise gates follow the clamp flag), so the UI offers it as a plain
-     * availability marker for Full unlock / Live toggle.
+     * "Full unlock" speed mode: pin the clamp flag 0x2000030C to 0 (Gate 1 + Gate 2 off). With the flag
+     * always 0 the four motor builders take their open branch everywhere: full speed, bit5=0 (kickstart
+     * released) AND the cruise sync-block runs clean. So full speed + Kickstart + Cruise all come from
+     * this ONE state - the display still toggles Kickstart/Cruise on/off at runtime. There is no separate
+     * ZeroStart or Cruise patch: they ARE the unlock. (= patcher-core build_zerostart_full.)
      */
-    void applyR519Unlock(boolean zerostart) {
-        for (int[] b : R5_BUILDERS) {
-            patch(b[3], MOVS_OLD, MOVS_NOP);                  // remove the 22 clamp -> full speed
-            if (zerostart) patch(b[1], BIT5_OLD, BIT5_NEW);   // bit5=0: kickstart for Charge-1 units
-        }
+    void applyR519Unlock() {
+        patch(0x0800F99C, GATE_FLAG_OLD, GATE_FLAG_NEW);   // Gate 1 (TDE identity) branch away -> flag stays 0
+        patch(0x0800F9C8, GATE2_OLD, GATE2_NEW);           // Gate 2 (display bit) -> 0
     }
 
     /** "Live toggle" speed mode: only Gate 2 (display clamp bit) removed, so the FIN identity stays
-     *  the live switch (FIN=TDE -> 22, FIN without TDE -> open). This is our existing patched hex. */
+     *  the live switch (FIN=TDE -> flag=1 = 22/locked; FIN without TDE -> flag=0 = full + kickstart +
+     *  cruise). Same flag=0 state as Full unlock, just switched live by the FIN instead of pinned. */
     void applyR519LiveToggle() { patch(0x0800F9C8, GATE2_OLD, GATE2_NEW); }
 
     /** Blinker-Fix (R5.4.19 only): the extra PB5_RESET @0x08019610 that kills the blink -> NOP. */

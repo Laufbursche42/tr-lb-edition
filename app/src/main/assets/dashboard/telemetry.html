@@ -1454,18 +1454,16 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 
     <div class="settings-group" id="pt-speed-group" style="border-top:1px solid var(--border)">
       <div class="settings-group-title">Speed</div>
-      <label class="pt-opt"><input type="radio" name="pt-speed" value="unlock"><span><span class="pt-lbl">Full unlock</span><span class="pt-help">Removes the 22 km/h clamp entirely - full speed and torque. Fine-tune per gear via GearLimitSpeed in the display hidden menu.</span></span></label>
-      <label class="pt-opt" id="pt-speed-live"><input type="radio" name="pt-speed" value="live"><span><span class="pt-lbl">Live toggle (FIN)</span><span class="pt-help">Removes only the display clamp (Gate 2) - the FIN identity stays your live switch (FIN with "TDE" = 22, without = open). ZeroStart and Cruise come with the FIN unlock; WheelDiameter does not persist in this mode.</span></span></label>
-      <label class="pt-opt" id="pt-speed-capped"><input type="radio" name="pt-speed" value="capped" checked><span><span class="pt-lbl">Keep ~22 km/h (stock)</span><span class="pt-help">No speed change - the stock ~22 km/h cap. This is the default; on its own it gives the unmodified original firmware. ZeroStart and Cruise are not available here - they need an unlock.</span></span></label>
+      <label class="pt-opt"><input type="radio" name="pt-speed" value="unlock"><span><span class="pt-lbl">Full unlock</span><span class="pt-help">Full speed - pins the clamp flag off, so Kickstart and Cruise are released too (toggle them in the display menu). Fine-tune top speed per gear via GearLimitSpeed in the display hidden menu.</span></span></label>
+      <label class="pt-opt" id="pt-speed-live"><input type="radio" name="pt-speed" value="live"><span><span class="pt-lbl">Live toggle (FIN)</span><span class="pt-help">Removes only the display clamp (Gate 2) - the FIN identity stays your live switch (FIN with "TDE" = 22, without = open). With an open FIN you also get Kickstart and Cruise.</span></span></label>
+      <label class="pt-opt" id="pt-speed-capped"><input type="radio" name="pt-speed" value="capped" checked><span><span class="pt-lbl">Keep ~22 km/h (stock)</span><span class="pt-help">No speed change - the stock ~22 km/h cap. This is the default; on its own it gives the unmodified original firmware. Kickstart and Cruise need an unlock (Full unlock or an open FIN).</span></span></label>
     </div>
 
     <div class="settings-group" id="pt-r5-options" style="border-top:1px solid var(--border)">
       <div class="settings-group-title">Options (R5.4.19 only)</div>
-      <label class="pt-opt" id="pt-zs-wrap"><input type="checkbox" id="pt-zerostart"><span><span class="pt-lbl">ZeroStart</span><span class="pt-help">Move off from a standstill without kicking (on/off in the display menu). On modern units it comes with the unlock; on the very first "Charge-1" batch it needs Full unlock with this patch.</span></span></label>
-      <label class="pt-opt" id="pt-cr-wrap"><input type="checkbox" id="pt-cruise"><span><span class="pt-lbl">Cruise control</span><span class="pt-help">Cruise (on/off in the display menu). It opens together with the speed unlock, so no extra patch is needed - available with Full unlock and Live toggle.</span></span></label>
+      <div class="settings-row-sublabel" id="pt-unlock-note" style="margin-bottom:6px"></div>
       <label class="pt-opt" id="pt-bl-wrap"><input type="checkbox" id="pt-blinker"><span><span class="pt-lbl">Blinker fix</span><span class="pt-help">Fixes the 5.4.19 bug where the indicators glow solid instead of blinking. Only needed if the VCU drives the indicators (no separate blinker module).</span></span></label>
-      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">WheelDiameter persists</span><span class="pt-help">Makes the display wheel-diameter setting stick (in 5.4.19 it reverts after a restart). Not available with Live toggle.</span></span></label>
-      <div class="settings-row-sublabel" id="pt-zs-note" style="display:none;margin-top:2px">ZeroStart and Cruise unlock together with the speed. Charge-1 units (the very first batch) cannot toggle kickstart from the display - they need Full unlock with ZeroStart checked.</div>
+      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">WheelDiameter persists</span><span class="pt-help">Makes the display wheel-diameter setting stick (in 5.4.19 it reverts after a restart). Works in every speed mode.</span></span></label>
     </div>
 
     <div class="settings-group" id="pt-ali-note" style="border-top:1px solid var(--border);display:none">
@@ -3176,34 +3174,26 @@ function ptOnFirmwareChange() {
   const isR5 = fw === 'r5', isAli = fw === 'ali';
   const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
   show('pt-speed-group', isR5);
-  show('pt-r5-options', isR5);     // ZeroStart/Cruise/Blinker/Wheel are R5-only
+  show('pt-r5-options', isR5);     // Blinker/Wheel + the unlock note are R5-only
   show('pt-ali-note', isAli);
-  // Default speed = "Keep ~22 km/h" (= no change / the original firmware). Clear the deviating options.
+  // Default speed = "Keep ~22 km/h" (= no change / the original firmware). Clear the two add-on options.
   document.querySelectorAll('input[name="pt-speed"]').forEach(r => { r.checked = (r.value === 'capped'); });
-  ['pt-zerostart', 'pt-cruise', 'pt-blinker', 'pt-wheel'].forEach(id => { const e = document.getElementById(id); if (e) e.checked = false; });
-  ptSyncOptionAvailability();
+  ['pt-blinker', 'pt-wheel'].forEach(id => { const e = document.getElementById(id); if (e) e.checked = false; });
+  ptUpdateUnlockNote();
 }
-// Which R5 options apply depends on the speed mode:
-//   Full unlock -> ZeroStart, Cruise, WheelDiameter, Blinker
-//   Live toggle -> ZeroStart (default on), Cruise, Blinker ; WheelDiameter greyed (does not persist)
-//   Keep ~22    -> WheelDiameter, Blinker ; ZeroStart + Cruise greyed (no unlock to ride on)
-function ptSyncOptionAvailability() {
+// Kickstart + Cruise are consequences of the unlock (clamp flag = 0), not separate patches - so they are
+// just a hint per speed mode. Blinker + WheelDiameter are flag-independent and stay available in every
+// mode. (See teverun/R5419_PATCH_MATRIX.md.)
+function ptUpdateUnlockNote() {
   const sel = document.querySelector('input[name="pt-speed"]:checked');
   const mode = sel ? sel.value : 'capped';
-  const unlocked = (mode === 'unlock' || mode === 'live');
-  const setEnabled = (wrapId, cbId, on) => {
-    const w = document.getElementById(wrapId), cb = document.getElementById(cbId);
-    if (w) w.classList.toggle('disabled', !on);
-    if (cb) { cb.disabled = !on; if (!on) cb.checked = false; }
-  };
-  setEnabled('pt-zs-wrap', 'pt-zerostart', unlocked);    // ZeroStart: only with an unlock
-  setEnabled('pt-cr-wrap', 'pt-cruise', unlocked);       // Cruise: only with an unlock
-  setEnabled('pt-wd-wrap', 'pt-wheel', mode !== 'live'); // WheelDiameter: not under Live toggle
-  // Kickstart comes with the FIN unlock, so default ZeroStart on when Live toggle is picked.
-  const zs = document.getElementById('pt-zerostart');
-  if (zs && mode === 'live') zs.checked = true;
-  const note = document.getElementById('pt-zs-note');
-  if (note) note.style.display = unlocked ? '' : 'none';
+  const note = document.getElementById('pt-unlock-note');
+  if (note) {
+    note.textContent =
+      mode === 'unlock' ? 'Full speed. Kickstart and Cruise are released too - toggle them in the display menu.' :
+      mode === 'live'   ? 'With an open FIN you get full speed + Kickstart + Cruise; a locked FIN (TDE) keeps you at 22 km/h.' :
+                          'Stock 22 km/h. Kickstart and Cruise need an unlock (Full unlock or an open FIN).';
+  }
   ptSyncButton();
 }
 // The button says "Build patch" only when the user actually chose something; otherwise it offers the
@@ -3212,7 +3202,7 @@ function ptSyncButton() {
   const speedSel = document.querySelector('input[name="pt-speed"]:checked');
   // "capped" (Keep ~22) is the stock state = no deviation; only Full unlock / Live toggle change speed.
   const speedDeviates = !!speedSel && (speedSel.value === 'unlock' || speedSel.value === 'live');
-  const anyOpt = ['pt-zerostart', 'pt-cruise', 'pt-blinker', 'pt-wheel']
+  const anyOpt = ['pt-blinker', 'pt-wheel']
     .some(id => { const e = document.getElementById(id); return e && e.checked; });
   const btn = document.getElementById('btn-pt-run');
   if (btn) btn.textContent = (speedDeviates || anyOpt) ? 'Build patch & continue' : 'Original Firmware & Continue';
@@ -3222,11 +3212,9 @@ function ptRun() {
   const fw = document.getElementById('pt-firmware').value;
   const speedSel = document.querySelector('input[name="pt-speed"]:checked');
   const speed = speedSel ? speedSel.value : 'none';   // nothing selected -> original firmware
-  const zs = !!(document.getElementById('pt-zerostart') || {}).checked;
-  const cr = !!(document.getElementById('pt-cruise') || {}).checked;
   const bl = !!(document.getElementById('pt-blinker') || {}).checked;
   const wd = !!(document.getElementById('pt-wheel') || {}).checked;
-  const patching = (speed === 'unlock' || speed === 'live') || zs || cr || bl || wd;
+  const patching = (speed === 'unlock' || speed === 'live') || bl || wd;
   const status = document.getElementById('pt-status');
   const btn = document.getElementById('btn-pt-run');
   if (btn) btn.disabled = true;
@@ -3234,7 +3222,7 @@ function ptRun() {
   // Defer one tick so the disabled button + status paint before the synchronous native patch runs.
   setTimeout(() => {
     let res = null;
-    try { res = JSON.parse(LB.patchFirmware(fw, speed, zs, cr, bl, wd)); }
+    try { res = JSON.parse(LB.patchFirmware(fw, speed, bl, wd)); }
     catch (e) { res = { ok: false, error: '' + e }; }
     if (btn) btn.disabled = false;
     if (!res || res.ok === false) {
@@ -3874,8 +3862,8 @@ function wireEvents() {
   });
   document.getElementById('btn-patcher-back').addEventListener('click', closePatcherPage);
   document.getElementById('pt-firmware').addEventListener('change', ptOnFirmwareChange);
-  document.querySelectorAll('input[name="pt-speed"]').forEach(r => r.addEventListener('change', ptSyncOptionAvailability));
-  ['pt-zerostart', 'pt-cruise', 'pt-blinker', 'pt-wheel'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', ptSyncButton); });
+  document.querySelectorAll('input[name="pt-speed"]').forEach(r => r.addEventListener('change', ptUpdateUnlockNote));
+  ['pt-blinker', 'pt-wheel'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', ptSyncButton); });
   document.getElementById('btn-pt-run').addEventListener('click', ptRun);
 
   // Ride log opt-in toggle: mirror the change straight to the native recorder.

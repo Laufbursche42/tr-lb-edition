@@ -540,15 +540,15 @@ public class MainActivity extends Activity {
         /**
          * Patch a bundled VCU firmware and hand the result to the flash flow, exactly as if the user
          * had picked it (sets {@code otaHexText} and pushes the metadata to {@code __onOtaFile}).
-         * fwId: "r5" (R5.4.19), "d5" (D5.4.14), "ali" (open ALI D3.4.12, convert only).
-         * speedMode (r5): "unlock" full / "live" Gate-2 only (FIN stays the switch) / "capped" keep ~22.
-         * d5: "unlock" or "off". Returns the same metadata JSON so the patcher page can show a summary.
+         * fwId: "r5" (R5.4.19), "ali" (open ALI D3.4.12, convert only).
+         * speedMode (r5): "unlock" = pin flag 0 (full speed + Kickstart + Cruise) / "live" = Gate-2 only
+         * (FIN stays the 22/open switch) / "capped" = keep the stock ~22. Kickstart + Cruise are NOT
+         * options - they come with flag=0 (see teverun/R5419_PATCH_MATRIX.md). blinker/wheel are the two
+         * flag-independent add-ons and work in any speed mode. Returns the metadata JSON for the summary.
          */
         @JavascriptInterface
-        public String patchFirmware(String fwId, String speedMode, boolean zerostart, boolean cruise,
-                                    boolean blinker, boolean wheel) {
-            Log.i(TAG, "LB.patchFirmware(" + fwId + "," + speedMode + ",z=" + zerostart + ",c=" + cruise
-                    + ",b=" + blinker + ",w=" + wheel + ")");
+        public String patchFirmware(String fwId, String speedMode, boolean blinker, boolean wheel) {
+            Log.i(TAG, "LB.patchFirmware(" + fwId + "," + speedMode + ",b=" + blinker + ",w=" + wheel + ")");
             try {
                 String asset, baseLabel;
                 boolean isHex;
@@ -563,23 +563,19 @@ public class MainActivity extends Activity {
 
                 java.util.List<String> tags = new java.util.ArrayList<>();
                 if ("r5".equals(fwId)) {
-                    if ("live".equals(speedMode)) {
-                        // Gate 2 out -> the FIN identity is the live 22/open switch. ZeroStart and Cruise
-                        // come free with the FIN unlock on modern units, so they are UI markers only (no
-                        // patch); Charge-1 units need Full unlock + ZeroStart instead. WheelDiameter does
-                        // not persist under Live toggle (the UI greys it out), so it is not applied here.
-                        fp.applyR519LiveToggle();
-                        tags.add("LiveFIN");
-                    } else if ("unlock".equals(speedMode)) {
-                        fp.applyR519Unlock(zerostart);   // full speed; bit5=0 for Charge-1 kickstart
+                    // The speed mode sets the clamp flag; Kickstart + Cruise are consequences of flag=0,
+                    // not separate patches (see teverun/R5419_PATCH_MATRIX.md).
+                    if ("unlock".equals(speedMode)) {
+                        fp.applyR519Unlock();     // flag pinned 0 -> full speed + Kickstart + Cruise
                         tags.add("Unlocked");
-                        if (zerostart) tags.add("ZeroStart");
-                        if (wheel) { fp.applyWheelDiameter(); tags.add("WheelDia"); }
-                    } else {
-                        // Keep ~22 (stock speed). WheelDiameter is the only clamp-independent option here.
-                        if (wheel) { fp.applyWheelDiameter(); tags.add("WheelDia"); }
+                    } else if ("live".equals(speedMode)) {
+                        fp.applyR519LiveToggle(); // Gate 2 out -> FIN is the live 22/open switch
+                        tags.add("LiveFIN");
                     }
+                    // else: "capped" = keep the stock ~22 (no speed patch).
+                    // Blinker + WheelDiameter are flag-independent -> available in every mode.
                     if (blinker) { fp.applyR519Blinker(); tags.add("BlinkerFix"); }
+                    if (wheel) { fp.applyWheelDiameter(); tags.add("WheelDia"); }
                 }
                 // ALI is open (convert only); R5 with nothing selected -> the unmodified original.
                 if ("ali".equals(fwId)) tags.add("Converted");
