@@ -603,6 +603,15 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Drop the in-memory firmware blob after a flash completes or fails. The patched/picked image
+         *  only ever lives in these two String fields (never written to disk); clearing them means a new
+         *  flash always requires a fresh pick/patch, so no stale image lingers. */
+        @JavascriptInterface
+        public void otaClear() {
+            otaHexText = null;
+            otaFileName = null;
+        }
+
         /** Abort a running flash. The controller stays in bootloader receive-mode (re-flashable). */
         @JavascriptInterface
         public void otaCancel() {

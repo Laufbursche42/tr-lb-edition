@@ -2930,29 +2930,37 @@ function syncBtNameEditor() {
   }
 }
 
-// The user's wheel size, remembered while the FIN lock is active so it can be restored on unlock.
-// Persisted to disk (lb_fin_wheel) so it survives an app restart while the scooter is locked. This is the
-// ONLY scooter value the app stores - every other setting comes live from the controller.
+// The scooter values the app remembers while the FIN lock is active so they can be restored on unlock.
+// Both are persisted to disk (lb_fin_wheel / lb_fin_cruise) so they survive an app restart while the
+// scooter is locked. These are the ONLY scooter values the app stores - every other setting comes live
+// from the controller.
 let _finWheel = (() => { const v = storage.get('lb_fin_wheel'); return (v == null || v === '') ? null : parseFloat(v); })();
 function setFinWheel(v) { _finWheel = (v == null ? null : v); storage.set('lb_fin_wheel', v == null ? '' : String(v)); }
+let _finCruise = (() => { const v = storage.get('lb_fin_cruise'); return (v == null || v === '') ? null : parseInt(v, 10); })();
+function setFinCruise(v) { _finCruise = (v == null ? null : v); storage.set('lb_fin_cruise', v == null ? '' : String(v)); }
 
 // FIN lock/unlock housekeeping - used by BOTH the triple-tap and the Scooter-info identity editor:
 //  - Re-locking (identity starts with TDE / T2DE = legal eKFV mode): turn cruise OFF (else it stays
 //    engaged while the scooter is capped again) AND reset the wheel to stock 10.0" (so the speed reading
-//    is correct/legal), remembering the user's wheel (on disk) to restore on unlock.
-//  - Unlocking: restore that remembered wheel.
+//    is correct/legal), remembering the user's cruise mode + wheel (on disk) to restore on unlock.
+//  - Unlocking: restore that remembered cruise mode + wheel.
 // All writes go out only when the settings are actually known (so we never write stale defaults), then
 // the identity change is sent.
 function sendFinChange(newFin) {
   const locking = /^T2?DE/i.test((newFin || '').trim());
   if (typeof LB !== 'undefined' && LB.sendSetting) {
     if (locking) {
-      if (liveRaw().cruise != null) { try { LB.sendSetting(JSON.stringify({ cruise: 0 })); } catch (e) {} }
+      const c = liveRaw().cruise;
+      if (c != null) {
+        // Remember the exact cruise mode (auto/manual) only if it was on; then switch it off.
+        if (c !== 0) setFinCruise(c);
+        try { LB.sendSetting(JSON.stringify({ cruise: 0 })); } catch (e) {}
+      }
       const w = liveRaw().wheel;
       if (w != null && w !== 10) { setFinWheel(w); try { LB.sendSetting(JSON.stringify({ wheel: 10 })); } catch (e) {} }
-    } else if (_finWheel != null) {
-      try { LB.sendSetting(JSON.stringify({ wheel: _finWheel })); } catch (e) {}
-      setFinWheel(null);
+    } else {
+      if (_finCruise != null) { try { LB.sendSetting(JSON.stringify({ cruise: _finCruise })); } catch (e) {} setFinCruise(null); }
+      if (_finWheel != null) { try { LB.sendSetting(JSON.stringify({ wheel: _finWheel })); } catch (e) {} setFinWheel(null); }
     }
   }
   LB.setBleName(newFin);
@@ -3520,6 +3528,11 @@ window.__onOtaState = function(sArg) {
     }
     else if (st === 'failed') showToast(s.message || 'Update failed', 5000, 'err');
     else if (st === 'cancelled') showToast(s.message || 'Update cancelled', 4000, 'err');
+    // Discard the in-memory firmware blob once the flash ends (done or failed) so nothing stale lingers;
+    // a retry re-picks/re-patches a fresh image. A cancel keeps it so the user can restart immediately.
+    if (st === 'success' || st === 'failed') {
+      try { if (typeof LB !== 'undefined' && LB.otaClear) LB.otaClear(); } catch (e) {}
+    }
   }
   fwSyncStartEnabled();
 };
