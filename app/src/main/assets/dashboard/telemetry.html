@@ -1215,6 +1215,18 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
         <button type="button" class="set-help" data-set-help="ss-smart" aria-label="What is this?">?</button>
         <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-smart"><label class="toggle-label" for="ss-smart"></label></div>
       </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Auto-off</div><div class="settings-row-sublabel">Idle power-off</div></div>
+        <button type="button" class="set-help" data-set-help="ss-sleep" aria-label="What is this?">?</button>
+        <select class="set-ctrl" id="ss-sleep">
+          <option value="0">Off</option>
+          <option value="1">1 min</option>
+          <option value="2">5 min</option>
+          <option value="3">10 min</option>
+          <option value="4">30 min</option>
+          <option value="5">60 min</option>
+        </select>
+      </div>
     </div>
 
     <!-- Explicit save for the global scooter settings (nothing is written to the controller until pressed). -->
@@ -1825,6 +1837,7 @@ const SETTINGS_HELP = {
   "ss-unitmile": { title: "Unit: miles (scooter)", text: "Sets the SCOOTER'S OWN DISPLAY to miles instead of km. This changes the scooter itself, not just the app (the app's own unit is under Display → Unit mph)." },
   "ss-atmode": { title: "Anti-theft", text: "Electronic lock / anti-theft mode.\n\nNOTE (eKFV): not supported on this model - it has no GPS/immobilizer module, so toggling this has no effect (the controller silently ignores it and the switch snaps back off). The real anti-theft (remote / geofence lock) needs the GPS module this unit does not have." },
   "ss-smart": { title: "Smart mode (TCS)", text: "Traction control. When on, 'SMART' appears on the scooter display. It reduces wheelspin and automatically manages both motors: in single-motor mode, easing off and re-applying throttle on a slope or when a wheel slips switches to dual motor; in dual-motor mode it balances front/rear speed and torque to cut slipping." },
+  "ss-sleep": { title: "Auto-off", text: "How long the scooter stays powered on with no activity before it shuts off. 'Off' = never auto-off. (Raised to 60 min automatically during a firmware flash, then restored to your value.)" },
   "ss-save": { title: "Save settings", text: "Writes your changed controller settings to the scooter. Nothing is sent until you press this, so you can edit fields freely and then save them all at once." },
   "gear-save": { title: "Save gear", text: "Writes the values for the currently selected gear to the scooter. Per-gear edits are only sent when you press this." },
   "dg-recup": { title: "Recuperation", text: "Cumulative energy the scooter recovered through regenerative braking/coasting (the controller reports a bare cumulative counter - no unit)." },
@@ -3529,7 +3542,7 @@ window.__onOtaState = function(sArg) {
 // currents) live in the per-gear editor, so they are not duplicated here.
 const SS_NUM_FIELDS = [
   ['ss-speed', 'speedLimit'], ['ss-wheel', 'wheel'],
-  ['ss-packvolt', 'packVolt']
+  ['ss-packvolt', 'packVolt'], ['ss-sleep', 'sleepTime']
 ];
 const SS_BOOL_FIELDS = [
   ['ss-abs', 'abs'], ['ss-start', 'startMode'], ['ss-eco', 'enfEcon'],
@@ -3567,6 +3580,7 @@ function prefillScooterSettings(live) {
     }
   }
   setV('ss-packvolt', 'packVolt',     pick(d, ['packVolt']));
+  setV('ss-sleep',    'sleepTime',    pick(d, ['sleepTime']));
 
   let eco   = pick(d, ['enfEcon']);    if (eco   == null) eco   = b(sys[0]);
   let um    = pick(d, ['isUnitMile']); if (um    == null) um    = b(sys[1]);
