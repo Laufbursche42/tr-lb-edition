@@ -1434,17 +1434,16 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
   <div id="patcher-scroller">
     <div class="fw-warn">
       <b>What is this?</b> It builds a patched, flashable <code>.hex</code> from a firmware bundled in
-      the app (the community web-patcher patches, ported natively and verified on real hardware). When
-      it is done you go straight to the update page to flash it. Only patch the firmware that matches
-      your controller.
+      the app, then takes you straight to the update page to flash it. Only patch the firmware that
+      matches your controller.
     </div>
 
     <div class="settings-group" style="padding-top:6px">
       <div class="settings-group-title">Firmware</div>
       <select id="pt-firmware" class="pt-select">
-        <option value="r5">R5.4.19 - GKFV, single motor</option>
-        <option value="d5">D5.4.14 - GKFV, dual motor</option>
-        <option value="ali">ALI D3.4.12 - open</option>
+        <option value="r5">R5.4.19 (stock)</option>
+        <option value="d5">D5.4.14 (stock)</option>
+        <option value="ali">ALI D3.4.12 (open)</option>
       </select>
     </div>
 
@@ -3165,7 +3164,7 @@ function openPatcherPage() {
 function closePatcherPage() {
   document.getElementById('patcher-page').classList.remove('open');
 }
-// Show only the options that apply to the selected firmware (mirrors the web-patcher).
+// Show only the options that apply to the selected firmware.
 function ptOnFirmwareChange() {
   const fw = document.getElementById('pt-firmware').value;
   const isR5 = fw === 'r5', isD5 = fw === 'd5', isAli = fw === 'ali';
