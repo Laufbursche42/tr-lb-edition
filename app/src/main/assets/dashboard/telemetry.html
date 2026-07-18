@@ -370,6 +370,7 @@ html, body {
 }
 #confirm-box h3 { font-size: var(--fs-xl); font-weight: var(--fw-bold); margin-bottom: 8px; }
 #confirm-box p { font-size: var(--fs-md); color: var(--label); margin-bottom: 18px; overflow-wrap: anywhere; white-space: pre-line; }
+#confirm-box #confirm-warn { color: var(--danger); font-weight: 800; margin-bottom: 14px; line-height: 1.45; }
 #confirm-box .confirm-btns { display: flex; gap: 10px; }
 #confirm-box .confirm-btns button {
   flex: 1; padding: 12px; border-radius: 9px;
@@ -1473,6 +1474,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 <div id="confirm-overlay">
   <div id="confirm-box">
     <h3 id="confirm-title">Delete routes?</h3>
+    <p id="confirm-warn" style="display:none"></p>
     <p id="confirm-msg">This action cannot be undone.</p>
     <div class="confirm-btns">
       <button id="confirm-cancel">Cancel</button>
@@ -2023,11 +2025,6 @@ function tickBLE() {
   maybeLiveRefreshGearEditor();
   // Keep the global scooter-settings fields live too (same clobber protection).
   maybeLiveRefreshScooterSettings();
-  // After a flash succeeds, restore the user's auto-off value once the scooter is back + telemetry live.
-  if (fwState.pendingSleepRestore != null && state.bleConnected && liveRaw().sleepTime != null) {
-    try { if (typeof LB !== 'undefined' && LB.sendSetting) LB.sendSetting(JSON.stringify({ sleepTime: fwState.pendingSleepRestore })); } catch (e) {}
-    fwState.pendingSleepRestore = null;
-  }
 }
 
 /* ── BLE Connect / Disconnect Events ──────────────────────── */
@@ -3433,18 +3430,6 @@ function fwSyncStartEnabled() {
   if (hint) hint.textContent = msg;
 }
 
-/* Auto-Off (sleepTime) guard around a flash: a short auto-off timer would power the scooter off during
-   the ~13 min flash. Raise it to 60 min before flashing and restore the user's value after success.
-   sleepTime map: 0=Off(never), 1=1, 2=5, 3=10, 4=30, 5=60 (min) - so 0 and 5 are already >= 60 / never. */
-function autoOffGuardBeforeFlash() {
-  fwState.prevSleep = null;
-  const s = liveRaw().sleepTime;
-  if (typeof LB === 'undefined' || !LB.sendSetting || s == null) return;   // unknown -> warning only
-  if (s < 1 || s > 4) return;   // Off (0) or already 60 min (5) -> nothing to do
-  fwState.prevSleep = s;
-  try { LB.sendSetting(JSON.stringify({ sleepTime: 5 })); } catch (e) {}   // 5 = 60 min
-}
-
 function fwStart() {
   const m = fwState.meta, c = fwState.compat;
   if (!m || !m.ok || !m.crcOk) { showToast('Choose a valid firmware file first', 3000, 'err'); return; }
@@ -3453,29 +3438,21 @@ function fwStart() {
   const overriding = c && !c.ok && !c.noOverride && ov && ov.checked;
   if (c && !c.ok && !overriding) { showToast('Compatibility check did not pass', 3000, 'err'); return; }
   document.getElementById('confirm-title').textContent = overriding ? 'Flash despite warning?' : 'Start firmware update?';
-  const sleepNow = liveRaw().sleepTime;
-  const autoOffNote = (sleepNow == null)
-    ? '\n\nSet the scooter Auto-Off to at least 60 min first so it cannot power off mid-flash.'
-    : (sleepNow >= 1 && sleepNow <= 4)
-      ? '\n\nAuto-Off is raised to 60 min for the flash and restored afterwards.'
-      : '';
+  // Red/bold reminder: the app CANNOT set the scooter's auto-off timer over BLE - the VCU settings
+  // handler copies only a[2..17] and drops a[18] where sleepTime lives (verified on fw_r5419). The
+  // user must raise it in the scooter's own display menu, else the scooter powers off mid-flash.
+  const warn = document.getElementById('confirm-warn');
+  warn.textContent = 'Have you set the scooter Auto-Off to 30 min in the scooter display menu? The app cannot change it - a shorter timer powers the scooter off during the ~13 min flash.';
+  warn.style.display = 'block';
   document.getElementById('confirm-msg').textContent =
     (overriding
       ? 'This file did NOT pass the compatibility check. Flashing the wrong firmware can require a recovery re-flash. Continue only if you are certain this is the right file for this controller.\n\n'
       : '') +
     'This flashes\n' + m.name + '\nto the ' + (m.targetIsVcu ? 'controller' : 'battery') +
-    ' and takes about 13 minutes. Keep the scooter on and in range and keep the app open. Do not turn the scooter off.'
-    + autoOffNote;
+    ' and takes about 13 minutes. Keep the scooter on and in range and keep the app open. Do not turn the scooter off.';
   document.getElementById('confirm-ok').textContent = overriding ? 'Flash anyway' : 'Start';
   state.confirmCb = () => {
-    try {
-      autoOffGuardBeforeFlash();   // queues a sleepTime=60 write (only if the current auto-off is short)
-      // IMPORTANT: LB.otaStart() clears the BLE write queue, so the sleepTime write above would be
-      // dropped if we start immediately. When we did queue one, give it time to actually reach the
-      // scooter first, then flash. Otherwise start right away.
-      const startFlash = () => { try { if (typeof LB !== 'undefined' && LB.otaStart) LB.otaStart(); } catch (e) { showToast('Error: ' + e); } };
-      if (fwState.prevSleep != null) setTimeout(startFlash, 1200); else startFlash();
-    } catch (e) { showToast('Error: ' + e); }
+    try { if (typeof LB !== 'undefined' && LB.otaStart) LB.otaStart(); } catch (e) { showToast('Error: ' + e); }
   };
   document.getElementById('confirm-overlay').classList.add('open');
 }
@@ -3523,8 +3500,6 @@ window.__onOtaState = function(sArg) {
     fwState.running = false;
     if (st === 'success') {
       showToast(s.message || 'Firmware updated');
-      // Queue the auto-off restore; the tick loop applies it once the scooter is back + telemetry live.
-      if (fwState.prevSleep != null) { fwState.pendingSleepRestore = fwState.prevSleep; fwState.prevSleep = null; }
     }
     else if (st === 'failed') showToast(s.message || 'Update failed', 5000, 'err');
     else if (st === 'cancelled') showToast(s.message || 'Update cancelled', 4000, 'err');
@@ -4051,10 +4026,12 @@ function wireEvents() {
   // Confirm dialog
   document.getElementById('confirm-ok').addEventListener('click', () => {
     document.getElementById('confirm-overlay').classList.remove('open');
+    const w = document.getElementById('confirm-warn'); if (w) { w.textContent = ''; w.style.display = 'none'; }
     if (state.confirmCb) { state.confirmCb(); state.confirmCb = null; }
   });
   document.getElementById('confirm-cancel').addEventListener('click', () => {
     document.getElementById('confirm-overlay').classList.remove('open');
+    const w = document.getElementById('confirm-warn'); if (w) { w.textContent = ''; w.style.display = 'none'; }
     state.confirmCb = null;
   });
 
