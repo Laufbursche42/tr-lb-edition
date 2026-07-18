@@ -32,7 +32,7 @@ final class SettingsState {
     volatile boolean isUnitMile = false;
     volatile boolean atMode = false;
     volatile boolean isSmart = false;
-    volatile int cruise = 0;               // 0 none, 1 manual, 2 auto
+    volatile int cruise = 0;               // 0 none, 1 auto, 2 manual (matches the original app + display)
     volatile boolean abs = false;
     volatile boolean startMode = false;    // launch mode
     volatile int fStartLevel = 0;

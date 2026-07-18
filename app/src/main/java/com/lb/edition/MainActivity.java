@@ -334,7 +334,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Descriptive output name, e.g. AWIVCU_R5.4.19_Unlocked_BlinkerFix_20260718_0142.hex */
+    /** Descriptive output name, e.g. AWIVCU_R5.4.19_FULL_WHEEL_TURN_20260718_0142.hex */
     private String buildPatchName(String base, java.util.List<String> tags) {
         StringBuilder sb = new StringBuilder(base);
         for (String t : tags) sb.append('_').append(t);
@@ -564,22 +564,20 @@ public class MainActivity extends Activity {
                 java.util.List<String> tags = new java.util.ArrayList<>();
                 if ("r5".equals(fwId)) {
                     // The speed mode sets the clamp flag; Kickstart + Cruise are consequences of flag=0,
-                    // not separate patches (see teverun/R5419_PATCH_MATRIX.md).
-                    if ("unlock".equals(speedMode)) {
-                        fp.applyR519Unlock();     // flag pinned 0 -> full speed + Kickstart + Cruise
-                        tags.add("Unlocked");
-                    } else if ("live".equals(speedMode)) {
-                        fp.applyR519LiveToggle(); // Gate 2 out -> FIN is the live 22/open switch
-                        tags.add("LiveFIN");
-                    }
-                    // else: "capped" = keep the stock ~22 (no speed patch).
-                    // Blinker + WheelDiameter are flag-independent -> available in every mode.
-                    if (blinker) { fp.applyR519Blinker(); tags.add("BlinkerFix"); }
-                    if (wheel) { fp.applyWheelDiameter(); tags.add("WheelDia"); }
+                    // not separate patches (see teverun/R5419_PATCH_MATRIX.md). One short token per mode
+                    // keeps the file name manageable: FULL = full unlock, LIVE = live toggle, EKFV = stock
+                    // 22 (locked).
+                    if ("unlock".equals(speedMode)) { fp.applyR519Unlock(); tags.add("FULL"); }
+                    else if ("live".equals(speedMode)) { fp.applyR519LiveToggle(); tags.add("LIVE"); }
+                    else { tags.add("EKFV"); }   // "capped" = keep the stock ~22 km/h
+                    // Blinker + WheelDiameter are flag-independent add-ons (any mode). Name suffixes,
+                    // WHEEL (wheel diameter) then TURN (turn-signal / blinker fix).
+                    if (wheel) fp.applyWheelDiameter();
+                    if (blinker) fp.applyR519Blinker();
+                    if (wheel) tags.add("WHEEL");
+                    if (blinker) tags.add("TURN");
                 }
-                // ALI is open (convert only); R5 with nothing selected -> the unmodified original.
-                if ("ali".equals(fwId)) tags.add("Converted");
-                else if (tags.isEmpty()) tags.add("Original");
+                // ALI is convert-only; its base name already reads AWIVCU_ALI_..., so it needs no token.
 
                 String hex = fp.buildHex();
                 String name = buildPatchName(baseLabel, tags);

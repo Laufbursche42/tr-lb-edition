@@ -281,7 +281,7 @@ final class CommandBuilder {
         return finalizeFrame(a);
     }
 
-    /** cruise==2 (auto) -> bit2; cruise==1 (manual) -> bit0 & bit1; else none. */
+    /** cruise==2 (manual) -> bit2; cruise==1 (auto) -> bit0 & bit1; else none. (matches original app) */
     private static void applyCruise(int[] bits, int cruise) {
         if (cruise == 2) {
             bits[2] = 1;

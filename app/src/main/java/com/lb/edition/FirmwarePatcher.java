@@ -143,19 +143,20 @@ final class FirmwarePatcher {
     private static final int WD_HOOK = 0x0800F8EE;
     private static final int[] WD_HOOK_OLD = {0x8C, 0x48, 0x40, 0x7A}; // ldr r0,[pc,#0x230]; ldrb r0,[r0,#9]
     private static final int WD_RET = 0x0800F8F2;
-    private static final int WD_FRAME = 0x2000134D;   // display RX frame buffer
-    private static final int WD_VAR   = 0x2000029D;   // WheelDiameter RAM var
+    private static final int WD_FRAME  = 0x2000134D;   // display RX frame buffer
+    private static final int WD_VAR    = 0x2000029D;   // WheelDiameter RAM var
+    private static final int WD_MIRROR = 0x20001A28;   // EEPROM settings mirror (WD at +3)
+    private static final int WD_SAVE   = 0x0801700C;   // native save dispatcher (r0 = block idx; 1 = mirror block)
 
     /**
-     * Makes the display WheelDiameter setting persist on R5.4.19 - the ALI way (NOT the webpatcher way).
-     * R5.4.19 has the full native save chain (change-detector bl 0x08017E08 - verified wired - pack,
-     * flash dispatcher, boot-load); the eKFV build dropped only ONE thing the open ALI firmware has:
-     * the sync-block unpack that writes the value from the display frame into the WD RAM var, so a menu
-     * change never reaches RAM and the detector never sees it. This hooks that exact spot and re-adds
-     * ONLY the unpack (frame[8] -> WD), then lets R5.4.19's own native detector persist it - identical
-     * to how ALI does it. It deliberately does NOT force a flash (that extra step is what the webpatcher
-     * adds and is the suspected cause of its unreliable saves). Cave sits at the app end; the 8-byte end
-     * marker is carried along.
+     * Makes the display WheelDiameter change take on R5.4.19 - byte-exact to the proven webpatcher cave
+     * (patcher-core wheel_diameter.py, DAP-verified). Hooks the sync-block convergence point and, on the
+     * hooked frame, unpacks frame[8] -> WD RAM var 0x2000029D AND (when the value changed) writes the
+     * EEPROM mirror 0x20001A28+3 and calls the native save dispatcher 0x0801700C(idx=1). Both the var AND
+     * the mirror MUST be written: writing only the var (an earlier unpack-only attempt) lets the mirror
+     * overwrite it right back, so the value snaps to default. NOTE: this holds during operation; whether
+     * it also survives a reboot depends on the native save actually committing the block (investigating a
+     * proper permanent fix). Cave sits at the app end; the 8-byte end marker is carried along.
      */
     void applyWheelDiameter() {
         for (int i = 0; i < WD_HOOK_OLD.length; i++) {
@@ -182,23 +183,28 @@ final class FirmwarePatcher {
         for (int i = 0; i < footer.length; i++) wr(footerAddr + i, footer[i]);
     }
 
-    /** 0x18-byte unpack-only cave: frame[8] -> WD var, redo the hooked frame[9] load, return.
-     *  Literals at +0x10 (WD_FRAME) and +0x14 (WD_VAR); the native detector does the actual save. */
+    /** 0x34-byte webpatcher cave: unpack frame[8] -> WD var; if changed, write the EEPROM mirror (+3)
+     *  and call the native save (r0=1). Then redo the hooked frame[9] load and return. Prefix/mid bytes
+     *  are byte-exact from patcher-core wheel_diameter.py; literals at +0x28/0x2C/0x30. */
     private int[] buildWdCave(int cave) {
-        int[] code = {
-            0x03, 0x49,   // ldr  r1,[pc,#0x0c]  -> WD_FRAME
-            0x0a, 0x7a,   // ldrb r2,[r1,#8]      (frame[8] = new wheel diameter)
-            0x03, 0x49,   // ldr  r1,[pc,#0x0c]  -> WD_VAR
-            0x0a, 0x70,   // strb r2,[r1]         (WD = frame[8])  <-- the load-bearing fix
-            0x01, 0x49,   // ldr  r1,[pc,#0x04]  -> WD_FRAME
-            0x48, 0x7a,   // ldrb r0,[r1,#9]      (redo the hooked instruction: r0 = frame[9])
+        int[] prefix = {                                          // +0x00..0x17
+            0x09, 0x49, 0x0a, 0x7a, 0x09, 0x49, 0x0b, 0x78,       // ldr WD_FRAME; ldrb r2,[+8]; ldr WD_VAR; ldrb r3,[]
+            0x0a, 0x70, 0x9a, 0x42, 0x08, 0xd0, 0x08, 0x49,       // strb r2,[WD_VAR]; cmp r2,r3; beq +; ldr WD_MIRROR
+            0xca, 0x70, 0x2d, 0xe9, 0x0c, 0x50, 0x01, 0x20,       // strb r2,[+3]; push {r2,r3,r12,lr}; movs r0,#1
         };
-        int[] out = new int[0x18];
-        int p = put(out, 0, code);                               // +0x00..0x0B
-        p = put(out, p, encBranch(cave + 0x0C, WD_RET, false));  // +0x0C b.w RET
-        p = put(out, p, le32(WD_FRAME));                         // +0x10 literal
-        p = put(out, p, le32(WD_VAR));                           // +0x14 literal
-        if (p != 0x18) throw new RuntimeException("cave size " + p);
+        int[] mid = {                                             // +0x1C..0x23
+            0xbd, 0xe8, 0x0c, 0x50,                               // pop {r2,r3,r12,lr}
+            0x01, 0x49, 0x48, 0x7a,                               // ldr WD_FRAME; ldrb r0,[+9]  (redo hooked instr)
+        };
+        int[] out = new int[0x34];
+        int p = put(out, 0, prefix);                              // +0x00
+        p = put(out, p, encBranch(cave + 0x18, WD_SAVE, true));   // +0x18 bl WD_SAVE
+        p = put(out, p, mid);                                     // +0x1C
+        p = put(out, p, encBranch(cave + 0x24, WD_RET, false));   // +0x24 b.w WD_RET
+        p = put(out, p, le32(WD_FRAME));                          // +0x28 literal
+        p = put(out, p, le32(WD_VAR));                            // +0x2C literal
+        p = put(out, p, le32(WD_MIRROR));                         // +0x30 literal
+        if (p != 0x34) throw new RuntimeException("cave size " + p);
         return out;
     }
 
