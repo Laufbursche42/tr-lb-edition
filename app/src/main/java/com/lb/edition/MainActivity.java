@@ -553,8 +553,7 @@ public class MainActivity extends Activity {
                 String asset, baseLabel;
                 boolean isHex;
                 if ("r5".equals(fwId)) { asset = "firmware/vcu_r5_4_19.hex"; baseLabel = "AWIVCU_R5.4.19"; isHex = true; }
-                else if ("d5".equals(fwId)) { asset = "firmware/vcu_d5_4_14.hex"; baseLabel = "AWIVCU_D5.4.14"; isHex = true; }
-                else if ("ali".equals(fwId)) { asset = "firmware/vcu_ali_d3_4_12.bin"; baseLabel = "ALIVCU_D3.4.12"; isHex = false; }
+                else if ("ali".equals(fwId)) { asset = "firmware/vcu_ali_d3_4_12.bin"; baseLabel = "AWIVCU_ALI_D3_4_12"; isHex = false; }
                 else return "{\"ok\":false,\"error\":\"unknown firmware\"}";
 
                 byte[] raw = readAsset(asset);
@@ -578,11 +577,10 @@ public class MainActivity extends Activity {
                     }
                     if (blinker) { fp.applyR519Blinker(); tags.add("BlinkerFix"); }
                     if (wheel) { fp.applyWheelDiameter(); tags.add("WheelDia"); }
-                } else if ("d5".equals(fwId)) {
-                    if ("unlock".equals(speedMode)) { fp.applyD5Speed(); tags.add("Unlocked"); }
                 }
+                // ALI is open (convert only); R5 with nothing selected -> the unmodified original.
                 if ("ali".equals(fwId)) tags.add("Converted");
-                else if (tags.isEmpty()) tags.add("UNPATCHED");
+                else if (tags.isEmpty()) tags.add("Original");
 
                 String hex = fp.buildHex();
                 String name = buildPatchName(baseLabel, tags);

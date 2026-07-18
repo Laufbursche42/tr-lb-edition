@@ -165,13 +165,21 @@ final class FirmwarePatcher {
     // ─────────────────────── WheelDiameter (R5.4.19, code cave) ───────────────────────
     private static final int WD_HOOK = 0x0800F8EE;
     private static final int[] WD_HOOK_OLD = {0x8C, 0x48, 0x40, 0x7A}; // ldr r0,[pc,#0x230]; ldrb r0,[r0,#9]
-    private static final int WD_RET = 0x0800F8F2, WD_SAVE = 0x0801700C;
-    private static final int[] WD_PREFIX = u("09490a7a09490b780a709a4208d00849ca702de90c500120");
-    private static final int[] WD_MID    = u("bde80c500149487a");
-    private static final int[] WD_LITERALS = u("4d1300209d020020281a0020"); // 0x2000134D, 0x2000029D, 0x20001A28
+    private static final int WD_RET = 0x0800F8F2;
+    private static final int WD_FRAME = 0x2000134D;   // display RX frame buffer
+    private static final int WD_VAR   = 0x2000029D;   // WheelDiameter RAM var
 
-    /** Makes the display WheelDiameter persist (R5.4.19). Appends a code cave at the app end and
-     *  hooks the sync-block convergence point. Byte-exact port of wheel_diameter.apply. */
+    /**
+     * Makes the display WheelDiameter setting persist on R5.4.19 - the ALI way (NOT the webpatcher way).
+     * R5.4.19 has the full native save chain (change-detector bl 0x08017E08 - verified wired - pack,
+     * flash dispatcher, boot-load); the eKFV build dropped only ONE thing the open ALI firmware has:
+     * the sync-block unpack that writes the value from the display frame into the WD RAM var, so a menu
+     * change never reaches RAM and the detector never sees it. This hooks that exact spot and re-adds
+     * ONLY the unpack (frame[8] -> WD), then lets R5.4.19's own native detector persist it - identical
+     * to how ALI does it. It deliberately does NOT force a flash (that extra step is what the webpatcher
+     * adds and is the suspected cause of its unreliable saves). Cave sits at the app end; the 8-byte end
+     * marker is carried along.
+     */
     void applyWheelDiameter() {
         for (int i = 0; i < WD_HOOK_OLD.length; i++) {
             if (rd(WD_HOOK + i) != WD_HOOK_OLD[i])
@@ -197,16 +205,28 @@ final class FirmwarePatcher {
         for (int i = 0; i < footer.length; i++) wr(footerAddr + i, footer[i]);
     }
 
+    /** 0x18-byte unpack-only cave: frame[8] -> WD var, redo the hooked frame[9] load, return.
+     *  Literals at +0x10 (WD_FRAME) and +0x14 (WD_VAR); the native detector does the actual save. */
     private int[] buildWdCave(int cave) {
-        int[] out = new int[0x34];
-        int p = 0;
-        p = put(out, p, WD_PREFIX);                       // +0x00
-        p = put(out, p, encBranch(cave + 0x18, WD_SAVE, true)); // +0x18 bl
-        p = put(out, p, WD_MID);                          // +0x1C
-        p = put(out, p, encBranch(cave + 0x24, WD_RET, false)); // +0x24 b.w
-        p = put(out, p, WD_LITERALS);                     // +0x28
-        if (p != 0x34) throw new RuntimeException("cave size " + p);
+        int[] code = {
+            0x03, 0x49,   // ldr  r1,[pc,#0x0c]  -> WD_FRAME
+            0x0a, 0x7a,   // ldrb r2,[r1,#8]      (frame[8] = new wheel diameter)
+            0x03, 0x49,   // ldr  r1,[pc,#0x0c]  -> WD_VAR
+            0x0a, 0x70,   // strb r2,[r1]         (WD = frame[8])  <-- the load-bearing fix
+            0x01, 0x49,   // ldr  r1,[pc,#0x04]  -> WD_FRAME
+            0x48, 0x7a,   // ldrb r0,[r1,#9]      (redo the hooked instruction: r0 = frame[9])
+        };
+        int[] out = new int[0x18];
+        int p = put(out, 0, code);                               // +0x00..0x0B
+        p = put(out, p, encBranch(cave + 0x0C, WD_RET, false));  // +0x0C b.w RET
+        p = put(out, p, le32(WD_FRAME));                         // +0x10 literal
+        p = put(out, p, le32(WD_VAR));                           // +0x14 literal
+        if (p != 0x18) throw new RuntimeException("cave size " + p);
         return out;
+    }
+
+    private static int[] le32(int v) {
+        return new int[]{v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF};
     }
 
     /** Thumb-2 B.W (link=false) / BL (link=true), 4 bytes little-endian. */
