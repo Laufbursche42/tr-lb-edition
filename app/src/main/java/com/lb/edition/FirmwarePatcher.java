@@ -147,22 +147,30 @@ final class FirmwarePatcher {
     private static final int WD_VAR    = 0x2000029D;   // WheelDiameter RAM var
     private static final int WD_MIRROR = 0x20001A28;   // EEPROM settings mirror (WD at +3)
     private static final int WD_SAVE   = 0x0801700C;   // native save dispatcher (r0 = block idx; 1 = mirror block)
+    // Boot clobber: boot-load reads the persisted wheel into the WD var, then unconditionally overwrites
+    // it with 100 (10.0"). NOP that store so the persisted value survives a reboot. (Disasm-verified.)
+    private static final int WD_BOOT = 0x0801730A;
+    private static final int[] WD_BOOT_OLD = {0x64, 0x20, 0x44, 0x49, 0x08, 0x70}; // movs r0,#0x64; ldr r1,=WD; strb r0,[r1]
+    private static final int[] WD_BOOT_NEW = {0x64, 0x20, 0x44, 0x49, 0x00, 0xBF}; // movs r0,#0x64; ldr r1,=WD; nop
 
     /**
-     * Makes the display WheelDiameter change take on R5.4.19 - byte-exact to the proven webpatcher cave
-     * (patcher-core wheel_diameter.py, DAP-verified). Hooks the sync-block convergence point and, on the
-     * hooked frame, unpacks frame[8] -> WD RAM var 0x2000029D AND (when the value changed) writes the
-     * EEPROM mirror 0x20001A28+3 and calls the native save dispatcher 0x0801700C(idx=1). Both the var AND
-     * the mirror MUST be written: writing only the var (an earlier unpack-only attempt) lets the mirror
-     * overwrite it right back, so the value snaps to default. NOTE: this holds during operation; whether
-     * it also survives a reboot depends on the native save actually committing the block (investigating a
-     * proper permanent fix). Cave sits at the app end; the 8-byte end marker is carried along.
+     * Makes the display WheelDiameter change PERSIST across reboots on R5.4.19. Two parts, both required
+     * (disassembly-verified):
+     *   1. Live write (byte-exact webpatcher cave, hook 0x0800F8EE): frame[8] -> WD var 0x2000029D, and
+     *      when changed mirror 0x20001A28+3 + native save 0x0801700C(1) - persists to I2C EEPROM with a
+     *      correct CRC. Writing only the var lets the mirror overwrite it back, so the mirror is required.
+     *   2. Boot-clobber NOP (0x0801730E): the boot-load reads the persisted wheel back from the mirror,
+     *      then unconditionally overwrites the WD var with 100 (10.0"). NOP that store so the persisted
+     *      value survives. This is exactly what the webpatcher lacks (why its wheel reverts on reboot).
+     * Cave sits at the app end; the 8-byte end marker is carried along.
      */
     void applyWheelDiameter() {
         for (int i = 0; i < WD_HOOK_OLD.length; i++) {
             if (rd(WD_HOOK + i) != WD_HOOK_OLD[i])
                 throw new RuntimeException("WheelDiameter: hook mismatch (only R5.4.19).");
         }
+        // Part 2: neutralize the boot clobber that resets WD to 100, so the persisted value survives.
+        patch(WD_BOOT, WD_BOOT_OLD, WD_BOOT_NEW);
         int preMax = mem.lastKey();
         int[] footer = new int[8];
         for (int i = 0; i < 8; i++) footer[i] = rd(preMax - 7 + i);

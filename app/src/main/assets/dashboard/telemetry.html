@@ -847,6 +847,22 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       </div>
     </div>
 
+    <!-- Active gear (per-gear values the controller is delivering in the current gear) -->
+    <div class="section-hdr sub-hdr">Active gear</div>
+    <div id="data-grid">
+      <div class="dg-row">
+        <div class="dg-cell"><span class="dg-label">Front start</span><span class="dg-value" id="dg-fstart">-</span></div>
+        <div class="dg-cell"><span class="dg-label">Rear start</span><span class="dg-value" id="dg-rstart">-</span></div>
+      </div>
+      <div class="dg-row">
+        <div class="dg-cell"><span class="dg-label dg-label-wide">Front cur. limit</span><span class="dg-value" id="dg-fcurlim">-</span></div>
+        <div class="dg-cell"><span class="dg-label dg-label-wide">Rear cur. limit</span><span class="dg-value" id="dg-rcurlim">-</span></div>
+      </div>
+      <div class="dg-row" style="grid-template-columns:1fr">
+        <div class="dg-cell"><span class="dg-label">EABS level</span><span class="dg-value" id="dg-eabs">-</span></div>
+      </div>
+    </div>
+
     <!-- Current ride (GPS) -->
     <div class="section-hdr sub-hdr">Current ride (GPS)</div>
     <div id="data-grid">
@@ -1137,11 +1153,6 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
           <option value="3">3</option><option value="4">4</option><option value="5">5</option>
         </select>
       </div>
-      <div class="settings-row">
-        <div class="settings-row-left"><div class="settings-row-label">Start mode</div><div class="settings-row-sublabel">Launch / kick start</div></div>
-        <button type="button" class="set-help" data-set-help="ss-start" aria-label="What is this?">?</button>
-        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-start"><label class="toggle-label" for="ss-start"></label></div>
-      </div>
       <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:8px">
         <div class="settings-row-label" style="display:flex;align-items:center;gap:6px">Cruise control<button type="button" class="set-help" data-set-help="ss-cruise" aria-label="What is this?">?</button></div>
         <div class="seg" id="ss-cruise">
@@ -1149,26 +1160,6 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
           <button data-val="1">Auto</button>
           <button data-val="2">Manual</button>
         </div>
-      </div>
-    </div>
-
-    <!-- Motor & power -->
-    <div class="section-hdr sub-hdr">Motor &amp; power</div>
-    <div class="settings-group" style="padding-top:4px">
-      <div class="settings-row">
-        <div class="settings-row-left"><div class="settings-row-label">Front current limit</div></div>
-        <button type="button" class="set-help" data-set-help="ss-fcur" aria-label="What is this?">?</button>
-        <input class="set-ctrl" id="ss-fcur" type="number" min="0" max="255" step="1" inputmode="numeric" disabled>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-left"><div class="settings-row-label">Rear current limit</div></div>
-        <button type="button" class="set-help" data-set-help="ss-rcur" aria-label="What is this?">?</button>
-        <input class="set-ctrl" id="ss-rcur" type="number" min="0" max="255" step="1" inputmode="numeric" disabled>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-left"><div class="settings-row-label">ABS</div></div>
-        <button type="button" class="set-help" data-set-help="ss-abs" aria-label="What is this?">?</button>
-        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-abs"><label class="toggle-label" for="ss-abs"></label></div>
       </div>
     </div>
 
@@ -1190,29 +1181,19 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       </div>
     </div>
 
-    <!-- Assist levels -->
-    <div class="section-hdr sub-hdr">Assist levels</div>
-    <div class="settings-group" style="padding-top:4px">
-      <div class="settings-row">
-        <div class="settings-row-left"><div class="settings-row-label">Front start level</div></div>
-        <button type="button" class="set-help" data-set-help="ss-fstart" aria-label="What is this?">?</button>
-        <input class="set-ctrl" id="ss-fstart" type="number" min="0" max="15" step="1" inputmode="numeric">
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-left"><div class="settings-row-label">Rear start level</div></div>
-        <button type="button" class="set-help" data-set-help="ss-rstart" aria-label="What is this?">?</button>
-        <input class="set-ctrl" id="ss-rstart" type="number" min="0" max="15" step="1" inputmode="numeric">
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-left"><div class="settings-row-label">EABS level</div><div class="settings-row-sublabel">Recuperation</div></div>
-        <button type="button" class="set-help" data-set-help="ss-eabs" aria-label="What is this?">?</button>
-        <input class="set-ctrl" id="ss-eabs" type="number" min="0" max="15" step="1" inputmode="numeric">
-      </div>
-    </div>
-
     <!-- Modes -->
     <div class="section-hdr sub-hdr">Modes</div>
     <div class="settings-group" style="padding-top:4px">
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Start mode</div><div class="settings-row-sublabel">Launch / kick start</div></div>
+        <button type="button" class="set-help" data-set-help="ss-start" aria-label="What is this?">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-start"><label class="toggle-label" for="ss-start"></label></div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">ABS</div></div>
+        <button type="button" class="set-help" data-set-help="ss-abs" aria-label="What is this?">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-abs"><label class="toggle-label" for="ss-abs"></label></div>
+      </div>
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label">Eco mode</div></div>
         <button type="button" class="set-help" data-set-help="ss-eco" aria-label="What is this?">?</button>
@@ -2016,6 +1997,17 @@ function updateBLEUI(data) {
   setTxt('dg-rssi', `${data.rssi} dBm`);
   const rssiEl = document.getElementById('dg-rssi');
   if (rssiEl) rssiEl.style.color = data.rssi < -85 ? 'var(--danger)' : data.rssi < -70 ? 'var(--warn)' : 'var(--good)';
+
+  // Active-gear per-gear values (from the maintained 55 71 state; "-" until first received).
+  {
+    const s = liveRaw();
+    const sv = (v, suf) => (v == null ? '-' : String(v) + (suf || ''));
+    setTxt('dg-fstart',  sv(s.fStartLevel));
+    setTxt('dg-rstart',  sv(s.rStartLevel));
+    setTxt('dg-eabs',    sv(s.eabsLevel));
+    setTxt('dg-fcurlim', sv(s.fCurrentLimit, ' A'));
+    setTxt('dg-rcurlim', sv(s.rCurrentLimit, ' A'));
+  }
 
   // All values (battery/cells)
   renderAllValues(data);
@@ -3469,12 +3461,12 @@ window.__onOtaState = function(sArg) {
 
 /* Global scooter-setting field maps (control id -> controller key). Editing a field only marks
    it dirty; nothing is written to the controller until the user presses "Save settings". */
-// ss-gear, ss-fcur and ss-rcur are read-only display fields (the controller does not accept
-// writes for them), so they are intentionally not in this list and are not written on Save.
+// ss-gear is a read-only display field (the controller does not accept writes for it), so it is
+// intentionally not in this list and is not written on Save. Per-gear values (start levels, EABS,
+// currents) live in the per-gear editor, so they are not duplicated here.
 const SS_NUM_FIELDS = [
   ['ss-speed', 'speedLimit'], ['ss-wheel', 'wheel'],
-  ['ss-packvolt', 'packVolt'],
-  ['ss-fstart', 'fStartLevel'], ['ss-rstart', 'rStartLevel'], ['ss-eabs', 'eabsLevel']
+  ['ss-packvolt', 'packVolt']
 ];
 const SS_BOOL_FIELDS = [
   ['ss-abs', 'abs'], ['ss-start', 'startMode'], ['ss-eco', 'enfEcon'],
@@ -3502,11 +3494,6 @@ function prefillScooterSettings(live) {
   setV('ss-gear',     'gear',         pick(d, ['gear']));
   setV('ss-wheel',    'wheel',        pick(d, ['wheel']));
   setV('ss-packvolt', 'packVolt',     pick(d, ['packVolt']));
-  setV('ss-fcur',     'fCurrent',     pick(d, ['fCurrentLimit']));   // 55 71 setting, NOT live motor current
-  setV('ss-rcur',     'rCurrent',     pick(d, ['rCurrentLimit']));   // 55 71 setting, NOT live motor current
-  setV('ss-fstart',   'fStartLevel',  pick(d, ['fStartLevel']));
-  setV('ss-rstart',   'rStartLevel',  pick(d, ['rStartLevel']));
-  setV('ss-eabs',     'eabsLevel',    pick(d, ['eabsLevel']));
 
   let eco   = pick(d, ['enfEcon']);    if (eco   == null) eco   = b(sys[0]);
   let um    = pick(d, ['isUnitMile']); if (um    == null) um    = b(sys[1]);
