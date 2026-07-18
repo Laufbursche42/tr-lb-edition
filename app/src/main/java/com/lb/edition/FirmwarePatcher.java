@@ -109,40 +109,23 @@ final class FirmwarePatcher {
             {0x080103AA, 0x080103AC, 0x080103B0, 0x080103B4},
             {0x080105CA, 0x080105CC, 0x080105D0, 0x080105D4},
     };
-    private static final int[] CBZ_OLD  = {0x28, 0xB1}, CBZ_NOP  = {0x00, 0xBF};
     private static final int[] BIT5_OLD = {0x46},       BIT5_NEW = {0x26};
-    private static final int[] CLAMP_OLD  = {0x16, 0x2F, 0x03, 0xDD, 0x16, 0x27};
-    private static final int[] CLAMP_HALF = {0x7F, 0x08, 0x00, 0xBF, 0x00, 0xBF};
     private static final int[] MOVS_OLD = {0x16, 0x27}, MOVS_NOP = {0x00, 0xBF};
-    private static final int[] GATE_FLAG_OLD = {0x72, 0x48}, GATE_FLAG_NEW = {0x0E, 0xE0}; // @0x0800F99C
     private static final int[] GATE2_OLD = {0x01, 0x20}, GATE2_NEW = {0x00, 0x20};         // @0x0800F9C8
     private static final int[] BLINKER_OLD = {0xFF, 0xF7, 0x90, 0xFF}, BLINKER_NEW = {0x00, 0xBF, 0x00, 0xBF};
 
     /**
-     * R5.4.19 driving-feature combo (Speed / ZeroStart / Cruise), byte-exact from
-     * r5_4_19_features.apply_features. The three share the builder byte region, so the result
-     * depends on the combination.
+     * "Full unlock" speed mode: remove the hard 22 km/h clamp so the natural (full) speed is sent.
+     * With {@code zerostart} it also forces bit5=0 on all four motor builders - what the very first
+     * "Charge-1" production batch needs for kickstart. Later batches toggle kickstart at runtime via
+     * the display setting, so the patch is only for Charge-1. Cruise needs NO patch: it opens together
+     * with the unlock (the VCU cruise gates follow the clamp flag), so the UI offers it as a plain
+     * availability marker for Full unlock / Live toggle.
      */
-    void applyR519Features(boolean speedRemove, boolean zerostart, boolean cruise) {
-        if (cruise) {
-            // Flag 0x2000030C -> 0 (skip TDE gate + display-bit branch writes 0): sync block clean.
-            patch(0x0800F99C, GATE_FLAG_OLD, GATE_FLAG_NEW);
-            patch(0x0800F9C8, GATE2_OLD, GATE2_NEW);
-            if (!speedRemove) {
-                for (int[] b : R5_BUILDERS) {
-                    patch(b[0], CBZ_OLD, CBZ_NOP);
-                    patch(b[1], BIT5_OLD, BIT5_NEW);
-                    patch(b[2], CLAMP_OLD, CLAMP_HALF);
-                }
-            }
-        } else if (zerostart) {
-            for (int[] b : R5_BUILDERS) {
-                patch(b[1], BIT5_OLD, BIT5_NEW);
-                if (speedRemove) patch(b[3], MOVS_OLD, MOVS_NOP);
-                else patch(b[2], CLAMP_OLD, CLAMP_HALF);
-            }
-        } else if (speedRemove) {
-            for (int[] b : R5_BUILDERS) patch(b[3], MOVS_OLD, MOVS_NOP);
+    void applyR519Unlock(boolean zerostart) {
+        for (int[] b : R5_BUILDERS) {
+            patch(b[3], MOVS_OLD, MOVS_NOP);                  // remove the 22 clamp -> full speed
+            if (zerostart) patch(b[1], BIT5_OLD, BIT5_NEW);   // bit5=0: kickstart for Charge-1 units
         }
     }
 

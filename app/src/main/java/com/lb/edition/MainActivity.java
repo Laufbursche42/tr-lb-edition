@@ -564,19 +564,22 @@ public class MainActivity extends Activity {
                 java.util.List<String> tags = new java.util.ArrayList<>();
                 if ("r5".equals(fwId)) {
                     if ("live".equals(speedMode)) {
-                        if (zerostart || cruise)
-                            return "{\"ok\":false,\"error\":\"Live toggle is speed-only - turn ZeroStart/Cruise off or pick Full unlock.\"}";
+                        // Gate 2 out -> the FIN identity is the live 22/open switch. ZeroStart and Cruise
+                        // come free with the FIN unlock on modern units, so they are UI markers only (no
+                        // patch); Charge-1 units need Full unlock + ZeroStart instead. WheelDiameter does
+                        // not persist under Live toggle (the UI greys it out), so it is not applied here.
                         fp.applyR519LiveToggle();
                         tags.add("LiveFIN");
-                    } else {
-                        boolean speedRemove = "unlock".equals(speedMode);
-                        fp.applyR519Features(speedRemove, zerostart, cruise);
-                        if (speedRemove) tags.add("Unlocked");
+                    } else if ("unlock".equals(speedMode)) {
+                        fp.applyR519Unlock(zerostart);   // full speed; bit5=0 for Charge-1 kickstart
+                        tags.add("Unlocked");
                         if (zerostart) tags.add("ZeroStart");
-                        if (cruise) tags.add("Cruise");
+                        if (wheel) { fp.applyWheelDiameter(); tags.add("WheelDia"); }
+                    } else {
+                        // Keep ~22 (stock speed). WheelDiameter is the only clamp-independent option here.
+                        if (wheel) { fp.applyWheelDiameter(); tags.add("WheelDia"); }
                     }
                     if (blinker) { fp.applyR519Blinker(); tags.add("BlinkerFix"); }
-                    if (wheel) { fp.applyWheelDiameter(); tags.add("WheelDia"); }
                 }
                 // ALI is open (convert only); R5 with nothing selected -> the unmodified original.
                 if ("ali".equals(fwId)) tags.add("Converted");
