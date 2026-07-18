@@ -552,11 +552,11 @@ public class MainActivity extends Activity {
                         ? FirmwarePatcher.fromHex(new String(raw, StandardCharsets.ISO_8859_1))
                         : FirmwarePatcher.fromAliDump(raw);
 
-                // Keep the original AWIVCU_<slot>_<MODEL>_<ver> file-name shape: the mode token goes in the
+                // Keep the original AWIVCU_<mode>_<model>_<ver> file-name shape: the mode token goes in the
                 // "APP" slot and the model stays R5_4_19, so split("_")[2] == "R5" - the exact spot the
                 // original app's isComplyRules reads the model + major version (R5/R3). Mode: FULL = full
-                // unlock, LIVE = live toggle, EKFV = stock 22. Then add-on suffixes WHEEL (wheel diameter)
-                // / TURN (blinker fix), then a timestamp.
+                // unlock, LIVE = live toggle, EKFV = stock 22. Optional add-on suffixes: WHEEL (wheel
+                // diameter) then TURN (blinker fix), in that order. No timestamp is appended.
                 String name;
                 if ("r5".equals(fwId)) {
                     String mode;
