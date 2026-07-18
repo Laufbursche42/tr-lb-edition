@@ -334,12 +334,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Compact timestamp for firmware file names, e.g. 20260718_0142. */
-    private String fwTimestamp() {
-        return new java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.US)
-                .format(new java.util.Date());
-    }
-
     /** Minimal JSON string escaper for bridge error messages. */
     private static String jsonStr(String s) {
         if (s == null) return "\"\"";
@@ -574,10 +568,10 @@ public class MainActivity extends Activity {
                     if (blinker) fp.applyR519Blinker();
                     name = "AWIVCU_" + mode + "_R5_4_19"
                             + (wheel ? "_WHEEL" : "") + (blinker ? "_TURN" : "")
-                            + "_" + fwTimestamp() + ".hex";
+                            + ".hex";
                 } else {
                     // ALI is convert-only (already open); keep its canonical model token.
-                    name = "AWIVCU_ALI_D3_4_12_" + fwTimestamp() + ".hex";
+                    name = "AWIVCU_ALI_D3_4_12.hex";
                 }
 
                 String hex = fp.buildHex();
