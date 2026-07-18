@@ -587,9 +587,10 @@ html, body {
   background: color-mix(in srgb, var(--danger) 12%, transparent); font-size: var(--fs-sm); line-height: 1.5;
 }
 .fw-warn b { color: var(--danger); }
-#fw-fileinfo { font-size: var(--fs-sm); line-height: 1.6; margin-top: 8px; word-break: break-word; }
+#fw-fileinfo { font-size: var(--fs-sm); line-height: 1.6; margin-top: 8px; }
 #fw-fileinfo .fw-row { display: flex; justify-content: space-between; gap: 10px; }
-#fw-fileinfo .fw-k { color: var(--label); }
+#fw-fileinfo .fw-k { color: var(--label); flex-shrink: 0; white-space: nowrap; }
+#fw-fileinfo .fw-row > span:last-child { min-width: 0; text-align: right; overflow-wrap: anywhere; }
 .fw-checks { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
 .fw-check { display: flex; align-items: flex-start; gap: 8px; }
 .fw-check > span:last-child { flex: 1; }
@@ -1444,7 +1445,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       <div class="settings-group-title">Options (R5.4.19 only)</div>
       <div class="settings-row-sublabel" id="pt-unlock-note" style="margin-bottom:6px"></div>
       <label class="pt-opt" id="pt-bl-wrap"><input type="checkbox" id="pt-blinker"><span><span class="pt-lbl">Blinker fix</span><span class="pt-help">Fixes the 5.4.19 bug where the indicators glow solid instead of blinking. Only needed if the VCU drives the indicators (no separate blinker module).</span></span></label>
-      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">WheelDiameter persists</span><span class="pt-help">Lets you set the wheel size in the app (Scooter settings -> Wheel size) and makes it stick - stock 5.4.19 ignores the app's wheel value. Works in every speed mode.</span></span></label>
+      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">WheelDiameter persists</span><span class="pt-help">Lets you set the wheel size in the app (Scooter settings -> Wheel size) and makes it stick - stock 5.4.19 ignores the app's wheel value. Only with Full unlock or Live toggle: on Keep 22 (legal eKFV) the wheel must stay stock so the speed reading stays honest.</span></span></label>
     </div>
 
     <div class="settings-group" id="pt-ali-note" style="border-top:1px solid var(--border);display:none">
@@ -3205,8 +3206,8 @@ function ptOnFirmwareChange() {
   ptUpdateUnlockNote();
 }
 // Kickstart + Cruise are consequences of the unlock (clamp flag = 0), not separate patches - so they are
-// just a hint per speed mode. Blinker + WheelDiameter are flag-independent and stay available in every
-// mode. (See teverun/R5419_PATCH_MATRIX.md.)
+// just a hint per speed mode. Blinker is available in every mode; WheelDiameter is NOT offered on Keep 22
+// (the legal eKFV state must keep the stock wheel so the speed reading stays honest). (See matrix.)
 function ptUpdateUnlockNote() {
   const sel = document.querySelector('input[name="pt-speed"]:checked');
   const mode = sel ? sel.value : 'capped';
@@ -3215,8 +3216,14 @@ function ptUpdateUnlockNote() {
     note.textContent =
       mode === 'unlock' ? 'Full speed. Kickstart and Cruise are released too - toggle them in the display menu.' :
       mode === 'live'   ? 'With an open FIN you get full speed + Kickstart + Cruise; a locked FIN (TDE) keeps you at 22 km/h.' :
-                          'Stock 22 km/h. Kickstart and Cruise need an unlock (Full unlock or an open FIN).';
+                          'Stock 22 km/h - legal eKFV. Kickstart, Cruise and WheelDiameter need an unlock (Full unlock or an open FIN).';
   }
+  // Keep 22 is the legal state: WheelDiameter must stay stock (a changed wheel would falsify the speed),
+  // so it is only offered with an unlock. Blinker stays available in every mode.
+  const wdAllowed = (mode === 'unlock' || mode === 'live');
+  const wrap = document.getElementById('pt-wd-wrap'), wd = document.getElementById('pt-wheel');
+  if (wrap) wrap.classList.toggle('disabled', !wdAllowed);
+  if (wd) { wd.disabled = !wdAllowed; if (!wdAllowed) wd.checked = false; }
   ptSyncButton();
 }
 // The button says "Build patch" only when the user actually chose something; otherwise it offers the
@@ -3549,6 +3556,16 @@ function prefillScooterSettings(live) {
   setV('ss-speed',    'speedLimit',   pick(d, ['speedLimit']));
   setV('ss-gear',     'gear',         pick(d, ['gear']));
   setV('ss-wheel',    'wheel',        pick(d, ['wheel']));
+  // Wheel size is only editable while the FIN is UNLOCKED (no TDE): a locked FIN means the scooter is at
+  // the legal 22 cap, where the wheel must stay stock so the speed reading stays honest (esp. Live toggle).
+  {
+    const wheelEl = document.getElementById('ss-wheel');
+    if (wheelEl) {
+      const finLocked = /^T2?DE/i.test(((d.btName || '') + '').trim());
+      wheelEl.disabled = finLocked;
+      wheelEl.title = finLocked ? 'Unlock the FIN (remove TDE) to change the wheel size' : '';
+    }
+  }
   setV('ss-packvolt', 'packVolt',     pick(d, ['packVolt']));
 
   let eco   = pick(d, ['enfEcon']);    if (eco   == null) eco   = b(sys[0]);
