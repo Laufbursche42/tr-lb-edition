@@ -59,12 +59,14 @@ final class OtaEngine {
     private static final class Config {
         final int[] START, START_RESP, INFO, INFO_RESP, PACKINFO, PACKINFO_RESP,
                 PACKDATA, PACKDATA_RESP, FINISH, FINISH_RESP;
+        final int[] HANDSHAKE, HANDSHAKE_RESP;   // ver2 (config_dis) node-select handshake; null for legacy
         final int packLen, lineLen;
-        Config(int idHi, int startLo, int packLen) {
-            // The legacy id blocks are perfectly regular around the START low byte:
+        Config(int idHi, int startLo, int packLen, int[] handshake, int[] handshakeResp) {
+            // The id blocks are perfectly regular around the START low byte:
             //   START s, START_RESP s+0x40, FINISH s+1, FINISH_RESP s+0x41,
             //   INFO s+2, INFO_RESP s+0x42, PACKINFO s+3, PACKINFO_RESP s+0x43,
-            //   PACKDATA s+4, PACKDATA_RESP s+0x44. (config_vcu s=0x10, config_bms s=0x00.)
+            //   PACKDATA s+4, PACKDATA_RESP s+0x44.
+            //   config_vcu s=0x10, config_bms s=0x00, config_dis s=0x80 (resp block = 0xc0..).
             START = new int[]{idHi, startLo};
             START_RESP = new int[]{idHi, startLo + 0x40};
             FINISH = new int[]{idHi, startLo + 0x01};
@@ -75,11 +77,16 @@ final class OtaEngine {
             PACKINFO_RESP = new int[]{idHi, startLo + 0x43};
             PACKDATA = new int[]{idHi, startLo + 0x04};
             PACKDATA_RESP = new int[]{idHi, startLo + 0x44};
+            HANDSHAKE = handshake;
+            HANDSHAKE_RESP = handshakeResp;
             this.packLen = packLen;
-            this.lineLen = 16;   // UPGRADE_LINE_DATA_LENGTH is 16 for both legacy targets
+            this.lineLen = 16;   // UPGRADE_LINE_DATA_LENGTH is 16 for every target
         }
-        static Config vcu() { return new Config(0x07, 0x10, 512); }   // config_vcu
-        static Config bms() { return new Config(0x07, 0x00, 1024); }  // config_bms
+        static Config vcu() { return new Config(0x07, 0x10, 512, null, null); }   // config_vcu
+        static Config bms() { return new Config(0x07, 0x00, 1024, null, null); }  // config_bms
+        // config_dis: ver2 devices flash EVERY node through the display block; the node is selected
+        // by the 06 e2 handshake (fileType/fileCode), not a separate id block.
+        static Config dis() { return new Config(0x07, 0x80, 1024, new int[]{0x06, 0xe2}, new int[]{0x06, 0xea}); }
     }
 
     /** One flash packet: 3-byte address (sId high byte + 16-bit backId) and its hex data string. */
@@ -123,6 +130,8 @@ final class OtaEngine {
 
     private Config config;
     private boolean isVcu = true;
+    private boolean ver2 = false;              // config_dis flash (T2/ver2 devices) with a node handshake
+    private int fileType = -1, fileCode = -1;  // node select from the file trailer (uId, proId)
     private final List<Packet> packets = new ArrayList<>();
     private byte[] allData = new byte[0];     // decoded firmware bytes (for CRC16 + INFO length)
     private String fileCrc = "";              // trailer CRC16 (4 hex, uppercase)
@@ -158,7 +167,14 @@ final class OtaEngine {
      * gate on {@code fileName} only to pick the VCU/BMS target; the hard integrity gate is the CRC16
      * check against the file trailer. Must be called on the main looper.
      */
-    void start(String hexText, String fileName) {
+    void start(String hexText, String fileName) { start(hexText, fileName, false); }
+
+    /**
+     * ver2 (T2/tetra) devices flash every node - display, light module, controllers, BMS - through
+     * the config_dis block, selecting the target node with a 06 e2 handshake (fileType/fileCode read
+     * from the file's :07AAA555 trailer). Otherwise identical framing/state-machine to the legacy path.
+     */
+    void start(String hexText, String fileName, boolean ver2) {
         if (running) return;
         running = true;
         resetState();
@@ -169,8 +185,14 @@ final class OtaEngine {
         // is a BMS image, everything else is a VCU image. This picks the frame-id config AND the
         // packet grouping (VCU 32 lines/packet, BMS 64), so it must happen before grouping.
         String name = fileName == null ? "" : fileName.trim();
-        isVcu = !name.toUpperCase(Locale.US).startsWith("AWE");
-        config = isVcu ? Config.vcu() : Config.bms();
+        this.ver2 = ver2;
+        if (ver2) {
+            isVcu = false;                 // config_dis flashes any node; not the legacy VCU/BMS split
+            config = Config.dis();
+        } else {
+            isVcu = !name.toUpperCase(Locale.US).startsWith("AWE");
+            config = isVcu ? Config.vcu() : Config.bms();
+        }
 
         try {
             rawLines = (hexText == null ? "" : hexText).split("\r?\n");
@@ -209,18 +231,25 @@ final class OtaEngine {
             }
         }
 
-        host.log((isVcu ? "VCU" : "BMS") + " image, " + packets.size() + " packets, "
-                + allData.length + " bytes, CRC " + calc);
+        host.log((ver2 ? "ver2 node " + fileType + "/" + fileCode : (isVcu ? "VCU" : "BMS"))
+                + " image, " + packets.size() + " packets, " + allData.length + " bytes, CRC " + calc);
         host.progress(0, 0, packets.size(), "Preparing");
 
         // NOTE: do NOT request a HIGH connection priority - the original app runs at the default
         // interval. A faster interval pushes frames at the controller quicker than its BLE-module
         // UART forwards them, which overran it after a few packets (the VCU then stopped answering).
 
-        // Step 0 - prepare / erase, then START after 1500 ms (startCheck()).
-        sendPrepare();
-        host.log("Wait for system");
-        main.postDelayed(() -> { if (running) cilpPackage(); }, PREPARE_TO_START_MS);
+        if (ver2) {
+            // ver2: no bootloader-prepare; the 06 e2 handshake selects the node, and its 06 ea "01 aa"
+            // ack drives START. No 1500 ms wait.
+            if (fileType < 0 || fileCode < 0) { fail("ver2 file has no node header (07AAA555)"); return; }
+            sendHandshake();
+        } else {
+            // Step 0 - prepare / erase, then START after 1500 ms (startCheck()).
+            sendPrepare();
+            host.log("Wait for system");
+            main.postDelayed(() -> { if (running) cilpPackage(); }, PREPARE_TO_START_MS);
+        }
     }
 
     /** User-initiated abort. The VCU stays in bootloader receive-mode, so the flash can be retried. */
@@ -252,6 +281,7 @@ final class OtaEngine {
         byte[] allData = new byte[0];
         String fileCrc = "";
         String fileVer = "";
+        int fileType = -1, fileCode = -1;   // trailer uId, proId (ver2 node select)
     }
 
     /**
@@ -308,6 +338,8 @@ final class OtaEngine {
 
             // Trailer record ":07AAA555..": uId, proId, swVer, crc16, checkSum.
             if (line.length() >= 25 && "07AAA555".equals(line.substring(1, 9))) {
+                res.fileType = Integer.parseInt(line.substring(9, 11), 16);   // uId  (ver2 node type)
+                res.fileCode = Integer.parseInt(line.substring(11, 13), 16);  // proId (ver2 project code)
                 res.fileVer = Integer.parseInt(line.substring(13, 15), 16) + "."
                         + Integer.parseInt(line.substring(15, 17), 16) + "."
                         + Integer.parseInt(line.substring(17, 19), 16);
@@ -333,6 +365,8 @@ final class OtaEngine {
         allData = r.allData;
         fileCrc = r.fileCrc;
         fileVer = r.fileVer;
+        fileType = r.fileType;
+        fileCode = r.fileCode;
     }
 
     /**
@@ -436,6 +470,28 @@ final class OtaEngine {
         main.postDelayed(startCheckState, STARTCHECK_STATE_MS);
     }
 
+    // ── ver2 node-select handshake (06 e2 / 06 ea) ──
+
+    /** Send the 06 e2 request that selects the target node (fileType/fileCode) before START. */
+    private void sendHandshake() {
+        int sum7 = (0x01 + (fileType & 0xFF) + (fileCode & 0xFF)) & 0xFF;
+        int[] payload = new int[]{0x01, fileType & 0xFF, fileCode & 0xFF, 0, 0, 0, 0, sum7};
+        byte[] hs = wire(frame(config.HANDSHAKE, payload));
+        host.log("Upgrade request (node " + fileType + "/" + fileCode + ")");
+        otaWrite(hs);
+        armStepResend(() -> otaWrite(hs));   // single 3 s resend, like the original's 3e3 timer
+    }
+
+    /** Reply to a controller confirmation request (06 ea 02 a5): proceed (aa) or cancel (55). */
+    private void sendConfirmReply(boolean confirm) {
+        int b = confirm ? 0xaa : 0x55;
+        int sum7 = (0x02 + b) & 0xFF;
+        int[] payload = new int[]{0x02, b, 0, 0, 0, 0, 0, sum7};
+        byte[] out = wire(frame(config.HANDSHAKE, payload));
+        otaWrite(out);
+        armStepResend(() -> otaWrite(out));
+    }
+
     // ── Notification handling ──
 
     private void handleNotify(byte[] v) {
@@ -458,6 +514,33 @@ final class OtaEngine {
 
     private void handleResponse(int[] n) {
         int idHi = n[0], idLo = n[1], status = n[2], reason = n[3];
+
+        // ver2 node-select handshake (06 ea): accept -> START, refuse -> fail, confirm-request -> auto-confirm.
+        if (config.HANDSHAKE_RESP != null && match(idHi, idLo, config.HANDSHAKE_RESP)) {
+            cancel(stepResend);
+            if (status == 0x01) {                     // request ack
+                if (reason == 0xaa) {                  // accepted -> proceed to START
+                    host.log("Upgrade request accepted");
+                    cilpPackage();
+                } else if (reason == 0x55) {           // refused
+                    String why;
+                    switch (n[4]) {
+                        case 0x01: why = "node does not exist"; break;
+                        case 0x02: why = "node does not support upgrade"; break;
+                        case 0x03: why = "project code does not match"; break;
+                        case 0x04: why = "controller not in idle state"; break;
+                        default:   why = "reason 0x" + Integer.toHexString(n[4]);
+                    }
+                    fail("Upgrade request refused (" + why + ")");
+                }
+            } else if (status == 0x02 && reason == 0xa5) {   // controller asks to confirm -> confirm
+                host.log("Controller asks to confirm - confirming");
+                sendConfirmReply(true);
+            } else if (status == 0x03) {               // node upgrade progress stream
+                host.log("Node upgrade progress " + Integer.toHexString(reason) + " " + Integer.toHexString(n[4]));
+            }
+            return;
+        }
 
         if (match(idHi, idLo, config.START_RESP) && status == 0x55) {
             // START accepted. Stop the START-retry loop (the original clears its timer here) - if it

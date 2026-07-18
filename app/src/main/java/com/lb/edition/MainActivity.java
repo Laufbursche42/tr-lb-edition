@@ -323,6 +323,40 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Read a bundled asset (e.g. a firmware under assets/firmware/) fully into memory. */
+    private byte[] readAsset(String path) throws Exception {
+        try (InputStream in = getAssets().open(path)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream(262144);
+            byte[] buf = new byte[8192];
+            int r;
+            while ((r = in.read(buf)) != -1) out.write(buf, 0, r);
+            return out.toByteArray();
+        }
+    }
+
+    /** Descriptive output name, e.g. AWIVCU_R5.4.19_Unlocked_BlinkerFix_20260718_0142.hex */
+    private String buildPatchName(String base, java.util.List<String> tags) {
+        StringBuilder sb = new StringBuilder(base);
+        for (String t : tags) sb.append('_').append(t);
+        sb.append('_').append(new java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.US)
+                .format(new java.util.Date()));
+        return sb.append(".hex").toString();
+    }
+
+    /** Minimal JSON string escaper for bridge error messages. */
+    private static String jsonStr(String s) {
+        if (s == null) return "\"\"";
+        StringBuilder b = new StringBuilder("\"");
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"' || c == '\\') b.append('\\').append(c);
+            else if (c == '\n') b.append("\\n");
+            else if (c < 0x20) b.append(String.format("\\u%04x", (int) c));
+            else b.append(c);
+        }
+        return b.append('"').toString();
+    }
+
     @Override
     protected void onDestroy() {
         try {
@@ -503,6 +537,66 @@ public class MainActivity extends Activity {
             });
         }
 
+        /**
+         * Patch a bundled VCU firmware and hand the result to the flash flow, exactly as if the user
+         * had picked it (sets {@code otaHexText} and pushes the metadata to {@code __onOtaFile}).
+         * fwId: "r5" (R5.4.19), "d5" (D5.4.14), "ali" (open ALI D3.4.12, convert only).
+         * speedMode (r5): "unlock" full / "live" Gate-2 only (FIN stays the switch) / "capped" keep ~22.
+         * d5: "unlock" or "off". Returns the same metadata JSON so the patcher page can show a summary.
+         */
+        @JavascriptInterface
+        public String patchFirmware(String fwId, String speedMode, boolean zerostart, boolean cruise,
+                                    boolean blinker, boolean wheel) {
+            Log.i(TAG, "LB.patchFirmware(" + fwId + "," + speedMode + ",z=" + zerostart + ",c=" + cruise
+                    + ",b=" + blinker + ",w=" + wheel + ")");
+            try {
+                String asset, baseLabel;
+                boolean isHex;
+                if ("r5".equals(fwId)) { asset = "firmware/vcu_r5_4_19.hex"; baseLabel = "AWIVCU_R5.4.19"; isHex = true; }
+                else if ("d5".equals(fwId)) { asset = "firmware/vcu_d5_4_14.hex"; baseLabel = "AWIVCU_D5.4.14"; isHex = true; }
+                else if ("ali".equals(fwId)) { asset = "firmware/vcu_ali_d3_4_12.bin"; baseLabel = "ALIVCU_D3.4.12"; isHex = false; }
+                else return "{\"ok\":false,\"error\":\"unknown firmware\"}";
+
+                byte[] raw = readAsset(asset);
+                FirmwarePatcher fp = isHex
+                        ? FirmwarePatcher.fromHex(new String(raw, StandardCharsets.ISO_8859_1))
+                        : FirmwarePatcher.fromAliDump(raw);
+
+                java.util.List<String> tags = new java.util.ArrayList<>();
+                if ("r5".equals(fwId)) {
+                    if ("live".equals(speedMode)) {
+                        if (zerostart || cruise)
+                            return "{\"ok\":false,\"error\":\"Live toggle is speed-only - turn ZeroStart/Cruise off or pick Full unlock.\"}";
+                        fp.applyR519LiveToggle();
+                        tags.add("LiveFIN");
+                    } else {
+                        boolean speedRemove = "unlock".equals(speedMode);
+                        fp.applyR519Features(speedRemove, zerostart, cruise);
+                        if (speedRemove) tags.add("Unlocked");
+                        if (zerostart) tags.add("ZeroStart");
+                        if (cruise) tags.add("Cruise");
+                    }
+                    if (blinker) { fp.applyR519Blinker(); tags.add("BlinkerFix"); }
+                    if (wheel) { fp.applyWheelDiameter(); tags.add("WheelDia"); }
+                } else if ("d5".equals(fwId)) {
+                    if ("unlock".equals(speedMode)) { fp.applyD5Speed(); tags.add("Unlocked"); }
+                }
+                if ("ali".equals(fwId)) tags.add("Converted");
+                else if (tags.isEmpty()) tags.add("UNPATCHED");
+
+                String hex = fp.buildHex();
+                String name = buildPatchName(baseLabel, tags);
+                otaHexText = hex;
+                otaFileName = name;
+                // Return the parsed metadata; the patcher page hands it to __onOtaFile after it opens
+                // the update page, so the reset inside openFirmwarePage cannot wipe the selection.
+                return OtaEngine.inspect(hex, name);
+            } catch (Throwable t) {
+                Log.e(TAG, "patchFirmware failed", t);
+                return "{\"ok\":false,\"error\":" + jsonStr(String.valueOf(t.getMessage())) + "}";
+            }
+        }
+
         /** Begin flashing the previously picked firmware file. Progress via __onOtaProgress/State/Log. */
         @JavascriptInterface
         public void otaStart() {
@@ -539,6 +633,13 @@ public class MainActivity extends Activity {
             } catch (Throwable t) {
                 return false;
             }
+        }
+
+        /** @return true when the connected scooter is a ver2 (T2/tetra) platform - it flashes every node
+         *  through the display block with a node-select handshake, so the update page shows a ver2 note. */
+        @JavascriptInterface
+        public boolean isVer2() {
+            try { return ble != null && ble.isVer2(); } catch (Throwable t) { return false; }
         }
 
         /**

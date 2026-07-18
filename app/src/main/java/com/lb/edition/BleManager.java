@@ -877,13 +877,19 @@ final class BleManager {
             synchronized (writeQueue) { writeQueue.clear(); writing = false; }
             final OtaEngine engine = new OtaEngine(otaHost);
             ota = engine;
+            // A ver2 (T2/tetra) device flashes through config_dis with a 06 e2 node-select handshake;
+            // the legacy (T1) path is unchanged. The flag comes from the advertised BLE name.
+            final boolean ver2 = parser != null && parser.isVer2;
             // Let any in-flight normal write complete on the normal path before the engine takes over
             // (isRunning() stays false until start()); then begin.
-            main.postDelayed(() -> { if (ota == engine) engine.start(hexText, fileName); }, 300);
+            main.postDelayed(() -> { if (ota == engine) engine.start(hexText, fileName, ver2); }, 300);
         } catch (Throwable t) {
             Log.e(TAG, "startOta failed", t);
         }
     }
+
+    /** @return true when the connected device advertises the ver2 (T2/tetra) platform name. */
+    boolean isVer2() { return parser != null && parser.isVer2; }
 
     /** User-initiated abort of a running flash. The bootloader stays in receive-mode (re-flashable). */
     void cancelOta() {
