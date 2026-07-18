@@ -477,7 +477,7 @@ public class MainActivity extends Activity {
             }
         }
 
-        /** Legacy alias: which is ignored; on=false -> dual, on=true -> rear-only cycle helper. */
+        /** Legacy alias: which is ignored; on=true -> dual, on=false -> rear-only cycle helper. */
         @JavascriptInterface
         public void setMotor(int which, boolean on) {
             try {

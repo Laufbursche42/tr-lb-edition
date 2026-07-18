@@ -801,7 +801,7 @@ final class BleManager {
     /**
      * SMART / TCS traction control toggle. The original app writes Smart with a[2]=5
      * ({@code sendSettingCode(state, 5)}), NOT the generic normal write ({@link #sendSetting}
-     * uses a[2]=0), so it goes through its own write mode here. Null/exception-safe.
+     * uses a[2]=2), so it goes through its own write mode here. Null/exception-safe.
      */
     void setSmart(boolean on) {
         try {

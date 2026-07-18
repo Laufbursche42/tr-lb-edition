@@ -161,7 +161,7 @@ final class FirmwarePatcher {
      *      WD var 0x2000029D, and when changed mirror 0x20001A28+3 + native save 0x0801700C(1) - commits
      *      to I2C EEPROM with a correct CRC. Cleaner than a display-frame cave: it writes ONLY on the
      *      user's 0x18 command, so it never fights the display's periodic re-broadcast of its own default.
-     *   2. Boot-clobber NOP (0x0801730E): the boot-load reads the persisted wheel from the mirror, then
+     *   2. Boot-clobber NOP (0x0801730A = WD_BOOT, NOPs the strb at +4): the boot-load reads the persisted wheel from the mirror, then
      *      unconditionally overwrites the WD var with 100 (10.0"). NOP that store so the value survives a
      *      reboot.
      * Cave sits at the app end; the 8-byte end marker is carried along. a[6] and the WD var are the same

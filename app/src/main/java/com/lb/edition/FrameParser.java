@@ -523,8 +523,8 @@ final class FrameParser {
 
     private static String cruiseText(int level) {
         switch (level) {
-            case 1: return "Manual";
-            case 2: return "Auto";
+            case 1: return "Auto";
+            case 2: return "Manual";
             default: return "Off";
         }
     }
