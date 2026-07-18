@@ -10,6 +10,18 @@ An alternative app for Teverun e-scooters.
 - [For users](#for-users)
   - [What the app is](#what-the-app-is)
   - [Features](#features)
+    - [Dashboard](#dashboard)
+    - ["All values" telemetry](#all-values-telemetry-scroll-down-on-the-main-screen)
+    - [Connection](#connection)
+    - [Scooter & controller settings](#scooter--controller-settings)
+    - [Firmware update](#firmware-update)
+    - [Firmware Patcher](#firmware-patcher)
+    - [Info & diagnostics](#info--diagnostics)
+    - [Screen streaming](#screen-streaming)
+    - [Offline bicycle navigation](#offline-bicycle-navigation)
+    - [Offline maps](#offline-maps)
+    - [Recording, logging & preferences](#recording-logging--preferences)
+  - [Firmware: patch, update and flash](#firmware-patch-update-and-flash)
   - [Screenshots](#screenshots)
   - [Installing the app](#installing-the-app)
   - [Privacy & data protection](#privacy--data-protection)
@@ -36,6 +48,7 @@ An alternative app for Teverun e-scooters.
     - [Removing the clamp in VCU firmware](#removing-the-clamp-in-vcu-firmware)
     - [VCU bootloader OTA and firmware read-back](#vcu-bootloader-ota-and-firmware-read-back)
     - [Display firmware flashing](#display-firmware-flashing)
+    - [Firmware patcher and updater (app implementation)](#firmware-patcher-and-updater-app-implementation)
     - [Region write-protection - locked vs free settings](#region-write-protection---locked-vs-free-settings)
     - [Sleep and power-off timer quirk](#sleep-and-power-off-timer-quirk)
     - [Inter-MCU transport map](#inter-mcu-transport-map)
@@ -86,25 +99,15 @@ Everything below is implemented and shipping in the app.
 
 ### Firmware update
 
-- **What it is** - flash controller firmware (a `.hex` file) to the scooter over Bluetooth, straight from the app. It is reached via **Settings -> Firmware update**. It works from a local file only and needs no cloud account: the original app reaches firmware through a vendor server / OTA path that requires a Teverun account, while this flashes a file you already have on the phone.
-- **Same protocol, run natively** - it is a byte-for-byte reimplementation of the original app's local-file flasher (the legacy VCU / BMS path), so the exact same update sequence runs on the phone.
-- **Compatibility is checked by content, not by file name (the key difference)** - the original app decides whether a file may be flashed from its **file name** (its `isComplyRules` rule): the name has to start with `AWIVCU` or `AWVCU`; on an eKFV / TDE unit the version segment must also end in "5" (the R5 series). That name rule is brittle and is the cause of the well-known "Error loading upgrade file" message - a correctly working firmware whose file was shortened or renamed (for example an `ALI`-named file) is rejected purely because of its name. Laufbursche Edition checks the file itself instead and shows the original file-name rule only as an advisory line, not as a blocker. It verifies:
-  - **File integrity** - a CRC16 over the image.
-  - **Controller app region** - the image must target the controller application region, not the bootloader.
-  - **Controller target** - the image must be a controller image, not a battery (BMS) image.
-  - **Firmware generation** - the file's own trailer version is compared against the version currently installed on the scooter.
-- **Two consequences of the content check** - first, a file the original app would reject purely over its **name** can still be flashed here when it is actually compatible. Second, renaming a file does not fool this app: it reads the version from the file's trailer, not from the name - in the original app renaming a file so the name passes the rule is exactly how people work around the gate, but here a rename changes nothing about the compatibility verdict.
-- **Clear pass / fail checklist with an informed override** - when the content check does not pass, **Start** is disabled and a checklist shows exactly which check failed. An explicit "flash anyway" override is available for informed users on every check except a failed integrity (CRC) check, which can never be overridden.
-- **Safety and behaviour** - before anything is written the app shows a confirmation warning that the flash takes about 13 minutes. The screen stays on for the whole flash and a progress bar, a live log plus a **Cancel** button run throughout. An interrupted flash is not a brick: the controller stays in update mode, so you can simply flash it again. As a strong precaution, do a dry run with the stock firmware first.
-- **Road approval** - flashing non-stock controller firmware can change how the scooter behaves; anything that alters the approved configuration has the road-approval and insurance consequences described in the [Legal and safety](#legal-and-safety) note.
+Flash a controller firmware (a `.hex` file) to the scooter over Bluetooth, straight from the app - no cloud account and no Teverun login, just a local file you already have. The one thing to know up front: unlike the original app it decides compatibility from the file's **content** (a CRC, the target region and the version in the trailer), not from its **file name**, so a correctly-working file the original app rejects purely over a rename still flashes. Reached via **Settings -> Firmware update**.
+
+Step-by-step in [Firmware: patch, update and flash](#firmware-patch-update-and-flash). Implementation detail is in [Firmware patcher and updater (app implementation)](#firmware-patcher-and-updater-app-implementation).
 
 ### Firmware Patcher
 
-- **What it is** - build an unlocked or bug-fixed controller firmware right on the phone, then flash it, via **Settings -> Firmware Patcher**. When it finishes it hands the file straight to the Firmware update page. Two firmwares are bundled: **R5.4.19** (the stock eKFV firmware) and the already-open **ALI D3.4.12**. Big thanks to [Spoonkey's Webpatcher](https://spooonky.github.io/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware/), whose firmware research this builds on.
-- **WARNING - Box C only, at your own risk** - use this ONLY on a Box C / IVCU-V5.X controller. Box C is the box used by the Fighter Mini (including the eKFV version), Blade GT II, Fighter 11 and Supreme+. Do NOT flash it on Box A (HW V3.X), Box B (V4.X) or the special C1 / C2 boards. Flashing controller firmware changes how the scooter behaves and carries the road-approval and insurance consequences in the [Legal and safety](#legal-and-safety) note. A bad or interrupted flash is recoverable - the controller stays in update mode and can simply be flashed again, it is not bricked - but the responsibility is yours. The stock R5.4.19 is your recovery firmware.
-- **How to use it** - pick your firmware (R5.4.19 for an eKFV box, ALI for an already-open one); for R5.4.19 tick the options you want, or leave everything off to get the unmodified original; then press the button - it reads **"Build patch & continue"** when you chose something and **"Original Firmware & Continue"** when nothing is selected - and it opens the update page with the ready-to-flash file.
-- **R5.4.19 options** - **Speed**: *Full unlock* (pins the clamp flag off so you get full speed plus Kickstart and Cruise released - toggle those two in the display menu), *Live toggle (FIN)* (removes only the display clamp, so the FIN identity is your live switch - an open FIN gives full speed with Kickstart and Cruise, a "TDE" FIN keeps you at 22) or *Keep ~22 km/h* (the stock cap, the default). Kickstart and Cruise are not separate options - they are simply what the unlock (clamp flag = 0) releases. The two independent add-ons, available in every speed mode, are **Blinker fix** (restores the turn-signal blink broken in 5.4.19) and **WheelDiameter persists** (the display wheel-diameter setting survives a restart).
-- **How it works** - it parses the bundled Intel-HEX, applies the exact byte edits for the chosen options, recomputes the firmware CRC and writes a new flashable `.hex` - all on the phone, offline, nothing is uploaded. ALI is only converted to a flashable file (it is already open). The two firmwares are cross-compatible on Box C hardware, so you can switch either way at any time: pick R5.4.19 to make an open box eKFV-compliant, or flash ALI to make an eKFV box fully open.
+Build an unlocked or bug-fixed controller firmware right on the phone and hand it straight to the flasher - entirely offline, nothing is uploaded. Two firmwares are bundled: the stock eKFV **R5.4.19** and the already-open **ALI D3.4.12**. **Box C hardware only** (the guide lists the exact boards). Reached via **Settings -> Firmware Patcher**. Built on the research behind [Spoonkey's Webpatcher](https://spooonky.github.io/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware/).
+
+Step-by-step in [Firmware: patch, update and flash](#firmware-patch-update-and-flash). Implementation detail is in [Firmware patcher and updater (app implementation)](#firmware-patcher-and-updater-app-implementation).
 
 ### Info & diagnostics
 
@@ -143,6 +146,53 @@ Everything below is implemented and shipping in the app.
 - **Ride log** (**off by default**) - when enabled, it records **all main-screen values once per minute** while you ride. Recording only starts once you are actually moving (after the scooter's speed first goes above 0), so parking or connecting without riding produces no ride. It runs as a foreground service so it keeps recording with the screen off, keeps the **last 3 rides** and lets you export each ride as **CSV or JSON** from the Scooter Info page (via the Android share sheet). The exported CSV/JSON can be visualised as graphs with the companion **[Laufbursche Edition Analysis Tool (leat)](https://github.com/Laufbursche42/leat)**.
 - **In-app debug logging** - persistent, with a red banner while active and an **export** button. No PC needed.
 - **Full-screen toggle** (when off, the app sits below the Android status bar), **km / mph** units, **light / dark app theme** and a **"Version Info & Disclaimer"** entry.
+
+## Firmware: patch, update and flash
+
+A plain-language walk-through of building a firmware in the **Firmware Patcher** and flashing it with **Firmware update**. If you already have a `.hex` file, skip to step 3 and open **Firmware update** directly.
+
+### Before you start (read this)
+
+- **Box C hardware only.** Use the bundled firmwares ONLY on a Box C / IVCU-V5.X controller - the box in the Fighter Mini (including the eKFV version), Blade GT II, Fighter 11 and Supreme+. Do NOT flash them on Box A (HW V3.X), Box B (V4.X) or the special C1 / C2 boards.
+- **You cannot brick it here.** A bad, interrupted or cancelled flash leaves the controller in update mode, so you just flash again. The stock **R5.4.19** is your recovery firmware - keep it as the one you can always go back to.
+- **It takes about 13 minutes.** Keep the app open. The screen stays on for the whole flash and there is a progress bar, a live log and a **Cancel** button throughout.
+- **Road approval.** Flashing non-stock firmware or unlocking the speed changes the approved configuration, with the road-approval and insurance consequences in the [Legal and safety](#legal-and-safety) note. The responsibility is yours.
+- **First time? Do a dry run** by flashing the unmodified stock R5.4.19 once, so you have seen the whole flow before you change anything.
+
+### Step 1 - pick the firmware (Firmware Patcher)
+
+Open **Settings -> Firmware Patcher** and choose the base firmware:
+
+- **R5.4.19** - the stock eKFV firmware. Pick this on a normal (locked) eKFV box.
+- **ALI D3.4.12** - already fully open. Pick this if you want the open firmware as-is.
+
+### Step 2 - pick your R5.4.19 options
+
+For R5.4.19 you tick what you want (leave everything off to build the unmodified original):
+
+- **Speed** - choose one:
+  - **Keep ~22 km/h** (default) - the stock legal cap stays.
+  - **Full unlock** - removes the cap for full speed. Kickstart and Cruise come with it - they are not separate switches, they are simply what the unlock releases; you turn them on in the display menu.
+  - **Live toggle (FIN)** - removes only the display's cap, so the scooter's **FIN identity** becomes your live lock/unlock switch: a FIN starting with "TDE" stays at 22, an open FIN gives full speed (with Kickstart and Cruise). The app can flip this live (see the FIN lock below).
+- **Blinker fix** (any speed mode) - restores the turn-signal blink that 5.4.19 broke.
+- **WheelDiameter persists** (any speed mode) - makes the display's wheel-diameter setting survive a restart.
+
+Then press the button. It reads **"Build patch & continue"** when you picked something or **"Original Firmware & Continue"** when nothing is selected, builds the file on the phone and opens **Firmware update** with it ready.
+
+### Step 3 - check and flash (Firmware update)
+
+The update page runs a content check and shows a pass/fail checklist:
+
+- **File integrity** (CRC) - the image is intact. This can never be overridden.
+- **Controller app region** - it targets the controller app, not the bootloader.
+- **Controller target** - it is a controller image, not a battery (BMS) image.
+- **Firmware generation** - the file's version against what is on the scooter now.
+
+If every check passes, **Start** is enabled. If a check fails, Start is disabled and the checklist shows which one; for informed users a "flash anyway" override is offered on every check except the CRC one. Press **Start**, confirm the ~13-minute warning and let it run to the end.
+
+### After a full unlock: the live FIN lock
+
+On the **Full unlock** and **Live toggle** firmwares the app can lock/unlock the speed live over Bluetooth by editing the FIN, with no re-flash - triple-tap the speed tile on the main screen or edit the identity in Scooter info. Locking back to a "TDE" FIN also switches Cruise off and resets the wheel size to stock for a correct legal speed reading; unlocking restores exactly what you had. Nothing done here is permanent - every step is reversible.
 
 ## Screenshots
 
@@ -903,6 +953,47 @@ The display has its own UART bootloader. It accepts an image with only a CRC-16 
 Protocol: an enter-update handshake (`11 22 33 44 55 66 77 88` followed by a mode byte) then block-write frames (`0x88` header, big-endian destination offset, CRC-16 over the payload) or equivalently START / DATA / FINISH commands.
 
 Critical constraint on this unit: the stock VCU application firmware has NO display-OTA relay. The display is a UART device on USART3, the CAN bus is the BMS bus and the VCU app has no handler for the display-OTA command group. So a display image cannot be delivered as a pure-BLE app -> VCU -> display relay; reaching the display bootloader requires a direct UART connection to the display line. The original Teverun app does expose a display update, but it is gated to the "ver2" platform, so a TDE / eKFV unit cannot use it. In that app the display image format is Intel-HEX with a `:07AAA555` trailer record (uId, proId, version, CRC-16/MODBUS); a raw `.bin` is rejected.
+
+### Firmware patcher and updater (app implementation)
+
+This is the app-side detail behind the two user-facing features; the byte-level clamp mechanics live in [Removing the clamp in VCU firmware](#removing-the-clamp-in-vcu-firmware).
+
+- **Content-based compatibility (vs `isComplyRules`)** - the original app gates a local flash on the **file name** (`isComplyRules`: the name starts with `AWIVCU` / `AWVCU` and on an eKFV / TDE unit the version segment ends in "5"), which is why a shortened or renamed-but-valid file throws "Error loading upgrade file". Laufbursche Edition instead validates the image itself and treats the name rule as an advisory line only. Four checks: a **CRC16** over the image (integrity, never overridable), the target is the **controller application region** (not the bootloader), the image is a **controller** target (not a BMS image) and the **trailer version** against the version currently on the scooter. Every check has an explicit "flash anyway" override for informed users except the CRC check.
+- **Patcher pipeline** - the bundled Intel-HEX is parsed, the exact byte edits for the ticked options are applied, the firmware CRC is recomputed and a new flashable image is produced. R5.4.19 edits: **Full unlock** pins the clamp flag off (GATE_FLAG + GATE2), **Live toggle** clears only the display-clamp gate (GATE2) and **Keep 22** leaves the stock cap; **Blinker fix** and **WheelDiameter** are independent add-ons (WheelDiameter hooks the 0x18 command handler so the app's wheel byte reaches the wheel-diameter variable and its EEPROM mirror, plus a boot-clobber NOP so it survives a reboot). ALI D3.4.12 is only wrapped into a flashable image - it is already open.
+- **Built in memory, never on disk** - the patched or picked image lives only in two in-RAM `String` fields (`otaHexText` / `otaFileName`); nothing firmware-related is ever written to the filesystem. Only one image exists at a time and each new build overwrites it. After a flash completes or fails the app drops it (`otaClear()`) so no stale image lingers; a cancel keeps it so you can restart immediately.
+- **Auto-off guard during a flash** - a short auto-off (sleep) timer would power the scooter off mid-flash. Before flashing, the app raises the sleep timer (remembering the user's value) and restores it after a successful flash and reconnect.
+- **Cross-compatibility (Box C)** - R5.4.19 and ALI D3.4.12 share the Box C flash layout, so either can replace the other - flash R5.4.19 onto an open box to make it eKFV-compliant or ALI onto an eKFV box to open it. The in-app patcher does not advertise this to avoid mis-flashes, but it is technically supported on Box C.
+
+**File-name scheme.** The patcher labels its output so the original app's name gate still accepts it; the name is only a label plus a VCU-vs-BMS routing hint - the content check, not the name, decides compatibility. The fields are `_`-separated:
+
+```
+AWIVCU _ FULL _ R5 _ 4 _ 19 _ WHEEL _ TURN .hex
+  0      1     2    3   4    (opt)  (opt)
+```
+
+- **Field 0 `AWIVCU`** - fixed prefix; the original app requires the name to start with `AWIVCU` (or `AWVCU`).
+- **Field 1 - mode** - `FULL` (Full unlock) / `LIVE` (Live toggle) / `EKFV` (Keep 22) or `ALI` for the ALI firmware.
+- **Field 2 - model** - `R5` (or `D3`). The decisive field: the original app reads it with `split("_")[2]` in its `isComplyRules` check and wants `R5` (ends in "5") on an eKFV / TDE unit. Putting the mode here would break that check, so the mode stays in field 1 and the model stays in field 2.
+- **Fields 3 + 4 - version** - `4` and `19`, i.e. R5.4.19.
+- **Fields 5 / 6 - optional add-ons** - `WHEEL` (WheelDiameter) and/or `TURN` (Blinker fix), always in that order.
+
+Every file name the patcher can emit:
+
+| Mode | File name |
+|------|-----------|
+| Full unlock | `AWIVCU_FULL_R5_4_19.hex` |
+| | `AWIVCU_FULL_R5_4_19_WHEEL.hex` |
+| | `AWIVCU_FULL_R5_4_19_TURN.hex` |
+| | `AWIVCU_FULL_R5_4_19_WHEEL_TURN.hex` |
+| Live toggle | `AWIVCU_LIVE_R5_4_19.hex` |
+| | `AWIVCU_LIVE_R5_4_19_WHEEL.hex` |
+| | `AWIVCU_LIVE_R5_4_19_TURN.hex` |
+| | `AWIVCU_LIVE_R5_4_19_WHEEL_TURN.hex` |
+| Keep ~22 (stock) | `AWIVCU_EKFV_R5_4_19.hex` |
+| | `AWIVCU_EKFV_R5_4_19_TURN.hex` |
+| ALI (convert-only) | `AWIVCU_ALI_D3_4_12.hex` |
+
+`WHEEL` appears only in Full / Live - on Keep 22 the WheelDiameter option is disabled, because the legal 22 mode must keep the stock wheel size. `TURN` is available in every mode.
 
 ### Region write-protection - locked vs free settings
 
