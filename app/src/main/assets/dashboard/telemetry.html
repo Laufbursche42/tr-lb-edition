@@ -1419,10 +1419,6 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       the box used by the Fighter Mini (incl. eKFV), Blade GT II, Fighter 11 and Supreme+. Do not flash
       these on any other box (A / B / C1 / C2).
       <br><br>
-      The two firmwares are cross-compatible, so you can switch either way:
-      <br>&bull; Open <b>ALI</b> box and you want it <b>eKFV-compliant</b>? Just pick the <b>R variant (R5.4.19)</b>.
-      <br>&bull; <b>eKFV</b> box and you want it <b>fully open</b>? Just flash the <b>ALI</b> firmware.
-      <br><br>
       Only flash the firmware that matches your controller.
     </div>
 
@@ -2934,14 +2930,16 @@ function syncBtNameEditor() {
   }
 }
 
-// In-memory only (this session): the user's wheel size, remembered while the FIN lock is active so it
-// can be restored on unlock. Never persisted to disk.
-let _finWheel = null;
+// The user's wheel size, remembered while the FIN lock is active so it can be restored on unlock.
+// Persisted to disk (lb_fin_wheel) so it survives an app restart while the scooter is locked. This is the
+// ONLY scooter value the app stores - every other setting comes live from the controller.
+let _finWheel = (() => { const v = storage.get('lb_fin_wheel'); return (v == null || v === '') ? null : parseFloat(v); })();
+function setFinWheel(v) { _finWheel = (v == null ? null : v); storage.set('lb_fin_wheel', v == null ? '' : String(v)); }
 
 // FIN lock/unlock housekeeping - used by BOTH the triple-tap and the Scooter-info identity editor:
 //  - Re-locking (identity starts with TDE / T2DE = legal eKFV mode): turn cruise OFF (else it stays
 //    engaged while the scooter is capped again) AND reset the wheel to stock 10.0" (so the speed reading
-//    is correct/legal), remembering the user's wheel to restore on unlock.
+//    is correct/legal), remembering the user's wheel (on disk) to restore on unlock.
 //  - Unlocking: restore that remembered wheel.
 // All writes go out only when the settings are actually known (so we never write stale defaults), then
 // the identity change is sent.
@@ -2951,10 +2949,10 @@ function sendFinChange(newFin) {
     if (locking) {
       if (liveRaw().cruise != null) { try { LB.sendSetting(JSON.stringify({ cruise: 0 })); } catch (e) {} }
       const w = liveRaw().wheel;
-      if (w != null && w !== 10) { _finWheel = w; try { LB.sendSetting(JSON.stringify({ wheel: 10 })); } catch (e) {} }
+      if (w != null && w !== 10) { setFinWheel(w); try { LB.sendSetting(JSON.stringify({ wheel: 10 })); } catch (e) {} }
     } else if (_finWheel != null) {
       try { LB.sendSetting(JSON.stringify({ wheel: _finWheel })); } catch (e) {}
-      _finWheel = null;
+      setFinWheel(null);
     }
   }
   LB.setBleName(newFin);
@@ -3463,8 +3461,12 @@ function fwStart() {
   document.getElementById('confirm-ok').textContent = overriding ? 'Flash anyway' : 'Start';
   state.confirmCb = () => {
     try {
-      autoOffGuardBeforeFlash();   // raise auto-off to 60 min for the flash (restored after success)
-      if (typeof LB !== 'undefined' && LB.otaStart) LB.otaStart();
+      autoOffGuardBeforeFlash();   // queues a sleepTime=60 write (only if the current auto-off is short)
+      // IMPORTANT: LB.otaStart() clears the BLE write queue, so the sleepTime write above would be
+      // dropped if we start immediately. When we did queue one, give it time to actually reach the
+      // scooter first, then flash. Otherwise start right away.
+      const startFlash = () => { try { if (typeof LB !== 'undefined' && LB.otaStart) LB.otaStart(); } catch (e) { showToast('Error: ' + e); } };
+      if (fwState.prevSleep != null) setTimeout(startFlash, 1200); else startFlash();
     } catch (e) { showToast('Error: ' + e); }
   };
   document.getElementById('confirm-overlay').classList.add('open');
