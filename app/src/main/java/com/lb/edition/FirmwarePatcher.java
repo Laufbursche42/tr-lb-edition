@@ -140,12 +140,12 @@ final class FirmwarePatcher {
     }
 
     // ─────────────────────── WheelDiameter (R5.4.19, code cave) ───────────────────────
-    private static final int WD_HOOK = 0x0800F8EE;
-    private static final int[] WD_HOOK_OLD = {0x8C, 0x48, 0x40, 0x7A}; // ldr r0,[pc,#0x230]; ldrb r0,[r0,#9]
-    private static final int WD_RET = 0x0800F8F2;
-    private static final int WD_FRAME  = 0x2000134D;   // display RX frame buffer
-    private static final int WD_VAR    = 0x2000029D;   // WheelDiameter RAM var
+    private static final int WD_HOOK = 0x0800D3B0;     // inside cmd-0x18 sub-cmd-2: the app's wheel = record[4]
+    private static final int[] WD_HOOK_OLD = {0x80, 0x79, 0xAE, 0x49}; // ldrb r0,[r0,#6]; ldr r1,[pc,#0x2b8]
+    private static final int WD_RET = 0x0800D3B4;      // return past the 2 displaced instructions
+    private static final int WD_VAR    = 0x2000029D;   // WheelDiameter RAM var (speed formula 287*WD)
     private static final int WD_MIRROR = 0x20001A28;   // EEPROM settings mirror (WD at +3)
+    private static final int WD_ASSIST = 0x200002A5;   // displaced-instr target (record[6] -> here)
     private static final int WD_SAVE   = 0x0801700C;   // native save dispatcher (r0 = block idx; 1 = mirror block)
     // Boot clobber: boot-load reads the persisted wheel into the WD var, then unconditionally overwrites
     // it with 100 (10.0"). NOP that store so the persisted value survives a reboot. (Disasm-verified.)
@@ -154,15 +154,18 @@ final class FirmwarePatcher {
     private static final int[] WD_BOOT_NEW = {0x64, 0x20, 0x44, 0x49, 0x00, 0xBF}; // movs r0,#0x64; ldr r1,=WD; nop
 
     /**
-     * Makes the display WheelDiameter change PERSIST across reboots on R5.4.19. Two parts, both required
-     * (disassembly-verified):
-     *   1. Live write (byte-exact webpatcher cave, hook 0x0800F8EE): frame[8] -> WD var 0x2000029D, and
-     *      when changed mirror 0x20001A28+3 + native save 0x0801700C(1) - persists to I2C EEPROM with a
-     *      correct CRC. Writing only the var lets the mirror overwrite it back, so the mirror is required.
-     *   2. Boot-clobber NOP (0x0801730E): the boot-load reads the persisted wheel back from the mirror,
-     *      then unconditionally overwrites the WD var with 100 (10.0"). NOP that store so the persisted
-     *      value survives. This is exactly what the webpatcher lacks (why its wheel reverts on reboot).
-     * Cave sits at the app end; the 8-byte end marker is carried along.
+     * Makes the app's "Wheel size" setting take + PERSIST on R5.4.19 (disassembly-verified). The app sends
+     * the wheel as cmd 0x18 a[6] = record[4], but R5's 0x18 handler silently DROPS record[4] (it was
+     * stripped vs the open ALI build, which keeps it). Two parts, both required:
+     *   1. App-path cave (hook 0x0800D3B0, inside sub-cmd 2 where record[4] is available): record[4] ->
+     *      WD var 0x2000029D, and when changed mirror 0x20001A28+3 + native save 0x0801700C(1) - commits
+     *      to I2C EEPROM with a correct CRC. Cleaner than a display-frame cave: it writes ONLY on the
+     *      user's 0x18 command, so it never fights the display's periodic re-broadcast of its own default.
+     *   2. Boot-clobber NOP (0x0801730E): the boot-load reads the persisted wheel from the mirror, then
+     *      unconditionally overwrites the WD var with 100 (10.0"). NOP that store so the value survives a
+     *      reboot.
+     * Cave sits at the app end; the 8-byte end marker is carried along. a[6] and the WD var are the same
+     * unit (wheel*10; boot default 100 = 10.0"), so record[4] is copied straight - no scaling.
      */
     void applyWheelDiameter() {
         for (int i = 0; i < WD_HOOK_OLD.length; i++) {
@@ -191,28 +194,29 @@ final class FirmwarePatcher {
         for (int i = 0; i < footer.length; i++) wr(footerAddr + i, footer[i]);
     }
 
-    /** 0x34-byte webpatcher cave: unpack frame[8] -> WD var; if changed, write the EEPROM mirror (+3)
-     *  and call the native save (r0=1). Then redo the hooked frame[9] load and return. Prefix/mid bytes
-     *  are byte-exact from patcher-core wheel_diameter.py; literals at +0x28/0x2C/0x30. */
+    /** 0x30-byte app-path cave: record[4] (the app's cmd-0x18 wheel) -> WD var; if changed, write the
+     *  EEPROM mirror (+3) and call the native save (r0=1). Then redo the 2 displaced instructions
+     *  (ldrb r0,[r0,#6]; ldr r1,=0x200002A5) and return. Byte layout disassembly-verified. */
     private int[] buildWdCave(int cave) {
-        int[] prefix = {                                          // +0x00..0x17
-            0x09, 0x49, 0x0a, 0x7a, 0x09, 0x49, 0x0b, 0x78,       // ldr WD_FRAME; ldrb r2,[+8]; ldr WD_VAR; ldrb r3,[]
-            0x0a, 0x70, 0x9a, 0x42, 0x08, 0xd0, 0x08, 0x49,       // strb r2,[WD_VAR]; cmp r2,r3; beq +; ldr WD_MIRROR
-            0xca, 0x70, 0x2d, 0xe9, 0x0c, 0x50, 0x01, 0x20,       // strb r2,[+3]; push {r2,r3,r12,lr}; movs r0,#1
+        int[] head = {                                            // +0x00..0x13
+            0x02, 0x79, 0x08, 0x49, 0x0b, 0x78, 0x0a, 0x70,       // ldrb r2,[r0,#4]; ldr WD_VAR; ldrb r3,[r1]; strb r2,[r1]
+            0x9a, 0x42, 0x06, 0xd0, 0x06, 0x49, 0xca, 0x70,       // cmp r2,r3; beq redo; ldr WD_MIRROR; strb r2,[r1,#3]
+            0x01, 0xb5, 0x01, 0x20,                               // push {r0,lr}; movs r0,#1
         };
-        int[] mid = {                                             // +0x1C..0x23
-            0xbd, 0xe8, 0x0c, 0x50,                               // pop {r2,r3,r12,lr}
-            0x01, 0x49, 0x48, 0x7a,                               // ldr WD_FRAME; ldrb r0,[+9]  (redo hooked instr)
+        int[] mid = {                                             // +0x18..0x1D
+            0x03, 0xbc,                                           // pop {r0,r1}
+            0x80, 0x79, 0x03, 0x49,                               // ldrb r0,[r0,#6]; ldr WD_ASSIST  (redo displaced)
         };
-        int[] out = new int[0x34];
-        int p = put(out, 0, prefix);                              // +0x00
-        p = put(out, p, encBranch(cave + 0x18, WD_SAVE, true));   // +0x18 bl WD_SAVE
-        p = put(out, p, mid);                                     // +0x1C
-        p = put(out, p, encBranch(cave + 0x24, WD_RET, false));   // +0x24 b.w WD_RET
-        p = put(out, p, le32(WD_FRAME));                          // +0x28 literal
-        p = put(out, p, le32(WD_VAR));                            // +0x2C literal
-        p = put(out, p, le32(WD_MIRROR));                         // +0x30 literal
-        if (p != 0x34) throw new RuntimeException("cave size " + p);
+        int[] out = new int[0x30];
+        int p = put(out, 0, head);                                // +0x00
+        p = put(out, p, encBranch(cave + 0x14, WD_SAVE, true));   // +0x14 bl WD_SAVE
+        p = put(out, p, mid);                                     // +0x18
+        p = put(out, p, encBranch(cave + 0x1E, WD_RET, false));   // +0x1E b.w WD_RET
+        p = put(out, p, new int[]{0x00, 0xBF});                   // +0x22 nop (align literals)
+        p = put(out, p, le32(WD_VAR));                            // +0x24 literal
+        p = put(out, p, le32(WD_MIRROR));                         // +0x28 literal
+        p = put(out, p, le32(WD_ASSIST));                         // +0x2C literal
+        if (p != 0x30) throw new RuntimeException("cave size " + p);
         return out;
     }
 

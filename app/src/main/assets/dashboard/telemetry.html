@@ -369,7 +369,7 @@ html, body {
   width: min(300px, 88vw); text-align: center;
 }
 #confirm-box h3 { font-size: var(--fs-xl); font-weight: var(--fw-bold); margin-bottom: 8px; }
-#confirm-box p { font-size: var(--fs-md); color: var(--label); margin-bottom: 18px; }
+#confirm-box p { font-size: var(--fs-md); color: var(--label); margin-bottom: 18px; overflow-wrap: anywhere; white-space: pre-line; }
 #confirm-box .confirm-btns { display: flex; gap: 10px; }
 #confirm-box .confirm-btns button {
   flex: 1; padding: 12px; border-radius: 9px;
@@ -1444,7 +1444,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       <div class="settings-group-title">Options (R5.4.19 only)</div>
       <div class="settings-row-sublabel" id="pt-unlock-note" style="margin-bottom:6px"></div>
       <label class="pt-opt" id="pt-bl-wrap"><input type="checkbox" id="pt-blinker"><span><span class="pt-lbl">Blinker fix</span><span class="pt-help">Fixes the 5.4.19 bug where the indicators glow solid instead of blinking. Only needed if the VCU drives the indicators (no separate blinker module).</span></span></label>
-      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">WheelDiameter persists</span><span class="pt-help">Makes the display wheel-diameter setting stick (in 5.4.19 it reverts after a restart). Works in every speed mode.</span></span></label>
+      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">WheelDiameter persists</span><span class="pt-help">Lets you set the wheel size in the app (Scooter settings -> Wheel size) and makes it stick - stock 5.4.19 ignores the app's wheel value. Works in every speed mode.</span></span></label>
     </div>
 
     <div class="settings-group" id="pt-ali-note" style="border-top:1px solid var(--border);display:none">
@@ -2026,6 +2026,11 @@ function tickBLE() {
   maybeLiveRefreshGearEditor();
   // Keep the global scooter-settings fields live too (same clobber protection).
   maybeLiveRefreshScooterSettings();
+  // After a flash succeeds, restore the user's auto-off value once the scooter is back + telemetry live.
+  if (fwState.pendingSleepRestore != null && state.bleConnected && liveRaw().sleepTime != null) {
+    try { if (typeof LB !== 'undefined' && LB.sendSetting) LB.sendSetting(JSON.stringify({ sleepTime: fwState.pendingSleepRestore })); } catch (e) {}
+    fwState.pendingSleepRestore = null;
+  }
 }
 
 /* ── BLE Connect / Disconnect Events ──────────────────────── */
@@ -2928,6 +2933,32 @@ function syncBtNameEditor() {
   }
 }
 
+// In-memory only (this session): the user's wheel size, remembered while the FIN lock is active so it
+// can be restored on unlock. Never persisted to disk.
+let _finWheel = null;
+
+// FIN lock/unlock housekeeping - used by BOTH the triple-tap and the Scooter-info identity editor:
+//  - Re-locking (identity starts with TDE / T2DE = legal eKFV mode): turn cruise OFF (else it stays
+//    engaged while the scooter is capped again) AND reset the wheel to stock 10.0" (so the speed reading
+//    is correct/legal), remembering the user's wheel to restore on unlock.
+//  - Unlocking: restore that remembered wheel.
+// All writes go out only when the settings are actually known (so we never write stale defaults), then
+// the identity change is sent.
+function sendFinChange(newFin) {
+  const locking = /^T2?DE/i.test((newFin || '').trim());
+  if (typeof LB !== 'undefined' && LB.sendSetting) {
+    if (locking) {
+      if (liveRaw().cruise != null) { try { LB.sendSetting(JSON.stringify({ cruise: 0 })); } catch (e) {} }
+      const w = liveRaw().wheel;
+      if (w != null && w !== 10) { _finWheel = w; try { LB.sendSetting(JSON.stringify({ wheel: 10 })); } catch (e) {} }
+    } else if (_finWheel != null) {
+      try { LB.sendSetting(JSON.stringify({ wheel: _finWheel })); } catch (e) {}
+      _finWheel = null;
+    }
+  }
+  LB.setBleName(newFin);
+}
+
 // Validate the full identity and send it (cmd 0x1f). Non-destructive and reversible (edit it back).
 function setBleName() {
   const inp = document.getElementById('info-btname-input');
@@ -2938,7 +2969,7 @@ function setBleName() {
   if (!v) { showToast('Enter a FIN first', 3000, 'err'); return; }
   if (v.length > 16) { showToast('Name too long (max 16 chars)', 3500, 'err'); return; }
   if (!/^[\x20-\x7e]+$/.test(v)) { showToast('ASCII characters only', 3000, 'err'); return; }
-  try { LB.setBleName(v); showToast('Identity sent - scooter renames and reconnects...', 4000); }
+  try { sendFinChange(v); showToast('Identity sent - scooter renames and reconnects...', 4000); }
   catch (e) { showToast('Error: ' + e); }
 }
 
@@ -2963,7 +2994,7 @@ function toggleFinLock() {
   if (up.startsWith('TDE')) { next = 'T' + fin.slice(3); msg = 'Unlocking - removing DE from the FIN'; }
   else if (up.startsWith('T')) { next = 'TDE' + fin.slice(1); msg = 'Locking - restoring DE in the FIN'; }
   else { next = 'TDE' + fin; msg = 'Locking - restoring DE in the FIN'; }
-  try { LB.setBleName(next); showToast(msg + ' (scooter renames and reconnects)', 4000); }
+  try { sendFinChange(next); showToast(msg + ' (scooter renames and reconnects)', 4000); }
   catch (e) { showToast('Error: ' + e); }
 }
 
@@ -3389,6 +3420,18 @@ function fwSyncStartEnabled() {
   if (hint) hint.textContent = msg;
 }
 
+/* Auto-Off (sleepTime) guard around a flash: a short auto-off timer would power the scooter off during
+   the ~13 min flash. Raise it to 60 min before flashing and restore the user's value after success.
+   sleepTime map: 0=Off(never), 1=1, 2=5, 3=10, 4=30, 5=60 (min) - so 0 and 5 are already >= 60 / never. */
+function autoOffGuardBeforeFlash() {
+  fwState.prevSleep = null;
+  const s = liveRaw().sleepTime;
+  if (typeof LB === 'undefined' || !LB.sendSetting || s == null) return;   // unknown -> warning only
+  if (s < 1 || s > 4) return;   // Off (0) or already 60 min (5) -> nothing to do
+  fwState.prevSleep = s;
+  try { LB.sendSetting(JSON.stringify({ sleepTime: 5 })); } catch (e) {}   // 5 = 60 min
+}
+
 function fwStart() {
   const m = fwState.meta, c = fwState.compat;
   if (!m || !m.ok || !m.crcOk) { showToast('Choose a valid firmware file first', 3000, 'err'); return; }
@@ -3397,16 +3440,25 @@ function fwStart() {
   const overriding = c && !c.ok && !c.noOverride && ov && ov.checked;
   if (c && !c.ok && !overriding) { showToast('Compatibility check did not pass', 3000, 'err'); return; }
   document.getElementById('confirm-title').textContent = overriding ? 'Flash despite warning?' : 'Start firmware update?';
+  const sleepNow = liveRaw().sleepTime;
+  const autoOffNote = (sleepNow == null)
+    ? '\n\nSet the scooter Auto-Off to at least 60 min first so it cannot power off mid-flash.'
+    : (sleepNow >= 1 && sleepNow <= 4)
+      ? '\n\nAuto-Off is raised to 60 min for the flash and restored afterwards.'
+      : '';
   document.getElementById('confirm-msg').textContent =
     (overriding
       ? 'This file did NOT pass the compatibility check. Flashing the wrong firmware can require a recovery re-flash. Continue only if you are certain this is the right file for this controller.\n\n'
       : '') +
-    'This flashes ' + m.name + ' to the ' + (m.targetIsVcu ? 'controller' : 'battery') +
-    ' and takes about 13 minutes. Keep the scooter on and in range and keep the app open. Do not turn the scooter off.';
+    'This flashes\n' + m.name + '\nto the ' + (m.targetIsVcu ? 'controller' : 'battery') +
+    ' and takes about 13 minutes. Keep the scooter on and in range and keep the app open. Do not turn the scooter off.'
+    + autoOffNote;
   document.getElementById('confirm-ok').textContent = overriding ? 'Flash anyway' : 'Start';
   state.confirmCb = () => {
-    try { if (typeof LB !== 'undefined' && LB.otaStart) LB.otaStart(); }
-    catch (e) { showToast('Error: ' + e); }
+    try {
+      autoOffGuardBeforeFlash();   // raise auto-off to 60 min for the flash (restored after success)
+      if (typeof LB !== 'undefined' && LB.otaStart) LB.otaStart();
+    } catch (e) { showToast('Error: ' + e); }
   };
   document.getElementById('confirm-overlay').classList.add('open');
 }
@@ -3452,7 +3504,11 @@ window.__onOtaState = function(sArg) {
     const pw = document.getElementById('fw-progress-wrap'); if (pw) pw.style.display = 'block';
   } else {
     fwState.running = false;
-    if (st === 'success') showToast(s.message || 'Firmware updated');
+    if (st === 'success') {
+      showToast(s.message || 'Firmware updated');
+      // Queue the auto-off restore; the tick loop applies it once the scooter is back + telemetry live.
+      if (fwState.prevSleep != null) { fwState.pendingSleepRestore = fwState.prevSleep; fwState.prevSleep = null; }
+    }
     else if (st === 'failed') showToast(s.message || 'Update failed', 5000, 'err');
     else if (st === 'cancelled') showToast(s.message || 'Update cancelled', 4000, 'err');
   }

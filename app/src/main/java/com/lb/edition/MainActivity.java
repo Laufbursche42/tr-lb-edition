@@ -334,13 +334,10 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Descriptive output name, e.g. AWIVCU_R5.4.19_FULL_WHEEL_TURN_20260718_0142.hex */
-    private String buildPatchName(String base, java.util.List<String> tags) {
-        StringBuilder sb = new StringBuilder(base);
-        for (String t : tags) sb.append('_').append(t);
-        sb.append('_').append(new java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.US)
-                .format(new java.util.Date()));
-        return sb.append(".hex").toString();
+    /** Compact timestamp for firmware file names, e.g. 20260718_0142. */
+    private String fwTimestamp() {
+        return new java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.US)
+                .format(new java.util.Date());
     }
 
     /** Minimal JSON string escaper for bridge error messages. */
@@ -550,10 +547,10 @@ public class MainActivity extends Activity {
         public String patchFirmware(String fwId, String speedMode, boolean blinker, boolean wheel) {
             Log.i(TAG, "LB.patchFirmware(" + fwId + "," + speedMode + ",b=" + blinker + ",w=" + wheel + ")");
             try {
-                String asset, baseLabel;
+                String asset;
                 boolean isHex;
-                if ("r5".equals(fwId)) { asset = "firmware/vcu_r5_4_19.hex"; baseLabel = "AWIVCU_R5.4.19"; isHex = true; }
-                else if ("ali".equals(fwId)) { asset = "firmware/vcu_ali_d3_4_12.bin"; baseLabel = "AWIVCU_ALI_D3_4_12"; isHex = false; }
+                if ("r5".equals(fwId)) { asset = "firmware/vcu_r5_4_19.hex"; isHex = true; }
+                else if ("ali".equals(fwId)) { asset = "firmware/vcu_ali_d3_4_12.bin"; isHex = false; }
                 else return "{\"ok\":false,\"error\":\"unknown firmware\"}";
 
                 byte[] raw = readAsset(asset);
@@ -561,26 +558,29 @@ public class MainActivity extends Activity {
                         ? FirmwarePatcher.fromHex(new String(raw, StandardCharsets.ISO_8859_1))
                         : FirmwarePatcher.fromAliDump(raw);
 
-                java.util.List<String> tags = new java.util.ArrayList<>();
+                // Keep the original AWIVCU_<slot>_<MODEL>_<ver> file-name shape: the mode token goes in the
+                // "APP" slot and the model stays R5_4_19, so split("_")[2] == "R5" - the exact spot the
+                // original app's isComplyRules reads the model + major version (R5/R3). Mode: FULL = full
+                // unlock, LIVE = live toggle, EKFV = stock 22. Then add-on suffixes WHEEL (wheel diameter)
+                // / TURN (blinker fix), then a timestamp.
+                String name;
                 if ("r5".equals(fwId)) {
-                    // The speed mode sets the clamp flag; Kickstart + Cruise are consequences of flag=0,
-                    // not separate patches (see teverun/R5419_PATCH_MATRIX.md). One short token per mode
-                    // keeps the file name manageable: FULL = full unlock, LIVE = live toggle, EKFV = stock
-                    // 22 (locked).
-                    if ("unlock".equals(speedMode)) { fp.applyR519Unlock(); tags.add("FULL"); }
-                    else if ("live".equals(speedMode)) { fp.applyR519LiveToggle(); tags.add("LIVE"); }
-                    else { tags.add("EKFV"); }   // "capped" = keep the stock ~22 km/h
-                    // Blinker + WheelDiameter are flag-independent add-ons (any mode). Name suffixes,
-                    // WHEEL (wheel diameter) then TURN (turn-signal / blinker fix).
+                    String mode;
+                    if ("unlock".equals(speedMode)) { fp.applyR519Unlock(); mode = "FULL"; }
+                    else if ("live".equals(speedMode)) { fp.applyR519LiveToggle(); mode = "LIVE"; }
+                    else { mode = "EKFV"; }   // "capped" = keep the stock ~22 km/h
+                    // Blinker + WheelDiameter are flag-independent add-ons (any mode).
                     if (wheel) fp.applyWheelDiameter();
                     if (blinker) fp.applyR519Blinker();
-                    if (wheel) tags.add("WHEEL");
-                    if (blinker) tags.add("TURN");
+                    name = "AWIVCU_" + mode + "_R5_4_19"
+                            + (wheel ? "_WHEEL" : "") + (blinker ? "_TURN" : "")
+                            + "_" + fwTimestamp() + ".hex";
+                } else {
+                    // ALI is convert-only (already open); keep its canonical model token.
+                    name = "AWIVCU_ALI_D3_4_12_" + fwTimestamp() + ".hex";
                 }
-                // ALI is convert-only; its base name already reads AWIVCU_ALI_..., so it needs no token.
 
                 String hex = fp.buildHex();
-                String name = buildPatchName(baseLabel, tags);
                 otaHexText = hex;
                 otaFileName = name;
                 // Return the parsed metadata; the patcher page hands it to __onOtaFile after it opens
