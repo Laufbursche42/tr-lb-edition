@@ -47,6 +47,7 @@ An alternative app for Teverun e-scooters.
     - [Gate 2 - the display clamp bit](#gate-2---the-display-clamp-bit)
     - [Removing the clamp in VCU firmware](#removing-the-clamp-in-vcu-firmware)
     - [VCU bootloader OTA and firmware read-back](#vcu-bootloader-ota-and-firmware-read-back)
+    - [Why an interrupted flash is almost never a brick](#why-an-interrupted-flash-is-almost-never-a-brick)
     - [Display firmware flashing](#display-firmware-flashing)
     - [Firmware patcher and updater (app implementation)](#firmware-patcher-and-updater-app-implementation)
     - [Region write-protection - locked vs free settings](#region-write-protection---locked-vs-free-settings)
@@ -154,7 +155,7 @@ A plain-language walk-through of building a firmware in the **Firmware Patcher**
 ### Before you start (read this)
 
 - **Box C hardware only.** Use the bundled firmwares ONLY on a Box C / IVCU-V5.X controller - the box in the Fighter Mini (including the eKFV version), Blade GT II, Fighter 11 and Supreme+. Do NOT flash them on Box A (HW V3.X), Box B (V4.X) or the special C1 / C2 boards.
-- **You cannot brick it here.** A bad, interrupted or cancelled flash leaves the controller in update mode, so you just flash again. The stock **R5.4.19** is your recovery firmware - keep it as the one you can always go back to.
+- **A failed flash is almost always recoverable.** The bootloader clears its "app valid" flag before it writes and restores it only after the new image passes its checksum, so a bad, interrupted, cancelled or power-lost flash leaves the controller back in the bootloader - still in flashing mode, surviving a power-off and a Bluetooth disconnect - and you just flash again. The stock **R5.4.19** is your recovery firmware. This is not a guarantee - flashing always carries some risk (a wrong-but-checksum-valid image can still boot broken). See [why an interrupted flash is almost never a brick](#why-an-interrupted-flash-is-almost-never-a-brick) for the code proof.
 - **It takes about 13 minutes.** Keep the app open. The screen stays on for the whole flash and there is a progress bar, a live log and a **Cancel** button throughout.
 - **Road approval.** Flashing non-stock firmware or unlocking the speed changes the approved configuration, with the road-approval and insurance consequences in the [Legal and safety](#legal-and-safety) note. The responsibility is yours.
 - **First time? Do a dry run** by flashing the unmodified stock R5.4.19 once, so you have seen the whole flow before you change anything.
@@ -190,9 +191,11 @@ The update page runs a content check and shows a pass/fail checklist:
 
 If every check passes, **Start** is enabled. If a check fails, Start is disabled and the checklist shows which one; for informed users a "flash anyway" override is offered on every check except the CRC one. Press **Start**, confirm the ~13-minute warning and let it run to the end.
 
-### After a full unlock: the live FIN lock
+### The live FIN lock (Live toggle only)
 
-On the **Full unlock** and **Live toggle** firmwares the app can lock/unlock the speed live over Bluetooth by editing the FIN, with no re-flash - triple-tap the speed tile on the main screen or edit the identity in Scooter info. Locking back to a "TDE" FIN also switches Cruise off and resets the wheel size to stock for a correct legal speed reading; unlocking restores exactly what you had. Nothing done here is permanent - every step is reversible.
+On the **Live toggle** firmware the scooter's **FIN identity** is the speed switch, so the app can lock or unlock the speed live over Bluetooth with no re-flash - triple-tap the speed tile on the main screen or edit the identity in Scooter info. A FIN starting with "TDE" caps you at 22; take the "DE" out and you get full speed (with Kickstart and Cruise). Locking back to a "TDE" FIN also switches Cruise off and resets the wheel size to stock for a correct legal speed reading; unlocking restores exactly what you had. Every step is reversible.
+
+**Full unlock works differently** - it pins the speed cap off for good by removing BOTH gates (the display clamp and the FIN clamp), so the speed is always open and editing the FIN does NOT re-lock it. On a Full-unlock scooter the triple-tap still renames the FIN (and runs the Cruise / wheel housekeeping) but the top speed stays open. Pick Full unlock for a permanently open scooter or Live toggle to keep the FIN as the live switch between the legal 22 and full speed.
 
 ## Screenshots
 
@@ -807,7 +810,7 @@ setControlCode(cmdId, overrides = []) {   // overrides: [{index, value}, ...]
 
 | Field | `s[]` index | Notes |
 |-------|-------------|-------|
-| cruise | `s[0]`, `s[1]`, `s[2]` | `cruise==2` (auto) -> `s[2]=1` (bit2); `cruise==1` (manual) -> `s[0]=1, s[1]=1` (bits0,1); `0` -> none |
+| cruise | `s[0]`, `s[1]`, `s[2]` | `cruise==1` (auto) -> `s[0]=1, s[1]=1` (bits0,1); `cruise==2` (manual) -> `s[2]=1` (bit2); `0` -> none |
 | `abs` | `s[3]` | |
 | `startMode` | `s[6]` | launch mode |
 | `rmStatus` | `s[7]` | for `a[4]` only - rear-motor status |
@@ -936,6 +939,8 @@ There is NO no-flash unlock for Gate 2 on this firmware. A magic word (`0xAA55AA
 
 Patching the display is one option; the other is to patch the VCU application firmware, which defeats both gates at once. Each of the four motor-command frame builders clamps the speed byte to 22 with a `movs r7, #0x16` that runs after a compare. Replacing those four instructions with NOPs removes the clamp entirely, after which the natural per-gear speed passes through.
 
+The clamp is unique to the R5 line: the four `movs r7, #0x16` caps appear in R5.4.19 but are absent from the R3, R2 and D-series VCU images, which ship unrestricted. Because the R3 and R5 images share the same Box C flash base (`0x08007000`) and the same MCU and peripheral map, flashing an unpatched open R3-line image onto an R5 controller de-restricts it with no byte patch at all - the version number is only a client-side software lock (the original app's name gate just wants a version segment ending in "5"), not a hardware difference. The stock R5.4.19 stays the recovery image to return to.
+
 A patched image needs its CRC-16/MODBUS recomputed and its `:07AAA555` header record rebuilt. The bootloader checks only the CRC and the address range - there is no signature - so a correctly re-checksummed patched image is accepted.
 
 Important caveat: these offsets are for the R5.4.19 image. A unit running R5.4.21 has different offsets and no 5.4.21 image is available, so patching a 5.4.21 unit requires re-locating the four clamps in the correct image first. There is also a recovery risk: flashing is one-way because the firmware cannot be read back over BLE (see the next subsection), so a known-good image for the exact version on the scooter is the only safety net before any flash.
@@ -945,6 +950,21 @@ Important caveat: these offsets are for the R5.4.19 image. A unit running R5.4.2
 The VCU bootloader exposes exactly five write commands over the OTA protocol - START, FINISH, INFO, PACKINFO and PACKDATA (ids `0x710` to `0x714`). Integrity is a CRC-16 (polynomial `0x8005`) only; there is no signature check.
 
 Crucially there is no read-back, dump or memory-read command. Full decompilation of the bootloader confirms a single command dispatcher with a whitelist of just those five ids and no read path, so the VCU firmware cannot be extracted over BLE - this is proven, not merely assumed. The bootloader's RDP-unprotect routine is present but is dead code with no caller. Reading the firmware out requires hardware SWD / JTAG on the controller board. The practical consequence is that a flash is one-way: there is no way to make a byte-exact backup of the running firmware over Bluetooth first.
+
+### Why an interrupted flash is almost never a brick
+
+The bootloader makes a failed flash fail-safe. This is provable in the binary. The addresses below are from the ALI D3.4.12 bootloader (`AWIVCU_ALI_D3_4_12_bootloader.bin`, byte-identical to `chipdump[0x0000:0x7000]`). The R5 bootloader cannot be read back, but the R5 and ALI apps share the same flash layout and the same flash-driver key constants at identical addresses, so the R5 bootloader is expected to be identical - inferred, not byte-proven for R5.
+
+Everything hangs on an "app valid" magic word `0x5A5A5A5A` in a flash flag page at `0x0801F800`, erased first and re-written last:
+
+- **Boot decision** (`0x08003CAE`) - each service-loop pass the bootloader jumps into the app at `0x08007000` only if `*0x0801F800 == 0x5A5A5A5A` (app valid) AND there is no pending update-request flag (`0xA5A5A5A5` at `0x0801F000`) AND no OTA frame is already queued. Otherwise it stays in the bootloader servicing OTA; a blank or half-written app has no magic, so it stays put.
+- **INFO erases the flag first** (`0x08005C66`, erase at `0x08005A4A`) - once INFO confirms the target is the app base, it erases `0x0801F800` (magic -> `0xFFFFFFFF`) BEFORE any app byte is written.
+- **FINISH restores it only on a CRC pass** (`0x08005C20`, program at `0x08005A7E`) - the image CRC-16 is verified and only then is `0x5A5A5A5A` programmed back; on CRC failure the flag stays erased.
+- **The OTA writer cannot reach the bootloader** (`0x08005964`) - every write is range-gated to `[0x08007000, 0x0801EFFF]` (the app window), so the bootloader region `0x08000000-0x08006FFF` and the flag pages are physically unreachable by any payload.
+
+So any interruption between INFO and a good FINISH - power loss, Bluetooth or CAN drop, cancel, a brown-out mid-write - leaves the magic erased and the next boot stays in the bootloader, re-flashable. The flag is in flash so it survives a power-off; the bootloader just idles for the next frame so it survives a Bluetooth disconnect.
+
+It is "almost never", not "never". Integrity is a **CRC-16 (poly `0x8005`) only, no signature** (`0x08005AE4`), so a wrong-but-CRC-valid image passes FINISH and the box boots a broken app; the running app does not itself write the `0xA5A5A5A5` enter-update request, so re-entry can depend on flooding OTA frames during the power-on window (otherwise SWD / JTAG); and external corruption of the bootloader pages (a flash-cell failure or an SWD mishap) is not OTA-recoverable. Keep the stock R5.4.19 as the recovery image. The app side that drives this protocol is [`OtaEngine.java`](app/src/main/java/com/lb/edition/OtaEngine.java).
 
 ### Display firmware flashing
 
@@ -961,8 +981,8 @@ This is the app-side detail behind the two user-facing features; the byte-level 
 - **Content-based compatibility (vs `isComplyRules`)** - the original app gates a local flash on the **file name** (`isComplyRules`: the name starts with `AWIVCU` / `AWVCU` and on an eKFV / TDE unit the version segment ends in "5"), which is why a shortened or renamed-but-valid file throws "Error loading upgrade file". Laufbursche Edition instead validates the image itself and treats the name rule as an advisory line only. Four checks: a **CRC16** over the image (integrity, never overridable), the target is the **controller application region** (not the bootloader), the image is a **controller** target (not a BMS image) and the **trailer version** against the version currently on the scooter. Every check has an explicit "flash anyway" override for informed users except the CRC check.
 - **Patcher pipeline** - the bundled Intel-HEX is parsed, the exact byte edits for the ticked options are applied, the firmware CRC is recomputed and a new flashable image is produced. R5.4.19 edits: **Full unlock** pins the clamp flag off (GATE_FLAG + GATE2), **Live toggle** clears only the display-clamp gate (GATE2) and **Keep 22** leaves the stock cap; **Blinker fix** and **WheelDiameter** are independent add-ons (WheelDiameter hooks the 0x18 command handler so the app's wheel byte reaches the wheel-diameter variable and its EEPROM mirror, plus a boot-clobber NOP so it survives a reboot). ALI D3.4.12 is only wrapped into a flashable image - it is already open.
 - **Built in memory, never on disk** - the patched or picked image lives only in two in-RAM `String` fields (`otaHexText` / `otaFileName`); nothing firmware-related is ever written to the filesystem. Only one image exists at a time and each new build overwrites it. After a flash completes or fails the app drops it (`otaClear()`) so no stale image lingers; a cancel keeps it so you can restart immediately.
-- **Auto-off guard during a flash** - a short auto-off (sleep) timer would power the scooter off mid-flash. Before flashing, the app raises the sleep timer (remembering the user's value) and restores it after a successful flash and reconnect.
-- **Cross-compatibility (Box C)** - R5.4.19 and ALI D3.4.12 share the Box C flash layout, so either can replace the other - flash R5.4.19 onto an open box to make it eKFV-compliant or ALI onto an eKFV box to open it. The in-app patcher does not advertise this to avoid mis-flashes, but it is technically supported on Box C.
+- **Auto-off cannot be raised over BLE** - a short auto-off (sleep) timer can power the scooter off mid-flash, but the app cannot prevent this. The VCU settings handler copies only `a[2..17]` and drops `a[18]`, where sleepTime lives (verified on `fw_r5419`; the original app puts it in the same `a[18]` and hits the same wall - see [Sleep and power-off timer quirk](#sleep-and-power-off-timer-quirk)). The flash confirm dialog therefore warns the user in red to raise the auto-off timer in the scooter's own display menu first.
+- **Cross-compatibility (Box C)** - R5.4.19 and ALI D3.4.12 share the Box C flash layout, so either can replace the other - flash R5.4.19 onto an open box to make it eKFV-compliant or ALI onto an eKFV box to open it. Every Box C VCU image (R3 / R5 / D10_4 and the ALI D3 dump) uses flash base `0x08007000`; the older R2 / D2 hardware uses `0x08008000` instead, so an image flashed across that base boundary will not boot - that is the real reason this is Box C only. The in-app patcher does not advertise the cross-flash to avoid mis-flashes, but it is technically supported on Box C.
 
 **File-name scheme.** The patcher labels its output so the original app's name gate still accepts it; the name is only a label plus a VCU-vs-BMS routing hint - the content check, not the name, decides compatibility. The fields are `_`-separated:
 
