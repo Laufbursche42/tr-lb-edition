@@ -240,6 +240,64 @@ if [ "$SEC_HITS" = "0" ]; then
 fi
 
 # =================================================================
+# PHASE C - personal-data / location-leak guard (OUT-OF-TREE blocklist)
+# =================================================================
+# Blocks a commit whose staged content contains any personal / identifying term
+# (a real name, home or nearby place names, ...). The term list is deliberately kept
+# OUTSIDE the working tree, inside the git dir:
+#     .git/lb-personal-blocklist.txt   (one term per line; '#' = comment; blanks ignored)
+# That path can NEVER be committed, pushed or `git archive`d, so the sensitive terms
+# themselves cannot leak through the repo. If the file is missing or empty this phase
+# is a silent no-op. On a hit the hook prints only the FILE, never the matched term.
+# Matching is case-insensitive and whole-word, so keep terms distinctive.
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null || echo .git)
+PD_LIST="$GIT_DIR/lb-personal-blocklist.txt"
+if [ -f "$PD_LIST" ]; then
+  PD_TERMS=$(sed 's/#.*$//' "$PD_LIST" | sed 's/[[:space:]]*$//' | grep -avE '^[[:space:]]*$' || true)
+  if [ -n "$PD_TERMS" ]; then
+    PD_ALT=$(printf '%s\n' "$PD_TERMS" | paste -sd'|' -)
+    PD_RE="\\b(${PD_ALT})\\b"
+    PD_HITS=0
+    while IFS= read -r -d '' f; do
+      [ -n "$f" ] || continue
+      case "$f" in .githooks/*|.gitignore) continue ;; esac
+      blob="$TMPD/pdblob"
+      if git show ":$f" > "$blob" 2>/dev/null; then
+        if grep -aiqE -e "$PD_RE" "$blob"; then
+          echo "BLOCK $f : rule=personal-data (a term from your local .git/lb-personal-blocklist.txt is present -- run: git diff --cached -- \"$f\")"
+          PD_HITS=1; RC=1
+        fi
+      fi
+    done < "$STAGED_LIST"
+    if [ "$PD_HITS" = "0" ]; then
+      echo "OK    [privacy] no personal-data terms (out-of-tree blocklist) in staged content"
+    fi
+  fi
+fi
+
+# =================================================================
+# PHASE D - Android manifest security-posture (fast; full Lint runs in pre-push)
+# =================================================================
+# Runs only when the manifest itself is staged. A cheap regex guard that catches the
+# high-impact security-config regressions at COMMIT time; the heavier Lint SAST that
+# also covers exported components / hardcoded debug runs later in pre-push.
+MANIFEST_REL="app/src/main/AndroidManifest.xml"
+if grep -aqzF -- "$MANIFEST_REL" "$STAGED_LIST" 2>/dev/null; then
+  mblob="$TMPD/manifest"
+  if git show ":$MANIFEST_REL" > "$mblob" 2>/dev/null; then
+    if grep -qE 'android:debuggable[[:space:]]*=[[:space:]]*"true"' "$mblob"; then
+      echo "BLOCK $MANIFEST_REL : android:debuggable=\"true\" -- never ship a debuggable manifest"; RC=1
+    fi
+    if grep -qE 'android:usesCleartextTraffic[[:space:]]*=[[:space:]]*"true"' "$mblob"; then
+      echo "BLOCK $MANIFEST_REL : android:usesCleartextTraffic=\"true\" -- the LAN SRT path uses raw sockets; this flag would open all plaintext HTTP"; RC=1
+    fi
+    if grep -qE 'android:allowBackup[[:space:]]*=[[:space:]]*"true"' "$mblob"; then
+      echo "WARN  $MANIFEST_REL : allowBackup=\"true\" -- GPS ride logs / FIN / debug log become adb/cloud-backup extractable; prefer allowBackup=\"false\" or dataExtractionRules exclusions"
+    fi
+  fi
+fi
+
+# =================================================================
 # Result
 # =================================================================
 echo "-----------------------------------------------------------------"
