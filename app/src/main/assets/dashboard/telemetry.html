@@ -932,9 +932,16 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
      .fighter-only and hide only when a known non-Fighter model is connected (so they stay visible by
      default and when disconnected). The Tetra (unsupported) additionally hides all settings groups. */
   #model-banner { padding: 8px 2px 2px; font-size: 13px; color: var(--label); }
+  #model-banner .model-line { margin-bottom: 6px; }
   #model-name { font-weight: 600; color: var(--text); }
   #model-unsupported { display: none; color: var(--danger); font-weight: 600; }
   body.is-tetra #model-unsupported { display: inline; }
+  #model-pick-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #model-pick-row .model-pick-label { color: var(--label); }
+  #model-select { flex: 1 1 auto; min-width: 150px; padding: 7px 8px; border-radius: 8px;
+                  background: var(--card); color: var(--text); border: 1px solid var(--border); font-size: 13px; }
+  #model-manual-note { display: none; margin-top: 5px; font-size: 12px; color: var(--label); }
+  body.model-manual #model-manual-note { display: block; }
   body.is-other .fighter-only, body.is-tetra .fighter-only { display: none !important; }
   body.is-tetra #settings-sheet .settings-group { display: none !important; }
 </style>
@@ -947,7 +954,14 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <button class="icon-btn" id="btn-close-settings">&#10005;</button>
   </div>
 
-  <div id="model-banner">Model: <span id="model-name">-</span><span id="model-unsupported"> - the Tetra is not supported by this app yet; settings and firmware are disabled for it.</span></div>
+  <div id="model-banner">
+    <div class="model-line">Model: <span id="model-name">-</span><span id="model-unsupported"> - the Tetra is not supported by this app yet; settings and firmware are disabled for it.</span></div>
+    <div id="model-pick-row">
+      <span class="model-pick-label">Wrong or unknown? Pick it:</span>
+      <select id="model-select" aria-label="Select scooter model"></select>
+    </div>
+    <div id="model-manual-note">Manual model selected - auto-detection is overridden. Choose "Auto-detect" to go back.</div>
+  </div>
 
   <!-- Scooter connection + settings -->
   <div class="settings-group">
@@ -2805,39 +2819,117 @@ function liveRaw() {
    body.is-fighter class). The Tetra is not supported (its 4-motor node frames are not handled). The name
    decode mirrors the original Teverun app (T2-prefix: code at chars 7-9; legacy: chars 6-9). */
 function detectModel(name) {
-  name = (name || '').trim();
+  name = (name || '').trim().toUpperCase();
   let code = '', model = '';
   if (name.startsWith('T2') && name.length >= 9) {
+    // ver2 / T2 naming: model code at chars 7-9 (mirrors the vendor app's setModelFromBtName)
     code = name.substring(7, 9);
     model = ({ FM: 'FIGHTER MINI', FP: 'FIGHTER MINI PRO', FE: 'FIGHTER ELEVEN', FU: 'FIGHTER ELEVEN+',
                SU: 'SUPREM ULTRA', SR: 'SUPREM 7260', T4: 'TETRA 4 MOTOR', T2: 'TETRA 2 MOTOR' })[code] || '';
   } else if (name.length >= 9) {
+    // legacy naming: model code at chars 6-9 (mirrors the vendor app)
     code = name.substring(6, 9);
     const tbl = [[/^GT[EP]/, 'TEVERUN GT'], [/^T40/, 'TETRA 4 MOTOR'], [/^T20/, 'TETRA 2 MOTOR'],
                  [/^FTE/, 'FIGHTER TEN'], [/^FE[EP]/, 'FIGHTER ELEVEN'], [/^SPP/, 'SUPREME PLUS'],
                  [/^SPU/, 'SUPREME ULTRA'], [/^SPR/, 'SUPREME 7260R'], [/^BM[EPU]/, 'BLADE MINI'],
-                 [/^FM[EOP]/, 'FIGHTER MINI'], [/^BQ[EP]/, 'BLADE Q'], [/^FQ/, 'FIGHTER Q']];
+                 [/^FM[EOP]/, 'FIGHTER MINI'], [/^BQ[EP]/, 'BLADE Q'], [/^FQ/, 'FIGHTER Q'], [/^SE/, 'TEVERUN SPACE']];
     for (const [re, nm] of tbl) { if (re.test(code)) { model = nm; break; } }
+  }
+  // Fallback for the short eKFV / ECU name formats the vendor app cannot resolve from the
+  // name either (e.g. TDE1FMA... or its unlocked T1FMA... form): the fixed-position code
+  // above lands off the model token, so the vendor app just asks the user. Recover the
+  // family from the letters right after "T" + optional 2-letter region + generation digit.
+  if (!model) {
+    const m = name.match(/^T(?:[A-Z]{2})?\d+([A-Z]{2,3})/);
+    if (m) {
+      const fam = { FM: 'FIGHTER MINI', FP: 'FIGHTER MINI PRO', FE: 'FIGHTER ELEVEN', FU: 'FIGHTER ELEVEN+',
+                    FT: 'FIGHTER TEN', FQ: 'FIGHTER Q', BM: 'BLADE MINI', BQ: 'BLADE Q',
+                    GT: 'TEVERUN GT', SP: 'SUPREME', SE: 'TEVERUN SPACE' }[m[1].substring(0, 2)];
+      if (fam) { code = m[1]; model = fam; }
+    }
   }
   return { code, name: model, known: !!model,
            isFighter: /^FIGHTER MINI/.test(model), isTetra: /TETRA/.test(model) };
 }
 
+// Manual model override. The list drives the SAME gating as auto-detection, so a user whose
+// scooter name does not resolve (auto-detect + fallback both miss) can pick the model by hand.
+// cat: 'fighter' = Fighter-Mini family (all settings + the Fighter-only tools), 'other' = any
+// other supported Teverun (settings only), 'tetra' = unsupported. This is a UI preference only
+// (never written to the scooter), so it is persisted in localStorage.
+const MODEL_OPTIONS = [
+  { id: 'auto',    label: 'Auto-detect',                cat: 'auto' },
+  { id: 'fmini',   label: 'Fighter Mini',               cat: 'fighter' },
+  { id: 'fmpro',   label: 'Fighter Mini Pro',           cat: 'fighter' },
+  { id: 'fmekfv',  label: 'Fighter Mini eKFV',          cat: 'fighter' },
+  { id: 'fmeco',   label: 'Fighter Mini Eco',           cat: 'fighter' },
+  { id: 'f11',     label: 'Fighter Eleven / 11+',       cat: 'other' },
+  { id: 'ften',    label: 'Fighter Ten',                cat: 'other' },
+  { id: 'fq',      label: 'Fighter Q',                  cat: 'other' },
+  { id: 'fspace',  label: 'Fighter Space',              cat: 'other' },
+  { id: 'supreme', label: 'Supreme (Plus / Ultra / 7260R)', cat: 'other' },
+  { id: 'bmini',   label: 'Blade Mini / eKFV',          cat: 'other' },
+  { id: 'bgt',     label: 'Blade GT',                   cat: 'other' },
+  { id: 'bq',      label: 'Blade Q',                    cat: 'other' },
+  { id: 'gt',      label: 'Teverun GT',                 cat: 'other' },
+  { id: 'tetra',   label: 'Tetra (not supported)',      cat: 'tetra' },
+  { id: 'other',   label: 'Other Teverun model',        cat: 'other' },
+];
+let _modelOverride = null;   // MODEL_OPTIONS id, or null for auto-detect
 let _lastModelKey = null;
+
+function loadModelOverride() {
+  try {
+    const v = localStorage.getItem('lb_model_override');
+    _modelOverride = (v && v !== 'auto' && MODEL_OPTIONS.some(o => o.id === v)) ? v : null;
+  } catch (e) { _modelOverride = null; }
+}
+
+function populateModelSelect() {
+  const sel = document.getElementById('model-select');
+  if (!sel || sel.options.length) return;
+  for (const o of MODEL_OPTIONS) {
+    const opt = document.createElement('option');
+    opt.value = o.id;
+    opt.textContent = o.label;
+    sel.appendChild(opt);
+  }
+  sel.value = _modelOverride || 'auto';
+  sel.addEventListener('change', () => setModelOverride(sel.value));
+}
+
+function setModelOverride(id) {
+  _modelOverride = (id && id !== 'auto' && MODEL_OPTIONS.some(o => o.id === id)) ? id : null;
+  try {
+    if (_modelOverride) localStorage.setItem('lb_model_override', _modelOverride);
+    else localStorage.removeItem('lb_model_override');
+  } catch (e) {}
+  _lastModelKey = null;   // force applyModelUi to re-apply the gating
+  try { applyModelUi(liveRaw().btName); } catch (e) {}
+}
+
 function applyModelUi(btName) {
-  const m = detectModel(btName);
-  const key = m.name + '|' + m.isFighter + '|' + m.isTetra;
-  if (key === _lastModelKey) return;   // only touch the DOM when the model actually changes
+  const auto = detectModel(btName);
+  const ov = _modelOverride ? MODEL_OPTIONS.find(o => o.id === _modelOverride) : null;
+  const isFighter = ov ? ov.cat === 'fighter' : auto.isFighter;
+  const isTetra   = ov ? ov.cat === 'tetra'   : auto.isTetra;
+  const known     = ov ? true : auto.known;
+  const dispName  = ov ? ov.label : (auto.known ? auto.name : (btName ? 'Unknown Teverun model' : '-'));
+  const key = dispName + '|' + isFighter + '|' + isTetra + '|' + (ov ? 'm' : 'a');
+  if (key === _lastModelKey) return;   // only touch the DOM when the effective model changes
   _lastModelKey = key;
   const cl = document.body.classList;
-  cl.toggle('is-fighter', m.isFighter);
-  cl.toggle('is-tetra', m.isTetra);
-  // is-other = a KNOWN non-Fighter, non-Tetra model is connected. Fighter-only features (firmware,
-  // FIN unlock) hide only then - so they stay visible by default / when disconnected (the app's
-  // primary audience is Fighter Mini owners, who patch offline).
-  cl.toggle('is-other', m.known && !m.isFighter && !m.isTetra);
+  cl.toggle('is-fighter', isFighter);
+  cl.toggle('is-tetra', isTetra);
+  // is-other = a KNOWN non-Fighter, non-Tetra model. Fighter-only features (firmware, FIN unlock)
+  // hide only then - so they stay visible by default / when disconnected (the app's primary
+  // audience is Fighter Mini owners, who patch offline).
+  cl.toggle('is-other', known && !isFighter && !isTetra);
+  cl.toggle('model-manual', !!ov);
   const nameEl = document.getElementById('model-name');
-  if (nameEl) nameEl.textContent = m.known ? m.name : (btName ? 'Unknown Teverun model' : '-');
+  if (nameEl) nameEl.textContent = dispName;
+  const sel = document.getElementById('model-select');
+  if (sel && sel.options.length) sel.value = _modelOverride || 'auto';
 }
 
 // True unless a KNOWN non-Fighter model is connected. Fighter-Mini-only behaviour (FIN unlock/lock,
@@ -4202,6 +4294,8 @@ function init() {
   applyStatusBarInset();
   loadSettings();
   wireEvents();
+  loadModelOverride();
+  populateModelSelect();
   renderRoutes();
 
   // Start BLE polling
