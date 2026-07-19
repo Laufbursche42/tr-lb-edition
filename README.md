@@ -13,7 +13,7 @@ An alternative app for Teverun e-scooters.
     - [Dashboard](#dashboard)
     - ["All values" telemetry](#all-values-telemetry-scroll-down-on-the-main-screen)
     - [Connection](#connection)
-    - [Scooter & controller settings](#scooter--controller-settings)
+    - [Scooter & IVCU settings](#scooter--ivcu-settings)
     - [Firmware update](#firmware-update)
     - [Firmware Patcher](#firmware-patcher)
     - [Info & diagnostics](#info--diagnostics)
@@ -78,7 +78,7 @@ Everything below is implemented and shipping in the app.
 
 ### "All values" telemetry (scroll down on the main screen)
 
-- Shows **every value the scooter reports**: battery relays, charge/discharge switches, per-cell voltages and temperatures, pack / MOS / BMS-board temperatures, capacity, per-motor currents and temperatures, controller status flags, recuperation and more.
+- Shows **every value the scooter reports**: battery relays, charge/discharge switches, per-cell voltages and temperatures, pack / MOS / BMS-board temperatures, capacity, per-motor currents and temperatures, IVCU status flags, recuperation and more.
 - **Each row has a "?" help popup** explaining what the value means.
 - **Stale values clear when disconnected** so you never read an old number as live.
 
@@ -88,25 +88,25 @@ Everything below is implemented and shipping in the app.
 - **Remembers the last scooter and auto-reconnects.**
 - **"Last device" quick-reconnect** button.
 
-### Scooter & controller settings
+### Scooter & IVCU settings
 
 - **Full settings with an explicit Save button** - nothing is written to the scooter until you press **Save**.
 - **A "?" help popup on EVERY setting.**
-- **Per-gear settings editor** - per-gear speed limit, EABS / recuperation, start levels and currents. On eKFV units the internal gears 2/3/4 are shown as 1/2/3 on the scooter's own display. The controller sends only the CURRENTLY active gear to the app, so if a gear's values are missing you have to switch through all gears once on the scooter to load them. The app reads these values live and never stores them on the phone, because a stale gear value must never be shown or written back to the controller.
+- **Per-gear settings editor** - per-gear speed limit, EABS / recuperation, start levels and currents. On eKFV units the internal gears 2/3/4 are shown as 1/2/3 on the scooter's own display. The IVCU sends only the CURRENTLY active gear to the app, so if a gear's values are missing you have to switch through all gears once on the scooter to load them. The app reads these values live and never stores them on the phone, because a stale gear value must never be shown or written back to the IVCU.
 - **Live 1 s refresh** while the settings screen is open, without clobbering edits you are making in the app or changes made on the scooter's own display.
 - **Motor mode** (Dual / Rear / Front) and **Smart mode** (TCS traction control).
-- **Manufacturer-locked settings cannot be changed** - the app can only change settings the controller actually allows. Any setting the manufacturer has locked in the controller cannot be changed from this app or from any other app. This limit does not apply when the controller runs custom or open firmware.
-- **Country write-protection** - the app displays all of the settings the scooter's controller supports, but the controller enforces a write-protection that depends on your country or region. Depending on the country the controller will not save (it write-protects) some settings, so some of the functions shown in the app may not be available or changeable in every country - the app still shows them, but the controller may refuse to store them. This country write-protection is enforced by the controller firmware and does not apply when the controller runs custom or open firmware.
+- **Manufacturer-locked settings cannot be changed** - the app can only change settings the IVCU actually allows. Any setting the manufacturer has locked in the IVCU cannot be changed from this app or from any other app. This limit does not apply when the IVCU runs custom or open firmware.
+- **Country write-protection** - the app displays all of the settings the scooter's IVCU supports, but the IVCU enforces a write-protection that depends on your country or region. Depending on the country the IVCU will not save (it write-protects) some settings, so some of the functions shown in the app may not be available or changeable in every country - the app still shows them, but the IVCU may refuse to store them. This country write-protection is enforced by the IVCU firmware and does not apply when the IVCU runs custom or open firmware.
 
 ### Firmware update
 
-Flash a controller firmware (a `.hex` file) to the scooter over Bluetooth, straight from the app - no cloud account and no Teverun login, just a local file you already have. The one thing to know up front: unlike the original app it decides compatibility from the file's **content** (a CRC, the target region and the version in the trailer), not from its **file name**, so a correctly-working file the original app rejects purely over a rename still flashes. Reached via **Settings -> Firmware update**.
+Flash an IVCU firmware (a `.hex` file) to the scooter over Bluetooth, straight from the app - no cloud account and no Teverun login, just a local file you already have. The one thing to know up front: unlike the original app it decides compatibility from the file's **content** (a CRC, the target region and the version in the trailer), not from its **file name**, so a correctly-working file the original app rejects purely over a rename still flashes. Reached via **Settings -> Firmware update**.
 
 Step-by-step in [Firmware: patch, update and flash](#firmware-patch-update-and-flash). Implementation detail is in [Firmware patcher and updater (app implementation)](#firmware-patcher-and-updater-app-implementation).
 
 ### Firmware Patcher
 
-Build an unlocked or bug-fixed controller firmware right on the phone and hand it straight to the flasher - entirely offline, nothing is uploaded. Two firmwares are bundled: the stock eKFV **R5.4.19** and the already-open **ALI D3.4.12**. **Box C hardware only** (the guide lists the exact boards). Reached via **Settings -> Firmware Patcher**. Built on the research behind [Spoonkey's Webpatcher](https://spooonky.github.io/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware/).
+Build an unlocked or bug-fixed IVCU firmware right on the phone and hand it straight to the flasher - entirely offline, nothing is uploaded. Two firmwares are bundled: the stock eKFV **R5.4.19** and the already-open **ALI D3.4.12**. For the **Fighter Mini Pro eKFV** only (Box C / IVCU-V5.X hardware; see the guide). Reached via **Settings -> Firmware Patcher**. Built on the research behind [Spoonkey's Webpatcher](https://spooonky.github.io/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware/).
 
 Step-by-step in [Firmware: patch, update and flash](#firmware-patch-update-and-flash). Implementation detail is in [Firmware patcher and updater (app implementation)](#firmware-patcher-and-updater-app-implementation).
 
@@ -129,10 +129,10 @@ Step-by-step in [Firmware: patch, update and flash](#firmware-patch-update-and-f
   - **Shortest** - the shortest distance (may use bigger roads if they are shorter).
   - **Bike paths** - prefers cycleways and field tracks and avoids main roads as much as possible.
 - **"Start navigation" follow-along mode** - after a route is calculated you tap **Start**; the map follows you and zooms in. A big next-turn card shows the upcoming turn and the distance to it plus the remaining distance and a rough ETA. A **Stop** button ends it.
-- **Turn-by-turn voice guidance** using your phone's built-in text-to-speech. The app speaks the directions in English using the voice your phone already has (its default text-to-speech engine), so no extra voice download is needed. If your phone has no matching voice it simply stays silent and shows the directions on screen. Voice can be turned off. (The rest of the app stays in English as well.)
-- **Camping and Charging POI overlays** - charging is filterable by **Schuko / Type 2**.
+- **Turn-by-turn voice guidance** using your phone's built-in text-to-speech. The directions are **spoken in your phone's language** (most EU languages are supported; anything else falls back to English), while the on-screen text stays English. It uses the TTS voice your phone already has - if that language's voice is not installed it falls back to another installed voice or, failing that, stays silent and just shows the directions on screen. Voice can be turned off.
+- **Camping and Charging POI overlays** - charging is filterable by **Schuko / Type 2**. Download the POI data per country with the **Get POI** button on the offline-maps screen (built from OpenStreetMap, ODbL); it lands next to that country's map, so the overlays light up automatically once you have it.
 - **Dark-map mode.**
-- **"Show on map"** - display a recorded ride on the offline map.
+- **"Show map"** - display a recorded ride on the offline map.
 - **Automatic routing-data download** - the cycling-directions data (BRouter segments) downloads automatically for the area you route in. You can also download it manually and delete it on the maps page (the same screen where you download offline country maps).
 
 ### Offline maps
@@ -144,19 +144,20 @@ Step-by-step in [Firmware: patch, update and flash](#firmware-patch-update-and-f
 ### Recording, logging & preferences
 
 - **GPS track recording** with a configurable interval (**1 / 2 / 5 / 10 / 30 s**) and **per-route GPX export**.
-- **Ride log** (**off by default**) - when enabled, it records **all main-screen values once per minute** while you ride. Recording only starts once you are actually moving (after the scooter's speed first goes above 0), so parking or connecting without riding produces no ride. It runs as a foreground service so it keeps recording with the screen off, keeps the **last 3 rides** and lets you export each ride as **CSV or JSON** from the Scooter Info page (via the Android share sheet). The exported CSV/JSON can be visualised as graphs with the companion **[Laufbursche Edition Analysis Tool (leat)](https://github.com/Laufbursche42/leat)**.
+- **Ride log** (**off by default**) - when enabled, it records **all main-screen values once per minute** while you ride. Recording only starts once you are actually moving (after the scooter's speed first goes above 0), so parking or connecting without riding produces no ride. It runs as a foreground service so it keeps recording with the screen off, keeps **all rides** (delete them individually or in bulk by period) and lets you export each ride as **CSV or JSON** from the Scooter Info page (via the Android share sheet). The exported CSV/JSON can be visualised as graphs with the companion **[Laufbursche Edition Analysis Tool (leat)](https://github.com/Laufbursche42/leat)**.
 - **In-app debug logging** - persistent, with a red banner while active and an **export** button. No PC needed.
 - **Full-screen toggle** (when off, the app sits below the Android status bar), **km / mph** units, **light / dark app theme** and a **"Version Info & Disclaimer"** entry.
 
 ## Firmware: patch, update and flash
 
-A plain-language walk-through of building a firmware in the **Firmware Patcher** and flashing it with **Firmware update**. If you already have a `.hex` file, skip to step 3 and open **Firmware update** directly.
+If you already have a `.hex` file, skip to step 3 and open **Firmware update** directly.
 
 ### Before you start (read this)
 
-- **Box C hardware only.** Use the bundled firmwares ONLY on a Box C / IVCU-V5.X controller - the box in the Fighter Mini (including the eKFV version), Blade GT II, Fighter 11 and Supreme+. Do NOT flash them on Box A (HW V3.X), Box B (V4.X) or the special C1 / C2 boards.
-- **A failed flash is almost always recoverable.** The bootloader clears its "app valid" flag before it writes and restores it only after the new image passes its checksum, so a bad, interrupted, cancelled or power-lost flash leaves the controller back in the bootloader - still in flashing mode, surviving a power-off and a Bluetooth disconnect - and you just flash again. The stock **R5.4.19** is your recovery firmware. This is not a guarantee - flashing always carries some risk (a wrong-but-checksum-valid image can still boot broken). See [why an interrupted flash is almost never a brick](#why-an-interrupted-flash-is-almost-never-a-brick) for the code proof.
+- **Fighter Mini Pro eKFV only.** The bundled firmwares are for the Teverun Fighter Mini Pro eKFV. The hardware is a Box C / IVCU-V5.X board (shared with the Blade GT II, Fighter 11 and Supreme+), but those models run their own firmware - do NOT flash these on them or on a Box A (HW V3.X), Box B (V4.X) or a C1 / C2 board.
+- **A failed flash is almost always recoverable.** The bootloader clears its "app valid" flag before it writes and restores it only after the new image passes its checksum, so a bad, interrupted, cancelled or power-lost flash leaves the IVCU back in the bootloader - still in flashing mode, surviving a power-off and a Bluetooth disconnect - and you just flash again. The stock **R5.4.19** is your recovery firmware. This is not a guarantee - flashing always carries some risk (a wrong-but-checksum-valid image can still boot broken). See [why an interrupted flash is almost never a brick](#why-an-interrupted-flash-is-almost-never-a-brick) for the code proof.
 - **It takes about 13 minutes.** Keep the app open. The screen stays on for the whole flash and there is a progress bar, a live log and a **Cancel** button throughout.
+- **Set the scooter Auto-Off to 30 min first.** Because the flash takes ~13 minutes, set the auto-off timer to 30 minutes (or Off) in the scooter's own display menu before you start. The app cannot change it - a shorter timer powers the scooter off mid-flash.
 - **Road approval.** Flashing non-stock firmware or unlocking the speed changes the approved configuration, with the road-approval and insurance consequences in the [Legal and safety](#legal-and-safety) note. The responsibility is yours.
 - **First time? Do a dry run** by flashing the unmodified stock R5.4.19 once, so you have seen the whole flow before you change anything.
 
@@ -184,9 +185,9 @@ Then press the button. It reads **"Build patch & continue"** when you picked som
 
 The update page runs a content check and shows a pass/fail checklist:
 
-- **File integrity** (CRC) - the image is intact. This can never be overridden.
-- **Controller app region** - it targets the controller app, not the bootloader.
-- **Controller target** - it is a controller image, not a battery (BMS) image.
+- **File integrity** (CRC) - confirms the file is not corrupted. This is the one check with no "flash anyway" override: a file that fails the CRC can never be flashed.
+- **IVCU app region** - it targets the IVCU app, not the bootloader.
+- **IVCU target** - it is an IVCU image, not a battery (BMS) image.
 - **Firmware generation** - the file's version against what is on the scooter now.
 
 If every check passes, **Start** is enabled. If a check fails, Start is disabled and the checklist shows which one; for informed users a "flash anyway" override is offered on every check except the CRC one. Press **Start**, confirm the ~13-minute warning and let it run to the end.
@@ -285,7 +286,7 @@ You can also install from a computer over ADB (Android platform-tools). This is 
 
 ## Privacy & data protection
 
-The app collects **nothing** - no accounts, no analytics, no telemetry, no tracking and no ads. Everything stays on your device. The only network use is the **Bluetooth LE** link to your scooter plus **optional HTTPS downloads** of offline map and routing data from public OpenStreetMap mirrors and the **SRT screen stream** to a server URL you configure yourself. Nothing is ever sent to the developer or to any manufacturer backend.
+The app collects **nothing** - no accounts, no analytics, no telemetry, no tracking and no ads. Everything stays on your device. It uses the network only on your explicit action, reaching only: your scooter over **Bluetooth LE**; the **Hochschule Esslingen** OpenStreetMap mirror (`ftp-stud.hs-esslingen.de`) for offline **maps**; the **BRouter** server (`brouter.de`) for **routing** data; this project's **GitHub Releases** (`github.com/Laufbursche42/tr-lb-edition`) for **POI** data (camping + EV charging); and the **SRT** server URL you configure yourself for screen streaming. Nothing is ever sent to the developer or to any manufacturer backend.
 
 See [PRIVACY.md](PRIVACY.md) for the full privacy policy.
 
@@ -859,7 +860,7 @@ The BLE advertised name is the VCU's device-identity string - the scooter's FIN 
 [19]     CRC-8       over [0..18]
 ```
 
-The controller writes the new identity to EEPROM, so it survives a reboot; it needs no firmware flash and is fully reversible by sending the original name back. The app exposes this as `setDeviceName` / `setBleName`, surfaced as the "Change identity" row in Scooter Info, where the full FIN is editable with a Set button. The app never persists an empty name.
+The VCU writes the new identity to EEPROM, so it survives a reboot; it needs no firmware flash and is fully reversible by sending the original name back. The app exposes this as `setDeviceName` / `setBleName`, surfaced as the "Change identity" row in Scooter Info, where the full FIN is editable with a Set button. The app never persists an empty name.
 
 The first three characters of this identity gate the eKFV speed clamp: a name starting with `TDE` is the restricted eKFV marker, while the firmware factory default `AWPE-VCU-220212` is unrestricted. Changing the identity flips Gate 1 of the speed clamp but not Gate 2 (the display), so a name change alone does not raise the top speed. See the [Firmware](#firmware-reverse-engineering) section for the full picture.
 
@@ -888,7 +889,7 @@ Read-back (cmd 0x72):
 - `doubleMotor` = `fEcuStatus2[3]` = bit 3 of `t[3]`
 - `rmStatus` = `ecuStatus2[3]` = bit 3 of `t[11]`
 
-> Caution - verify on device. The write encodes these two flags in bit 7 of control bytes `a[4]` / `a[17]`, whereas the read-back decodes them from bit 3 of different status bytes in the `55 72` frame. They are distinct bytes in distinct frames, so there is no direct contradiction, but the exact controller-side bit position for commanding single vs. dual motor should be confirmed against a live VCU. There is no dedicated "motor" opcode - motor mode is only ever changed through the full settings write (cmd 0x18); the "Motor" custom key (value 1, Section 3.5) merely maps the hardware button to this same toggle.
+> Caution - verify on device. The write encodes these two flags in bit 7 of control bytes `a[4]` / `a[17]`, whereas the read-back decodes them from bit 3 of different status bytes in the `55 72` frame. They are distinct bytes in distinct frames, so there is no direct contradiction, but the exact VCU-side bit position for commanding single vs. dual motor should be confirmed against a live VCU. There is no dedicated "motor" opcode - motor mode is only ever changed through the full settings write (cmd 0x18); the "Motor" custom key (value 1, Section 3.5) merely maps the hardware button to this same toggle.
 
 `motorPolePairs` (`a[5]` out / `55 71` `t[5]` in) is a motor parameter, not an enable flag.
 
@@ -905,11 +906,13 @@ Read-back (cmd 0x72):
 - Notifications, not indications (`type:"notification"`): enable local notify + write CCCD `0x2902` = `0x01 0x00`.
 - Startup sequence: connect -> discover services (pick primary `0000FF...` / `495353...`) -> discover characteristics (notify/write per Section 1.1) -> enable notifications (CCCD) -> send `sendConnectCode(0)` and repeat every ~6.5 s. Telemetry then streams unsolicited; no per-frame request is needed.
 - Writes: send the complete 20-byte frame in a single GATT write; retry a few times on failure. Serialize concurrent writes (the original app spaces its multi-frame settings writes ~200 ms apart).
-- Uncertain items (flagged above): (a) exact controller bit for single/dual-motor commanding - see Section 4; (b) `enFeedBack` physical unit - unverified; (c) preferred write type (with vs. without response) - the default is with-response.
+- Uncertain items (flagged above): (a) exact VCU bit for single/dual-motor commanding - see Section 4; (b) `enFeedBack` physical unit - unverified; (c) preferred write type (with vs. without response) - the default is with-response.
 
 ## Firmware (reverse engineering)
 
-This section documents what was found by reverse-engineering the scooter's own firmware - the VCU controller and the display - as distinct from the BLE app protocol above. It explains why the 22 km/h eKFV speed limit cannot be lifted over Bluetooth alone, what the app can and cannot change and where the remaining limits actually live. It is a research and educational record of how the hardware works; read the legal and safety note at the end before acting on any of it. Findings are firmware-verified for the eKFV (TDE) Fighter Mini Pro line unless noted otherwise.
+**Scope: the Teverun Fighter Mini Pro eKFV only.** Everything below was reverse-engineered from that one model's firmware - no other scooter was disassembled, so nothing here is assumed to transfer to another model.
+
+This section documents what was found by reverse-engineering the scooter's own firmware - the VCU and the display - as distinct from the BLE app protocol above. It explains why the 22 km/h eKFV speed limit cannot be lifted over Bluetooth alone, what the app can and cannot change and where the remaining limits actually live. It is a research and educational record of how the hardware works; read the legal and safety note at the end before acting on any of it. Findings are firmware-verified for the eKFV (TDE) Fighter Mini Pro line unless noted otherwise.
 
 ### The double-gated 22 km/h speed clamp
 
@@ -923,7 +926,7 @@ When the flag is set, the four motor-command frame builders each force the speed
 
 ### Gate 1 - VCU identity
 
-The VCU identity string is the same value the scooter advertises as its Bluetooth name (its FIN). It lives in the VCU's external I2C EEPROM config block and is mirrored into RAM at boot. If its first three characters are `TDE` the eKFV region restriction is latched on. The factory-default identity baked into the firmware image is `AWPE-VCU-220212`, which does not start with `TDE`, so a fresh controller is unrestricted; the per-unit `TDE` marker is what a factory writes to enable the eKFV limit.
+The VCU identity string is the same value the scooter advertises as its Bluetooth name (its FIN). It lives in the VCU's external I2C EEPROM config block and is mirrored into RAM at boot. If its first three characters are `TDE` the eKFV region restriction is latched on. The factory-default identity baked into the firmware image is `AWPE-VCU-220212`, which does not start with `TDE`, so a fresh VCU is unrestricted; the per-unit `TDE` marker is what a factory writes to enable the eKFV limit.
 
 This gate is changeable at runtime over BLE with command id 0x1f (see [Section 3.6](#36-identity--device-name-change-cmd-0x1f)). It is written to EEPROM, so it survives a reboot, needs no firmware flash and is fully reversible by writing the old name back. This was confirmed on a real eKFV / TDE unit: setting a non-TDE name showed the new name after reconnect and persisted across a scooter power cycle.
 
@@ -939,7 +942,9 @@ There is NO no-flash unlock for Gate 2 on this firmware. A magic word (`0xAA55AA
 
 Patching the display is one option; the other is to patch the VCU application firmware, which defeats both gates at once. Each of the four motor-command frame builders clamps the speed byte to 22 with a `movs r7, #0x16` that runs after a compare. Replacing those four instructions with NOPs removes the clamp entirely, after which the natural per-gear speed passes through.
 
-The clamp is unique to the R5 line: the four `movs r7, #0x16` caps appear in R5.4.19 but are absent from the R3, R2 and D-series VCU images, which ship unrestricted. Because the R3 and R5 images share the same Box C flash base (`0x08007000`) and the same MCU and peripheral map, flashing an unpatched open R3-line image onto an R5 controller de-restricts it with no byte patch at all - the version number is only a client-side software lock (the original app's name gate just wants a version segment ending in "5"), not a hardware difference. The stock R5.4.19 stays the recovery image to return to.
+This NOP-the-clamp route is the both-gates case: it drops the cap unconditionally. The app's Firmware Patcher reaches the same result more surgically by patching the clamp *flag* instead of the clamp instructions - **Full unlock** patches GATE_FLAG + GATE2 so the flag is always 0 (both gates off), while **Live toggle** clears only GATE2 (the display gate) and leaves the FIN identity as the live lock/unlock switch (one gate). The per-mode mechanics are in [Firmware patcher and updater](#firmware-patcher-and-updater-app-implementation).
+
+The clamp is unique to the R5 line: the four `movs r7, #0x16` caps appear in R5.4.19 but are absent from the R3, R2 and D-series VCU images, which ship unrestricted. Because the R3 and R5 images share the same Box C flash base (`0x08007000`) and the same MCU and peripheral map, flashing an unpatched open R3-line image onto an R5 VCU de-restricts it with no byte patch at all - the version number is only a client-side software lock (the original app's name gate just wants a version segment ending in "5"), not a hardware difference. The stock R5.4.19 stays the recovery image to return to.
 
 A patched image needs its CRC-16/MODBUS recomputed and its `:07AAA555` header record rebuilt. The bootloader checks only the CRC and the address range - there is no signature - so a correctly re-checksummed patched image is accepted.
 
@@ -949,7 +954,7 @@ Important caveat: these offsets are for the R5.4.19 image. A unit running R5.4.2
 
 The VCU bootloader exposes exactly five write commands over the OTA protocol - START, FINISH, INFO, PACKINFO and PACKDATA (ids `0x710` to `0x714`). Integrity is a CRC-16 (polynomial `0x8005`) only; there is no signature check.
 
-Crucially there is no read-back, dump or memory-read command. Full decompilation of the bootloader confirms a single command dispatcher with a whitelist of just those five ids and no read path, so the VCU firmware cannot be extracted over BLE - this is proven, not merely assumed. The bootloader's RDP-unprotect routine is present but is dead code with no caller. Reading the firmware out requires hardware SWD / JTAG on the controller board. The practical consequence is that a flash is one-way: there is no way to make a byte-exact backup of the running firmware over Bluetooth first.
+Crucially there is no read-back, dump or memory-read command. Full decompilation of the bootloader confirms a single command dispatcher with a whitelist of just those five ids and no read path, so the VCU firmware cannot be extracted over BLE - this is proven, not merely assumed. The bootloader's RDP-unprotect routine is present but is dead code with no caller. Reading the firmware out requires hardware SWD / JTAG on the VCU board. The practical consequence is that a flash is one-way: there is no way to make a byte-exact backup of the running firmware over Bluetooth first.
 
 ### Why an interrupted flash is almost never a brick
 
@@ -968,7 +973,7 @@ It is "almost never", not "never". Integrity is a **CRC-16 (poly `0x8005`) only,
 
 ### Display firmware flashing
 
-The display has its own UART bootloader. It accepts an image with only a CRC-16 integrity check (polynomial `0x8005`, init `0xFFFF`) - no model, version or signature gate - and it writes only display flash; the controller is never touched. It is recoverable rather than a one-way brick: the application-valid magic is committed only after a CRC plus read-back verify, the bootloader region itself is never erased and a failed flash simply leaves the bootloader waiting for a new image.
+The display has its own UART bootloader. It accepts an image with only a CRC-16 integrity check (polynomial `0x8005`, init `0xFFFF`) - no model, version or signature gate - and it writes only display flash; the VCU is never touched. It is recoverable rather than a one-way brick: the application-valid magic is committed only after a CRC plus read-back verify, the bootloader region itself is never erased and a failed flash simply leaves the bootloader waiting for a new image.
 
 Protocol: an enter-update handshake (`11 22 33 44 55 66 77 88` followed by a mode byte) then block-write frames (`0x88` header, big-endian destination offset, CRC-16 over the payload) or equivalently START / DATA / FINISH commands.
 
@@ -976,9 +981,9 @@ Critical constraint on this unit: the stock VCU application firmware has NO disp
 
 ### Firmware patcher and updater (app implementation)
 
-This is the app-side detail behind the two user-facing features; the byte-level clamp mechanics live in [Removing the clamp in VCU firmware](#removing-the-clamp-in-vcu-firmware).
+This is the app-side detail behind the two user-facing features; the byte-level clamp mechanics live in [Removing the clamp in VCU firmware](#removing-the-clamp-in-vcu-firmware). The two bundled firmwares and every offset here are specific to the Teverun Fighter Mini Pro eKFV - no other model was examined.
 
-- **Content-based compatibility (vs `isComplyRules`)** - the original app gates a local flash on the **file name** (`isComplyRules`: the name starts with `AWIVCU` / `AWVCU` and on an eKFV / TDE unit the version segment ends in "5"), which is why a shortened or renamed-but-valid file throws "Error loading upgrade file". Laufbursche Edition instead validates the image itself and treats the name rule as an advisory line only. Four checks: a **CRC16** over the image (integrity, never overridable), the target is the **controller application region** (not the bootloader), the image is a **controller** target (not a BMS image) and the **trailer version** against the version currently on the scooter. Every check has an explicit "flash anyway" override for informed users except the CRC check.
+- **Content-based compatibility (vs `isComplyRules`)** - the original app gates a local flash on the **file name** (`isComplyRules`: the name starts with `AWIVCU` / `AWVCU` and on an eKFV / TDE unit the version segment ends in "5"), which is why a shortened or renamed-but-valid file throws "Error loading upgrade file". Laufbursche Edition instead validates the image itself and treats the name rule as an advisory line only. Four checks: a **CRC16** over the image (integrity, never overridable), the target is the **VCU application region** (not the bootloader), the image is a **VCU** target (not a BMS image) and the **trailer version** against the version currently on the scooter. Every check has an explicit "flash anyway" override for informed users except the CRC check.
 - **Patcher pipeline** - the bundled Intel-HEX is parsed, the exact byte edits for the ticked options are applied, the firmware CRC is recomputed and a new flashable image is produced. R5.4.19 edits: **Full unlock** pins the clamp flag off (GATE_FLAG + GATE2), **Live toggle** clears only the display-clamp gate (GATE2) and **Keep 22** leaves the stock cap; **Blinker fix** and **WheelDiameter** are independent add-ons (WheelDiameter hooks the 0x18 command handler so the app's wheel byte reaches the wheel-diameter variable and its EEPROM mirror, plus a boot-clobber NOP so it survives a reboot). ALI D3.4.12 is only wrapped into a flashable image - it is already open.
 - **Built in memory, never on disk** - the patched or picked image lives only in two in-RAM `String` fields (`otaHexText` / `otaFileName`); nothing firmware-related is ever written to the filesystem. Only one image exists at a time and each new build overwrites it. After a flash completes or fails the app drops it (`otaClear()`) so no stale image lingers; a cancel keeps it so you can restart immediately.
 - **Auto-off cannot be raised over BLE** - a short auto-off (sleep) timer can power the scooter off mid-flash, but the app cannot prevent this. The VCU settings handler copies only `a[2..17]` and drops `a[18]`, where sleepTime lives (verified on `fw_r5419`; the original app puts it in the same `a[18]` and hits the same wall - see [Sleep and power-off timer quirk](#sleep-and-power-off-timer-quirk)). The flash confirm dialog therefore warns the user in red to raise the auto-off timer in the scooter's own display menu first.
@@ -1017,7 +1022,7 @@ Every file name the patcher can emit:
 
 ### Region write-protection - locked vs free settings
 
-When the identity is `TDE` the VCU latches a country / region write-protection. The app can display every setting the controller supports, but the controller silently refuses to store the protected ones. The table below is firmware-verified for the eKFV (TDE) Fighter Mini Pro.
+When the identity is `TDE` the VCU latches a country / region write-protection. The app can display every setting the VCU supports, but the VCU silently refuses to store the protected ones. The table below is firmware-verified for the eKFV (TDE) Fighter Mini Pro.
 
 | Setting | State | Where the limit lives |
 |---------|-------|-----------------------|
@@ -1036,7 +1041,7 @@ When the identity is `TDE` the VCU latches a country / region write-protection. 
 | Pack voltage | Free | works normally |
 | Eco | Free | works normally |
 | Units (km / mph) | Free | works normally |
-| Anti-theft (electronic lock) | Not functional on eKFV | no GPS/immobilizer module; the app arms it only on T2 models and the controller has no handler for the toggle, so it does nothing here |
+| Anti-theft (electronic lock) | Not functional on eKFV | needs the original GPS / immobilizer module, which this unit lacks - it is the GPS hardware that decides this, not the T1 / T2 model - and the VCU has no handler for the toggle, so it does nothing here |
 | Smart / TCS | Free | works normally |
 | Gear selection | Free | works normally |
 | Motor mode | Free | works normally |
@@ -1045,7 +1050,7 @@ The speed cap and the cruise lock are direct eKFV region protections latched by 
 
 ### Sleep and power-off timer quirk
 
-The sleep timer and the power-off timer are neither readable nor writable over BLE on this controller, because of a firmware bug rather than a region lock. The `55 71` settings-echo frame builder copies only 16 payload bytes, so byte `t[18]` - which is supposed to carry the sleep timer and power-off timer - is never written (the loop that should fill it is dead code). The inbound settings-write path drops the same byte. As a result those two timers live only in the VCU EEPROM config and can only be set from the scooter's on-display P-menu. The official app hides this by showing its own cached value; Laufbursche Edition therefore does not expose these two timers at all.
+The sleep timer and the power-off timer are neither readable nor writable over BLE on this VCU, because of a firmware bug rather than a region lock. The `55 71` settings-echo frame builder copies only 16 payload bytes, so byte `t[18]` - which is supposed to carry the sleep timer and power-off timer - is never written (the loop that should fill it is dead code). The inbound settings-write path drops the same byte. As a result those two timers live only in the VCU EEPROM config and can only be set from the scooter's on-display P-menu. The official app hides this by showing its own cached value; Laufbursche Edition therefore does not expose these two timers at all.
 
 ### Inter-MCU transport map
 
@@ -1062,7 +1067,7 @@ The display is UART-connected, not on CAN. This is why a display firmware update
 
 ### Original Teverun app behaviour
 
-A few behaviours of the official Teverun app explain why this app is built differently. The official app persists the whole settings state to disk per device, rewrites it on every change and has no targeted single-field write: any user action re-sends all five gear profiles from that (partially stale) cache, which can silently overwrite per-gear values the rider had set. That is the origin of the common complaint that "the app changed my settings". It also carries hardcoded per-model default tables. Laufbursche Edition avoids this by using an explicit Save, targeted per-gear writes and no persistence of controller values on the phone.
+A few behaviours of the official Teverun app explain why this app is built differently. The official app persists the whole settings state to disk per device, rewrites it on every change and has no targeted single-field write: any user action re-sends all five gear profiles from that (partially stale) cache, which can silently overwrite per-gear values the rider had set. That is the origin of the common complaint that "the app changed my settings". It also carries hardcoded per-model default tables. Laufbursche Edition avoids this by using an explicit Save, targeted per-gear writes and no persistence of VCU values on the phone.
 
 ### Chip and hardware access
 
@@ -1088,7 +1093,11 @@ Once you **publish** your own version (distribute a fork), you must observe the 
 
 ## Porting to Apple platforms (iOS / iPadOS)
 
-You are welcome to port this code to Apple platforms (iPhone and iPad). The **same terms apply as to any other fork**:
+You are welcome to port this code to Apple platforms (iPhone and iPad).
+
+**We are looking for an Apple developer to bring this app to the App Store.** We would provide the code but do not want to pay the 99 EUR/year for an Apple Developer account ourselves. The app does not have to be offered for free on the App Store - a 60/40 revenue split in favour of the Apple developer is conceivable. If you are interested, please open an issue for first contact (without personal data such as an email address; we will then reach out to you and share a contact address).
+
+The **same terms apply as to any other fork**:
 
 - The port must be **renamed** following the same rule as any other fork - replace "Laufbursche" with your own name or pseudonym and keep the word "Edition" (for example, "Falcon Edition"). It must use its own name and its own logo, not the "Laufbursche Edition" name or logo.
 - It must **preserve the origin notice** stating that it is based on the original "Laufbursche Edition" by Laufbursche in its **Version Info & Disclaimer** screen.
