@@ -76,7 +76,7 @@ jobs:
           - ukraine
     steps:
       - name: Set up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -133,7 +133,7 @@ jobs:
           ls -lh "${{ matrix.base }}.poi"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: poi-${{ matrix.base }}
           path: ${{ matrix.base }}.poi
@@ -145,7 +145,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Collect all .poi artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: pois
           pattern: poi-*
