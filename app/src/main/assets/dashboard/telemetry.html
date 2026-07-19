@@ -1038,7 +1038,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
   <!-- Version info + disclaimer (opens a modal) -->
   <div class="settings-group" style="border-top:1px solid var(--border)">
     <button id="btn-firmware">&#9889; Firmware update</button>
-    <div class="settings-row-sublabel note-gap">Flash a controller .hex over Bluetooth (scooter must be connected)</div>
+    <div class="settings-row-sublabel note-gap">Flash an IVCU .hex over Bluetooth (scooter must be connected)</div>
     <button id="btn-firmware-patcher">&#128295; Firmware Patcher</button>
     <div class="settings-row-sublabel note-gap">Build an unlocked/fixed .hex from a bundled firmware, then flash it</div>
     <button id="btn-version-info">&#8505; Version Info &amp; Disclaimer</button>
@@ -1341,7 +1341,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       <div class="settings-row">
         <div class="settings-row-left">
           <div class="settings-row-label">Record ride log</div>
-          <div class="settings-row-sublabel">Off by default. Records all main-screen values once per minute while you ride (starts after the scooter first moves). Kept for the last 3 rides.</div>
+          <div class="settings-row-sublabel">Off by default. Records all main-screen values once per minute while you ride (starts after the scooter first moves). All rides are kept until you delete them.</div>
         </div>
         <div class="toggle-wrap">
           <input type="checkbox" class="toggle-input" id="toggle-ridelog">
@@ -1349,8 +1349,15 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
         </div>
       </div>
       <div class="settings-row-sublabel" style="margin:8px 0 0">View the exported CSV/JSON as graphs with the <span onclick="openExt('https://github.com/Laufbursche42/leat')" style="color:var(--ble);text-decoration:underline;cursor:pointer">Laufbursche Edition Analysis Tool (leat)</span>.</div>
-      <div class="settings-row-sublabel" style="margin:10px 0 6px">Last 3 rides</div>
+      <div class="settings-row-sublabel" style="margin:10px 0 6px">Recorded rides</div>
       <div id="ridelog-list"></div>
+      <div class="section-hdr" style="margin-top:14px"><span>Delete rides</span></div>
+      <div class="action-btn-row">
+        <button class="del-btn" data-rideperiod="24h">&lt;24h</button>
+        <button class="del-btn" data-rideperiod="7d">&lt;7d</button>
+        <button class="del-btn" data-rideperiod="30d">&lt;30d</button>
+        <button class="del-btn" data-rideperiod="all">All</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1366,11 +1373,11 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
   </div>
   <div id="firmware-scroller">
     <div class="fw-warn">
-      <b>Read this first.</b> Flashing controller firmware over Bluetooth takes about 13 minutes.
+      <b>Read this first.</b> Flashing IVCU firmware over Bluetooth takes about 13 minutes.
       During the update: keep the scooter switched on and within range, keep this app in the
       foreground (the screen stays on), and do not turn the scooter off. If the flash is interrupted
-      the controller stays in update mode and can simply be flashed again - it is not bricked. Only
-      flash a .hex that matches your controller.
+      the IVCU stays in update mode and can simply be flashed again - it is not bricked. Only
+      flash a .hex that matches your IVCU.
     </div>
 
     <div id="fw-ver2-note" class="fw-warn" style="display:none;border-color:var(--ble);background:color-mix(in srgb, var(--ble) 12%, transparent)">
@@ -1386,7 +1393,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <div class="settings-group" style="border-top:1px solid var(--border)">
       <label id="fw-override-wrap" style="display:none">
         <input type="checkbox" id="fw-override">
-        <span>The compatibility check did not pass. I am sure this is the right firmware for this controller - flash anyway.</span>
+        <span>The compatibility check did not pass. I am sure this is the right firmware for this IVCU - flash anyway.</span>
       </label>
       <button id="btn-fw-start" disabled>Start update</button>
       <div class="settings-row-sublabel" id="fw-start-hint" style="margin:6px 0 0">
@@ -1416,11 +1423,12 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
   </div>
   <div id="patcher-scroller">
     <div class="fw-warn">
-      <b>Box C controllers only.</b> This patcher is for <b>Box C</b> controllers (IVCU hardware V5.X) -
-      the box used by the Fighter Mini (incl. eKFV), Blade GT II, Fighter 11 and Supreme+. Do not flash
-      these on any other box (A / B / C1 / C2).
+      <b>Fighter Mini Pro eKFV only.</b> These firmwares are for the Teverun <b>Fighter Mini Pro eKFV</b>
+      and no other scooter. The hardware is a Box C / IVCU V5.X board (shared with the Blade GT II,
+      Fighter 11 and Supreme+), but those models run their own firmware - do NOT flash these on them or on
+      any Box A / B / C1 / C2 board.
       <br><br>
-      Only flash the firmware that matches your controller.
+      Only flash firmware that matches your exact scooter.
     </div>
 
     <div class="settings-group" style="padding-top:6px">
@@ -1462,7 +1470,9 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <h3 id="verinfo-title">Version Info &amp; Disclaimer</h3>
     <div class="verinfo-ver">App version: <span id="verinfo-ver">-</span></div>
     <p id="verinfo-disclaimer">This is not an official Teverun app. The developer (Laufbursche) is not affiliated with, endorsed by, or connected to Teverun. Teverun is a trademark of its respective owner.</p>
-    <p id="verinfo-thanks">Special thanks to <span onclick="openExt('https://spooonky.github.io/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware/')" style="color:var(--ble);text-decoration:underline;cursor:pointer">Spoonkey's Webpatcher</span> - the firmware research this patcher builds on.</p>
+    <p id="verinfo-thanks">Special thanks to <span onclick="openExt('https://spooonky.github.io/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware/')" style="color:var(--ble);text-decoration:underline;cursor:pointer">Spoonkey's Webpatcher</span> - the firmware research this patcher builds on (<span onclick="openExt('https://github.com/Spooonky/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware/blob/main/Readme.md')" style="color:var(--ble);text-decoration:underline;cursor:pointer">README</span>; that project ships no license file).</p>
+    <p id="verinfo-license">Laufbursche Edition is source-available under the PolyForm Noncommercial License 1.0.0 with Additional Terms. Read the <span onclick="openExt('https://github.com/Laufbursche42/tr-lb-edition/blob/main/README.md')" style="color:var(--ble);text-decoration:underline;cursor:pointer">GitHub README</span> and <span onclick="openExt('https://github.com/Laufbursche42/tr-lb-edition/blob/main/license.md')" style="color:var(--ble);text-decoration:underline;cursor:pointer">License</span>.</p>
+    <p id="verinfo-osm">Offline maps and POI data (camping / charging) are &copy; OpenStreetMap contributors, licensed under the ODbL 1.0.</p>
     <button type="button" id="verinfo-close">Close</button>
   </div>
 </div>
@@ -2305,7 +2315,7 @@ function makeRouteItem(route, live) {
   if (!live && route.points.length > 0) {
     const mapsBtn = document.createElement('button');
     mapsBtn.className = 'route-gpx-btn';
-    mapsBtn.textContent = 'Show on map';
+    mapsBtn.textContent = 'Show map';
     mapsBtn.addEventListener('click', e => {
       e.stopPropagation();
       showRouteOnOurMap(route);
@@ -3045,7 +3055,7 @@ function fmtRideDuration(sec) {
   return h + ' h ' + (rem < 10 ? '0' : '') + rem + ' min';
 }
 
-// Build the "Last 3 rides" list from LB.listRides() (JSON array string, newest first, <=3).
+// Build the recorded-rides list from LB.listRides() (JSON array string, newest first, all rides).
 function renderRideList() {
   const list = document.getElementById('ridelog-list');
   if (!list) return;
@@ -3116,6 +3126,35 @@ function confirmDeleteRide(id) {
     }
     renderRideList();
   };
+  document.getElementById('confirm-ok').textContent = 'Delete';
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+// Bulk-delete recorded rides by period (mirrors the routes Delete section). "<24h/7d/30d" delete rides
+// OLDER than that window (recent ones are kept); "all" deletes every ride.
+function deleteRidesByPeriod(period) {
+  if (typeof LB === 'undefined' || !LB.listRides) { showToast('Only available in the app'); return; }
+  try {
+    if (period === 'all') {
+      if (LB.deleteAllRides) LB.deleteAllRides();
+    } else {
+      const cutoff = Date.now() - (period === '24h' ? 24 * 3600e3 : period === '7d' ? 7 * 86400e3 : 30 * 86400e3);
+      let rides = [];
+      try { rides = JSON.parse(LB.listRides() || '[]') || []; } catch (e) { rides = []; }
+      rides.forEach(r => { if (r && r.start < cutoff && LB.deleteRide) { try { LB.deleteRide('' + r.id); } catch (e) {} } });
+    }
+  } catch (e) { showToast('Error: ' + e); }
+  renderRideList();
+}
+
+// Confirm (shared dialog) then bulk-delete rides.
+function confirmDeleteRides(period) {
+  const labels = { '24h': 'older than 24 hours', '7d': 'older than 7 days', '30d': 'older than 30 days' };
+  document.getElementById('confirm-title').textContent = 'Delete rides?';
+  document.getElementById('confirm-msg').textContent = (period === 'all')
+    ? 'All recorded rides will be permanently deleted.'
+    : 'Rides ' + labels[period] + ' will be permanently deleted (recent rides are kept).';
+  state.confirmCb = () => deleteRidesByPeriod(period);
   document.getElementById('confirm-ok').textContent = 'Delete';
   document.getElementById('confirm-overlay').classList.add('open');
 }
@@ -3323,14 +3362,14 @@ function fwCompat(meta) {
   //    protected bootloader. Critical (the native engine also hard-refuses this).
   const addrOk = meta.targetIsVcu ? (meta.firstAddr >= 0x7000 && meta.firstAddr < 0x20000) : true;
   checks.push({ ok: addrOk, crit: true,
-    label: addrOk ? 'Controller app image' : 'Not a controller app image',
-    detail: addrOk ? 'Targets the controller app region.'
-      : 'First address 0x' + ((meta.firstAddr>>>0).toString(16)) + ' is outside the app region - this is not controller app firmware.' });
+    label: addrOk ? 'IVCU app image' : 'Not an IVCU app image',
+    detail: addrOk ? 'Targets the IVCU app region.'
+      : 'First address 0x' + ((meta.firstAddr>>>0).toString(16)) + ' is outside the app region - this is not IVCU app firmware.' });
 
   // 3) Type: we are connected to the VCU. A BMS (AWE) file is battery firmware. Critical.
   checks.push({ ok: !!meta.targetIsVcu, crit: true,
-    label: meta.targetIsVcu ? 'Controller (VCU) firmware' : 'Battery (BMS) firmware',
-    detail: meta.targetIsVcu ? '' : 'This is BMS (battery) firmware, not controller firmware. The controller will not accept it.' });
+    label: meta.targetIsVcu ? 'IVCU firmware' : 'Battery (BMS) firmware',
+    detail: meta.targetIsVcu ? '' : 'This is BMS (battery) firmware, not IVCU firmware. The IVCU will not accept it.' });
 
   // 4) Generation: content-based major-version match (name-independent). Falls back to the filename
   //    gate only when the installed version has not been read yet. Critical.
@@ -3380,7 +3419,7 @@ window.__onOtaFile = function(metaArg) {
   const kb = (m.sizeBytes / 1024).toFixed(1);
   const rows =
     '<div class="fw-row"><span class="fw-k">File</span><span>' + escXML(m.name) + '</span></div>' +
-    '<div class="fw-row"><span class="fw-k">Target</span><span>' + (m.targetIsVcu ? 'Controller (VCU)' : 'Battery (BMS)') + '</span></div>' +
+    '<div class="fw-row"><span class="fw-k">Target</span><span>' + (m.targetIsVcu ? 'IVCU' : 'Battery (BMS)') + '</span></div>' +
     '<div class="fw-row"><span class="fw-k">Version</span><span>' + escXML(m.fileVer || '-') + '</span></div>' +
     '<div class="fw-row"><span class="fw-k">Size</span><span>' + kb + ' KB &middot; ' + m.packets + ' packets</span></div>';
   // Compatibility checklist: one line per check with an OK / warn badge and a short explanation.
@@ -3448,7 +3487,7 @@ function fwStart() {
     (overriding
       ? 'This file did NOT pass the compatibility check. Flashing the wrong firmware can require a recovery re-flash. Continue only if you are certain this is the right file for this controller.\n\n'
       : '') +
-    'This flashes\n' + m.name + '\nto the ' + (m.targetIsVcu ? 'controller' : 'battery') +
+    'This flashes\n' + m.name + '\nto the ' + (m.targetIsVcu ? 'IVCU' : 'battery') +
     ' and takes about 13 minutes. Keep the scooter on and in range and keep the app open. Do not turn the scooter off.';
   document.getElementById('confirm-ok').textContent = overriding ? 'Flash anyway' : 'Start';
   state.confirmCb = () => {
@@ -3460,7 +3499,7 @@ function fwStart() {
 function fwCancel() {
   document.getElementById('confirm-title').textContent = 'Cancel the update?';
   document.getElementById('confirm-msg').textContent =
-    'The controller will stay in update mode and must be flashed again before you ride. Cancel now?';
+    'The IVCU will stay in update mode and must be flashed again before you ride. Cancel now?';
   document.getElementById('confirm-ok').textContent = 'Cancel update';
   state.confirmCb = () => { try { if (LB.otaCancel) LB.otaCancel(); } catch (e) {} };
   document.getElementById('confirm-overlay').classList.add('open');
@@ -3892,7 +3931,7 @@ function wireEvents() {
   // Change identity (cmd 0x1f): Set writes the full edited FIN. Prefilled with the current FIN.
   document.getElementById('btn-set-btname').addEventListener('click', setBleName);
 
-  // Firmware update: pick a .hex and flash the controller over BLE (native OtaEngine). Opening is
+  // Firmware update: pick a .hex and flash the IVCU over BLE (native OtaEngine). Opening is
   // allowed offline so a file can be inspected; Start is gated on a connected scooter + valid CRC.
   document.getElementById('btn-firmware').addEventListener('click', () => {
     closeSettings();
@@ -4016,10 +4055,16 @@ function wireEvents() {
   document.getElementById('btn-stream-start').addEventListener('click', startSrtStream);
   document.getElementById('btn-stream-stop').addEventListener('click', stopSrtStream);
 
-  // Delete buttons
-  document.querySelectorAll('.del-btn').forEach(btn => {
+  // Delete buttons (routes)
+  document.querySelectorAll('.del-btn[data-period]').forEach(btn => {
     btn.addEventListener('click', () => {
       confirmDelete(btn.dataset.period);
+    });
+  });
+  // Delete buttons (ride logs)
+  document.querySelectorAll('.del-btn[data-rideperiod]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      confirmDeleteRides(btn.dataset.rideperiod);
     });
   });
 

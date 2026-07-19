@@ -925,6 +925,17 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Delete every recorded ride. */
+        @JavascriptInterface
+        public void deleteAllRides() {
+            try {
+                Log.i(TAG, "LB.deleteAllRides()");
+                if (rideLogger != null) rideLogger.deleteAllRides();
+            } catch (Throwable t) {
+                Log.e(TAG, "deleteAllRides bridge failed", t);
+            }
+        }
+
         /** Open an external http(s) URL in the system browser. Ignores anything that is not http/https. */
         @JavascriptInterface
         public void openUrl(final String url) {

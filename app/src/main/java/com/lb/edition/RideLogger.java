@@ -50,7 +50,7 @@ import java.util.Set;
  * </ul>
  *
  * <p>Storage: {@code getExternalFilesDir("rides")/ride-<startEpochMs>.ndjson}, one compact JSON
- * object per line, flushed immediately. Only the 3 newest ride files are kept.
+ * object per line, flushed immediately. All ride files are kept until deleted from the app.
  *
  * <p>Every public method is null/exception-safe and never throws across the JS bridge.
  */
@@ -62,7 +62,6 @@ public final class RideLogger {
     private static final String RIDES_DIR = "rides";
     private static final String EXPORT_DIR = "exports";       // under cacheDir (FileProvider cache-path)
     private static final long SAMPLE_INTERVAL_MS = 60_000L;   // one sample per minute after arming
-    private static final int MAX_RIDES = 3;                   // retention: keep the 3 newest rides
 
 
     // Headline CSV columns emitted first (when present), before the rest in alphabetical order.
@@ -167,8 +166,6 @@ public final class RideLogger {
             armed = true;
             // First sample immediately (t=0).
             writeSample(latestSnapshot);
-            // Retention: keep only the newest MAX_RIDES ride files (the new one is always newest).
-            pruneOldRides();
             // Keep the process foreground so BLE + the 60 s sampling survive the screen going off.
             startService();
             // Subsequent samples every 60 s, measured from first movement.
@@ -244,7 +241,7 @@ public final class RideLogger {
     // ── Ride listing / export (called from the JS bridge) ──
 
     /**
-     * @return a JSON array string, newest first, of at most {@link #MAX_RIDES} rides. Each entry:
+     * @return a JSON array string, newest first, of all recorded rides. Each entry:
      * {@code {"id","start","end","durationSec","distanceKm","samples"}}. "[]" if none.
      */
     public synchronized String listRides() {
@@ -255,11 +252,8 @@ public final class RideLogger {
             if (files == null || files.length == 0) return "[]";
             Arrays.sort(files, (a, b) -> Long.compare(rideIdOf(b), rideIdOf(a))); // newest first
             JSONArray arr = new JSONArray();
-            int count = 0;
             for (File f : files) {
-                if (count >= MAX_RIDES) break;
                 arr.put(metaFrom(readSamples(f), rideIdOf(f)));
-                count++;
             }
             return arr.toString();
         } catch (Throwable t) {
@@ -485,22 +479,21 @@ public final class RideLogger {
         return dir.listFiles((d, name) -> name.startsWith("ride-") && name.endsWith(".ndjson"));
     }
 
-    private void pruneOldRides() {
+    /** Delete every recorded ride. @return the number of ride files deleted. */
+    public synchronized int deleteAllRides() {
+        int n = 0;
         try {
             File dir = ridesDir();
-            if (dir == null) return;
+            if (dir == null) return 0;
             File[] files = listRideFiles(dir);
-            if (files == null || files.length <= MAX_RIDES) return;
-            Arrays.sort(files, (a, b) -> Long.compare(rideIdOf(b), rideIdOf(a))); // newest first
-            for (int i = MAX_RIDES; i < files.length; i++) {
-                try {
-                    //noinspection ResultOfMethodCallIgnored
-                    files[i].delete();
-                } catch (Throwable ignored) { }
+            if (files == null) return 0;
+            for (File f : files) {
+                try { if (f.delete()) n++; } catch (Throwable ignored) { }
             }
         } catch (Throwable t) {
-            Log.e(TAG, "pruneOldRides failed", t);
+            Log.e(TAG, "deleteAllRides failed", t);
         }
+        return n;
     }
 
     /** @return the {@code <startEpochMs>} parsed from a {@code ride-<epoch>.ndjson} file name, or 0. */
