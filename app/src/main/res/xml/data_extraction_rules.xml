@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- android:allowBackup="false" already disables cloud + adb backup on every API level. These rules
+     additionally keep the sensitive on-device data (GPS ride logs, the debug log, the scooter
+     identity / FIN, downloaded maps) out of the Android 12+ device-to-device transfer. The app
+     rebuilds all of this on a fresh install, so excluding it costs the user nothing. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="external" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="external" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+    </device-transfer>
+</data-extraction-rules>

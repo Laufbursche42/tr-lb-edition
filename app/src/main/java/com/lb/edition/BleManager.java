@@ -765,7 +765,22 @@ final class BleManager {
 
     // ── High-level commands (from the JS bridge) ──
 
+    /**
+     * A full 0x18 settings write serialises the ENTIRE maintained state, so it is only safe once the
+     * scooter's real config has been read from a 55 71 frame. Before that, every field the user did
+     * not explicitly change is a SettingsState default (wheel / pack voltage / pole-pairs, and zero
+     * current limits); writing those to the VCU would mis-configure the controller. Refuse the write
+     * until the first 55 71 arrived. In practice that frame lands within ~1 s of connecting, so this
+     * only guards the genuinely unsafe cases (a toggle before the read, or a unit that never reports).
+     */
+    private boolean settingsReady() {
+        if (settings.received71) return true;
+        Log.w(TAG, "settings write refused: scooter config not read yet (waiting for 55 71)");
+        return false;
+    }
+
     void sendSetting(String json) {
+        if (!settingsReady()) return;
         try {
             JSONObject o = (json == null || json.trim().isEmpty()) ? null : new JSONObject(json);
             settings.merge(o);
@@ -785,6 +800,7 @@ final class BleManager {
 
     /** mode: 0 = dual, 1 = rear-only, 2 = front-only (BLE_PROTOCOL §4). */
     void setMotorMode(int mode) {
+        if (!settingsReady()) return;
         try {
             switch (mode) {
                 case 1: settings.rmStatus = 1; settings.doubleMotor = 0; break;  // rear-only
@@ -804,6 +820,7 @@ final class BleManager {
      * uses a[2]=2), so it goes through its own write mode here. Null/exception-safe.
      */
     void setSmart(boolean on) {
+        if (!settingsReady()) return;
         try {
             settings.isSmart = on;
             enqueueWrite(CommandBuilder.sendSettingCode(settings, 5, 1));   // n=5 (Smart write)
@@ -841,6 +858,7 @@ final class BleManager {
      * fall back to the maintained current-gear state. All other config bytes stay current.
      */
     void sendGearSetting(int gear, String json) {
+        if (!settingsReady()) return;
         try {
             JSONObject o = (json == null || json.trim().isEmpty()) ? null : new JSONObject(json);
             enqueueWrite(settings.gearFrame(gear, o));

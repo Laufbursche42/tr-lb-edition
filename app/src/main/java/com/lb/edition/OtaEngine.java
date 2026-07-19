@@ -263,7 +263,16 @@ final class OtaEngine {
     void onNotify(final byte[] value) {
         if (!running || value == null) return;
         final byte[] copy = value.clone();
-        main.post(() -> { if (running) handleNotify(copy); });
+        main.post(() -> {
+            if (!running) return;
+            try {
+                handleNotify(copy);
+            } catch (Throwable t) {
+                // A malformed or hostile OTA response must never crash the app mid-flash. Swallow it;
+                // the per-packet stall watchdog and step-resend keep the flow alive or fail cleanly.
+                Log.e(TAG, "OTA notify handling failed", t);
+            }
+        });
     }
 
     /** Kept for the BleManager routing; the fire-and-forget writer does not use write completions. */
@@ -315,11 +324,14 @@ final class OtaEngine {
                     data.setLength(0);
                     count = 0;
                 }
-                if (line.length() >= 13) { last04sId = line.substring(11, 13); cur.sId = last04sId; }
+                if (line.length() >= 13 && isHex(line.substring(11, 13))) { last04sId = line.substring(11, 13); cur.sId = last04sId; }
             } else if ("00".equals(tt)) {
+                if (!isHex(line.substring(1, 3))) continue;           // corrupt byte-count field
                 int ll = Integer.parseInt(line.substring(1, 3), 16);
                 int end = 9 + 2 * ll;
-                if (line.length() < end) continue;
+                // Reject a truncated or non-hex data record. This keeps every stored sId/backId hex, so
+                // the later addr3() parse (also run mid-flash) can never throw on a crafted/corrupt file.
+                if (line.length() < end || !isHex(line.substring(1, end))) continue;
                 if (count == 0) cur.backId = line.substring(3, 7);
                 data.append(line.substring(9, end));
                 count++;
@@ -337,7 +349,7 @@ final class OtaEngine {
             }
 
             // Trailer record ":07AAA555..": uId, proId, swVer, crc16, checkSum.
-            if (line.length() >= 25 && "07AAA555".equals(line.substring(1, 9))) {
+            if (line.length() >= 25 && "07AAA555".equals(line.substring(1, 9)) && isHex(line.substring(9, 23))) {
                 res.fileType = Integer.parseInt(line.substring(9, 11), 16);   // uId  (ver2 node type)
                 res.fileCode = Integer.parseInt(line.substring(11, 13), 16);  // proId (ver2 project code)
                 res.fileVer = Integer.parseInt(line.substring(13, 15), 16) + "."
@@ -624,6 +636,7 @@ final class OtaEngine {
     }
 
     private void sendPackInfo() {
+        if (backIndex < 0 || backIndex >= packets.size()) return;   // out-of-state response guard
         Packet p = packets.get(backIndex);
         int[] payload = new int[8];
         int[] addr = addr3(p.sId, p.backId);
@@ -640,6 +653,7 @@ final class OtaEngine {
     }
 
     private void pumpPackData() {
+        if (backIndex < 0 || backIndex >= packets.size()) return;   // stale/out-of-state PACKINFO response
         hasBreak = false;
         clearPendingSends();
         byte[] data = hexToBytes(packets.get(backIndex).data);
@@ -840,6 +854,15 @@ final class OtaEngine {
                 Integer.parseInt(r.substring(2, 4), 16),
                 Integer.parseInt(r.substring(4, 6), 16)
         };
+    }
+
+    private static boolean isHex(String s) {
+        if (s == null || s.isEmpty()) return false;
+        for (int i = 0; i < s.length(); i++) {
+            char ch = s.charAt(i);
+            if (!((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))) return false;
+        }
+        return true;
     }
 
     private static byte[] hexToBytes(String hex) {

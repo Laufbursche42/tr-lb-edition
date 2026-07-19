@@ -65,6 +65,23 @@ public class StreamService extends Service implements ConnectChecker, ScreenGlEn
 
     @Override public IBinder onBind(Intent i) { return null; }
 
+    /**
+     * Redact an SRT push URL for logging: drop the query string (which carries {@code streamid} and
+     * {@code passphrase}) and any {@code user:pass@} userinfo, keeping only scheme + host[:port]. The
+     * raw URL is sensitive (SrtCrypto exists to protect it at rest) and DebugLog captures this
+     * process's logcat into a shareable file, so it must never be logged verbatim.
+     */
+    static String redact(String url) {
+        if (url == null) return "null";
+        String s = url;
+        int ss = s.indexOf("//");
+        int at = s.indexOf('@');
+        if (ss >= 0 && at > ss) s = s.substring(0, ss + 2) + "[redacted]@" + s.substring(at + 1);
+        int q = s.indexOf('?');
+        if (q >= 0) s = s.substring(0, q) + "?[redacted]";
+        return s;
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         startForegroundCompat();
@@ -83,7 +100,7 @@ public class StreamService extends Service implements ConnectChecker, ScreenGlEn
             currentUrl = intent.getStringExtra("url");
             int code = intent.getIntExtra("code", -1);
             Intent data = intent.getParcelableExtra("data");
-            Log.i(TAG, "onStartCommand url=" + currentUrl + " code=" + code + " data=" + (data != null));
+            Log.i(TAG, "onStartCommand url=" + redact(currentUrl) + " code=" + code + " data=" + (data != null));
             try {
                 startStreaming(code, data);
             } catch (Throwable t) {
@@ -121,7 +138,7 @@ public class StreamService extends Service implements ConnectChecker, ScreenGlEn
         srtClient.setOnlyVideo(true);
         setStatus("connecting");
         srtClient.connect(currentUrl);
-        Log.i(TAG, "srt connect: " + currentUrl);
+        Log.i(TAG, "srt connect: " + redact(currentUrl));
 
         glEncoder = new ScreenGlEncoder(w, h, FPS, BITRATE, this);
         glEncoder.prepare();
@@ -216,7 +233,7 @@ public class StreamService extends Service implements ConnectChecker, ScreenGlEn
     }
 
     // ── ConnectChecker ──
-    @Override public void onConnectionStarted(String url) { Log.i(TAG, "onConnectionStarted " + url); setStatus("connecting"); }
+    @Override public void onConnectionStarted(String url) { Log.i(TAG, "onConnectionStarted " + redact(url)); setStatus("connecting"); }
     @Override public void onConnectionSuccess() { Log.i(TAG, "onConnectionSuccess"); setStatus("live"); }
     @Override public void onConnectionFailed(String reason) {
         Log.e(TAG, "onConnectionFailed: " + reason);

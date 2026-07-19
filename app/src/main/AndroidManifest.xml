@@ -35,7 +35,8 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.LBEdition"
-        android:allowBackup="true">
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:allowBackup="false">
 
         <!-- The dashboard is a purpose-built portrait riding gauge (mounted on handlebars); it is
              intentionally locked to portrait. LockedOrientationActivity / DiscouragedApi are

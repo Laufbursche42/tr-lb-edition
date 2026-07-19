@@ -35,11 +35,13 @@ final class FirmwarePatcher {
         int curHi = 0;
         for (String raw : text.split("\\r?\\n")) {
             String line = raw.trim();
-            if (line.isEmpty() || line.charAt(0) != ':') continue;
+            // Need at least ':' + 2 (byte count) + 4 (address) + 2 (type) = 9 chars before indexing.
+            if (line.length() < 9 || line.charAt(0) != ':') continue;
             int ll = h(line, 1, 3), addr = h(line, 3, 7), tt = h(line, 7, 9);
             if (tt == 0x04) {
-                curHi = h(line, 9, 13);
+                if (line.length() >= 13) curHi = h(line, 9, 13);
             } else if (tt == 0x00) {
+                if (line.length() < 9 + 2 * ll) continue;   // truncated data record - skip, do not over-read
                 int base = (curHi << 16) | addr;
                 for (int i = 0; i < ll; i++) f.mem.put(base + i, h(line, 9 + 2 * i, 11 + 2 * i));
             } else if (tt == 0x05 && line.length() >= 17) {

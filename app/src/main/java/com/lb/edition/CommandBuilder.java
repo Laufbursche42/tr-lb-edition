@@ -188,11 +188,15 @@ final class CommandBuilder {
      * @param r when n==2, a[3] is overwritten with this assist-level index (1 for a single frame)
      */
     static byte[] sendSettingCode(SettingsState s, int n, int r) {
-        int gearByte = (n == 2) ? (r & 0xFF) : (s.gear & 0xFF);
-        // Normal full write carries the CURRENT gear's maintained per-gear/assist values.
-        return buildSettingFrame(s, n, gearByte,
-                s.eabsLevel, s.fStartLevel, s.rStartLevel,
-                s.assistSpeedLimit, s.fCurrent, s.rCurrent);
+        // Read the maintained state under its monitor so the whole frame is a consistent snapshot
+        // even if a 55 71 update lands mid-build (updateFrom71 synchronizes on the same instance).
+        synchronized (s) {
+            int gearByte = (n == 2) ? (r & 0xFF) : (s.gear & 0xFF);
+            // Normal full write carries the CURRENT gear's maintained per-gear/assist values.
+            return buildSettingFrame(s, n, gearByte,
+                    s.eabsLevel, s.fStartLevel, s.rStartLevel,
+                    s.assistSpeedLimit, s.fCurrent, s.rCurrent);
+        }
     }
 
     /**
@@ -230,6 +234,9 @@ final class CommandBuilder {
     private static byte[] buildSettingFrame(SettingsState s, int n, int gearByte,
                                             int eabsLevel, int fStartLevel, int rStartLevel,
                                             int perGearSpeed, int fCurrent, int rCurrent) {
+        // Snapshot the shared state under its monitor (reentrant: the callers already hold it). This
+        // makes the ~20 s.* reads below atomic w.r.t. a concurrent synchronized updateFrom71.
+        synchronized (s) {
         int[] a = new int[19];
         a[0] = 170;
         a[1] = 24;               // 0x18
@@ -279,6 +286,7 @@ final class CommandBuilder {
         a[18] = ((s.prTime & 0x1F) << 3) | (s.sleepTime & 0x07);
 
         return finalizeFrame(a);
+        }
     }
 
     /** cruise==2 (manual) -> bit2; cruise==1 (auto) -> bit0 & bit1; else none. (matches original app) */

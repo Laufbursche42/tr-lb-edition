@@ -17,8 +17,10 @@ import android.view.WindowManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
@@ -132,21 +134,41 @@ public class MainActivity extends Activity {
         s.setDatabaseEnabled(true);
         s.setAllowFileAccess(true);
         s.setAllowContentAccess(true);
-        s.setAllowFileAccessFromFileURLs(true);
-        s.setAllowUniversalAccessFromFileURLs(true);
+        // The dashboard is a self-contained bundled asset page; it never needs to read other local
+        // files or make cross-origin requests FROM the file:// origin. Keeping these OFF means that
+        // even if a scripting bug ever landed on the page, it could not fetch("file:///...") to exfil
+        // local data or reach the network cross-origin. (Both default to false on modern WebView; set
+        // explicitly so the hardening is not silently lost on an older engine.)
+        s.setAllowFileAccessFromFileURLs(false);
+        s.setAllowUniversalAccessFromFileURLs(false);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setGeolocationEnabled(true);
-        s.setJavaScriptCanOpenWindowsAutomatically(true);
+        // The page opens external links via LB.openUrl (system browser), never its own windows.
+        s.setJavaScriptCanOpenWindowsAutomatically(false);
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+        // Pin the privileged WebView (it holds the LB firmware/BLE bridge) to the bundled dashboard.
+        // Any attempt to navigate it elsewhere is cancelled, so no remote or attacker page can ever
+        // inherit the JS bridge. External links are handled explicitly by LB.openUrl, not here.
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                Uri u = request != null ? request.getUrl() : null;
+                String url = u != null ? u.toString() : "";
+                return !url.startsWith("file:///android_asset/");   // true = cancel the navigation
+            }
+        });
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onGeolocationPermissionsShowPrompt(
                     String origin, GeolocationPermissions.Callback callback) {
-                // Local GPS only; grant to the dashboard's route recorder.
-                callback.invoke(origin, true, false);
+                // Grant location ONLY to the bundled local dashboard (its route recorder), never to
+                // any other origin that might somehow request it.
+                boolean local = origin != null && origin.startsWith("file://");
+                callback.invoke(origin, local, false);
             }
         });
     }
@@ -312,13 +334,22 @@ public class MainActivity extends Activity {
         return last == null ? "firmware.hex" : last;
     }
 
+    // Firmware files are ~200 KB (a VCU .hex) up to a few MB (a raw ALI chip dump). Cap the read so
+    // an accidentally-picked huge file (the SAF picker accepts any type) cannot OOM the app.
+    private static final int MAX_FIRMWARE_BYTES = 16 * 1024 * 1024;
+
     private byte[] readAllBytes(Uri uri) throws Exception {
         try (InputStream in = getContentResolver().openInputStream(uri)) {
             if (in == null) throw new Exception("no stream");
             ByteArrayOutputStream out = new ByteArrayOutputStream(131072);
             byte[] buf = new byte[8192];
             int r;
-            while ((r = in.read(buf)) != -1) out.write(buf, 0, r);
+            while ((r = in.read(buf)) != -1) {
+                out.write(buf, 0, r);
+                if (out.size() > MAX_FIRMWARE_BYTES) {
+                    throw new Exception("file too large (over 16 MB) - not a firmware file");
+                }
+            }
             return out.toByteArray();
         }
     }

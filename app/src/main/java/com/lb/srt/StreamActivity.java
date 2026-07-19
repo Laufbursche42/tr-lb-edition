@@ -25,7 +25,7 @@ public class StreamActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         url = getIntent().getStringExtra("url");
-        Log.i(TAG, "StreamActivity onCreate, url=" + url);
+        Log.i(TAG, "StreamActivity onCreate, url=" + StreamService.redact(url));
         // Video only: no microphone -> no RECORD_AUDIO request, go straight to screen capture.
         requestProjection();
     }

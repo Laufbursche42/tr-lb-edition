@@ -3623,6 +3623,11 @@ function ssCruiseValue() {
 function saveScooterSettings() {
   if (typeof LB === 'undefined' || !LB.sendSetting) { showToast('Only available in the app'); return; }
   if (!state.bleConnected) { showToast('Connect the scooter first'); return; }
+  // The scooter must have reported its current config (55 71) first: a save serialises the FULL
+  // settings frame and the VCU applies every field unvalidated, so writing before the real values
+  // are known would push defaults (zero currents, wrong voltage). The VCU streams 55 71 on its own,
+  // normally within ~1-2 s of connecting.
+  if (!liveRaw().settingsReady) { showToast('Waiting for the scooter to report its settings - try again in a moment'); return; }
   if (ssDirty.size === 0) { showToast('No changes to save'); return; }
 
   const numById = {}; SS_NUM_FIELDS.forEach(p => { numById[p[1]] = p[0]; });

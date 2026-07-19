@@ -324,6 +324,12 @@ final class FrameParser {
             o.put("balState0", intArr(balState0));
             o.put("batteryStatus", intArr(batteryStatus));
 
+            // Has the scooter reported its real config yet (a 55 71 frame arrived)? The R5.4.19 VCU
+            // streams 55 71 periodically, so this is normally true within ~1-2 s of connecting. The UI
+            // uses it to explain why a settings/gear write is not possible yet instead of failing
+            // silently (a write before this would serialise SettingsState defaults, and the VCU applies
+            // them unvalidated - verified in the firmware 0x18 handler).
+            o.put("settingsReady", settings.received71);
             // Settings-derived scalars (from the maintained 55 71 state) - also feed the scooter
             // settings page prefill (telemetry.html prefillScooterSettings()).
             if (settings.received71) {
