@@ -551,10 +551,11 @@ public class NavActivity extends Activity {
         //    inserts the current GPS position; an empty Start means "use my current position". ──
         int p = dp(6);
 
-        // Start row: [Start input] [Here] [Recenter ⌖]
+        // Start row: [Start input .......................] [📍] - the pin fills the field with my GPS.
         LinearLayout startRow = new LinearLayout(this);
         startRow.setOrientation(LinearLayout.HORIZONTAL);
         startRow.setBackgroundColor(cBar);
+        startRow.setGravity(Gravity.CENTER_VERTICAL);
         startRow.setPadding(p, p, p, 0);
 
         final EditText start = new EditText(this);
@@ -567,27 +568,16 @@ public class NavActivity extends Activity {
         start.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         startRow.addView(start);
 
-        Button startHere = new Button(this);
-        startHere.setText("Here");
-        startHere.setAllCaps(false);
+        Button startHere = iconButton("📍", "Use my location as start");
         startHere.setOnClickListener(v -> useCurrentLocation(start));
         startRow.addView(startHere);
 
-        Button recenter = new Button(this);
-        recenter.setText("⌖"); // recenter the map on me and resume auto-follow
-        recenter.setOnClickListener(v -> {
-            followMode = true;
-            if (lastLocation != null && mapView != null) {
-                mapView.setCenter(new LatLong(lastLocation.getLatitude(), lastLocation.getLongitude()));
-            }
-        });
-        startRow.addView(recenter);
-
-        // Destination row: [Destination input] [Here] [Route] [Start-nav]
+        // Destination row: [Destination input .............] [📍] [➜] - pin fills GPS, arrow routes.
         LinearLayout destRow = new LinearLayout(this);
         destRow.setOrientation(LinearLayout.HORIZONTAL);
         destRow.setBackgroundColor(cBar);
-        destRow.setPadding(p, p, p, p);
+        destRow.setGravity(Gravity.CENTER_VERTICAL);
+        destRow.setPadding(p, p, p, 0);
 
         final EditText dest = new EditText(this);
         dest.setHint("Destination: lat, lon");
@@ -599,14 +589,11 @@ public class NavActivity extends Activity {
         dest.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         destRow.addView(dest);
 
-        Button destHere = new Button(this);
-        destHere.setText("Here");
-        destHere.setAllCaps(false);
+        Button destHere = iconButton("📍", "Use my location as destination");
         destHere.setOnClickListener(v -> useCurrentLocation(dest));
         destRow.addView(destHere);
 
-        Button route = new Button(this);
-        route.setText("Route");
+        Button route = iconButton("➜", "Calculate route");
         route.setOnClickListener(v -> {
             // Start: empty means "current GPS position"; otherwise it must parse as lat, lon.
             String sTxt = start.getText().toString().trim();
@@ -630,18 +617,36 @@ public class NavActivity extends Activity {
         });
         destRow.addView(route);
 
-        // "Start" - enters active turn-by-turn navigation. Hidden until a route is computed.
-        startBtn = new Button(this);
-        startBtn.setText("Start");
-        startBtn.setAllCaps(false);
+        // Action row (above the "Route:" profile selector): [▶ Start] [⌖ Center], both drawn with the
+        // same segmented-button look as the profile buttons. "Start" enters active turn-by-turn
+        // navigation and stays hidden until a route is computed; "Center" recenters the map on the
+        // current position and resumes auto-follow.
+        LinearLayout actionRow = new LinearLayout(this);
+        actionRow.setOrientation(LinearLayout.HORIZONTAL);
+        actionRow.setBackgroundColor(cBar);
+        actionRow.setPadding(p, p, p, 0);
+
+        startBtn = segButton("▶ Start");
+        styleSeg(startBtn, false);
         startBtn.setVisibility(View.GONE);
         startBtn.setOnClickListener(v -> startNavigation());
-        destRow.addView(startBtn);
+        actionRow.addView(startBtn);
+
+        Button center = segButton("⌖ Center");
+        styleSeg(center, false);
+        center.setOnClickListener(v -> {
+            followMode = true;
+            if (lastLocation != null && mapView != null) {
+                mapView.setCenter(new LatLong(lastLocation.getLatitude(), lastLocation.getLongitude()));
+            }
+        });
+        actionRow.addView(center);
 
         topContainer = new LinearLayout(this);
         topContainer.setOrientation(LinearLayout.VERTICAL);
         topContainer.addView(startRow);
         topContainer.addView(destRow);
+        topContainer.addView(actionRow);
 
         // Route-preference selector (Balanced / Shortest / Bike paths) - persisted in prefs "nav".
         routeProfile = getSharedPreferences("nav", MODE_PRIVATE).getString("route_profile", "trekking");
@@ -792,6 +797,39 @@ public class NavActivity extends Activity {
     }
 
     /**
+     * A compact, icon-only action button (a single pictogram) sized to sit next to a full-width input
+     * field without crowding it. Same flat look as {@link #segButton} - no oversized platform min-size,
+     * {@code cBorder} background, {@code cText} glyph - but it hugs its content instead of stretching.
+     * The label is a pictogram, so {@code description} carries the meaning for accessibility and as a
+     * long-press tooltip.
+     */
+    private Button iconButton(String glyph, String description) {
+        Button b = new Button(this);
+        b.setAllCaps(false);
+        b.setText(glyph);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        b.setIncludeFontPadding(false);
+        b.setMinWidth(0);
+        b.setMinimumWidth(0);
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
+        b.setPadding(dp(10), dp(4), dp(10), dp(4));
+        b.setTextColor(cText);
+        b.setBackgroundColor(cBorder);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.leftMargin = dp(4);
+        b.setLayoutParams(lp);
+        if (description != null) {
+            b.setContentDescription(description);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                b.setTooltipText(description);
+            }
+        }
+        return b;
+    }
+
+    /**
      * Persist the chosen routing profile and refresh the selector. If a destination is already set,
      * immediately recompute the route with the new profile (no second tap on "Route" needed); if no
      * destination is set yet, just remember the selection for the next route.
@@ -879,7 +917,7 @@ public class NavActivity extends Activity {
         });
 
         // A user drag/pan disables auto-follow, so the map no longer snaps back to the GPS position
-        // on the next fix. The recenter (⌖) button re-enables following. Returning false lets the
+        // on the next fix. The "⌖ Center" button re-enables following. Returning false lets the
         // MapView still handle the pan gesture itself.
         mapView.setOnTouchListener((v, ev) -> {
             if (ev.getActionMasked() == MotionEvent.ACTION_MOVE) followMode = false;
