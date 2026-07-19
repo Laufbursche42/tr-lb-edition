@@ -54,6 +54,7 @@ public class MapDownloadService extends Service {
     static final String EXTRA_DEST    = "com.lb.edition.extra.DEST";
     static final String EXTRA_BASE    = "com.lb.edition.extra.BASE";
     static final String EXTRA_DISPLAY = "com.lb.edition.extra.DISPLAY";
+    static final String EXTRA_SUFFIX  = "com.lb.edition.extra.SUFFIX";   // ".map" (default) or ".poi"
     /** ArrayList&lt;String&gt; of BRouter tile names (e.g. {@code E5_N45}) to fetch as {@code .rd5}. */
     static final String EXTRA_TILES   = "com.lb.edition.extra.TILES";
 
@@ -134,9 +135,12 @@ public class MapDownloadService extends Service {
             Log.e(TAG, "no external files dir; cannot download");
             return START_NOT_STICKY;
         }
+        // Whitelisted extension: the offline map (.map) or its companion POI database (.poi).
+        final String suffixExtra = intent.getStringExtra(EXTRA_SUFFIX);
+        final String suffix = ".poi".equals(suffixExtra) ? ".poi" : ".map";
         final File destFile;
         try {
-            destFile = PathGuard.childOf(new File(navExt, "maps"), base + ".map");
+            destFile = PathGuard.childOf(new File(navExt, "maps"), base + suffix);
         } catch (IOException e) {
             Log.e(TAG, "rejected download destination for base: " + base, e);
             return START_NOT_STICKY;

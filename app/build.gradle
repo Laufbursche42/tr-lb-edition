@@ -79,6 +79,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+        encoding = 'UTF-8'
     }
 
     // Configured ONLY when a keystore was resolved above (see hasReleaseSigning).

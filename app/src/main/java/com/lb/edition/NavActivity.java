@@ -94,8 +94,9 @@ import org.mapsforge.poi.storage.WhitelistPoiCategoryFilter;
  *       is chosen there and rendered here.</li>
  *   <li><b>Routing</b>: BRouter (bike/trekking profile, avoids motorways) over small
  *       {@code .rd5} segment tiles downloaded on demand into {@code nav/segments/}.</li>
- *   <li><b>POIs</b> (optional): camping + charging overlays read from a side-loaded {@code .poi}
- *       database if one is present; otherwise the toggles are hidden.</li>
+ *   <li><b>POIs</b> (optional): camping + charging overlays read from the country's {@code .poi}
+ *       database - downloaded via "Get POI" on the offline-maps screen (next to the {@code .map}) or
+ *       side-loaded - if one is present; otherwise the toggles are hidden.</li>
  * </ul>
  *
  * A consistent fixed-height top app bar is always visible (see {@link NavUi}). When no map is
@@ -217,6 +218,7 @@ public class NavActivity extends Activity {
 
     // ── Voice guidance ──
     private TtsHelper tts;
+    private NavVoice navVoice;
     private boolean voiceOn = true;             // persisted in prefs "nav" key "voice_on"
     private TextView voiceIcon;
     // Guards so each maneuver is announced at most once per threshold (index into maneuverIdx[]).
@@ -292,7 +294,8 @@ public class NavActivity extends Activity {
 
         // Device TTS for spoken guidance - uses installed voice data only (no download prompt).
         voiceOn = getSharedPreferences("nav", MODE_PRIVATE).getBoolean("voice_on", true);
-        tts = new TtsHelper(this);
+        navVoice = NavVoice.forDevice();
+        tts = new TtsHelper(this, navVoice.locale());
 
         ensureLocationPermission();
         startLocationUpdates();
@@ -1663,39 +1666,32 @@ public class NavActivity extends Activity {
     /**
      * Speak the next maneuver as the rider approaches it. Two thresholds, each fired at most once per
      * maneuver: a heads-up at ~200 m ("In 200 meters, …") and a cue at the turn (~30 m, "… now"), plus
-     * a single "Arriving at your destination" near the end. English only; no-op when voice is off.
+     * a single arrival announcement near the end. Spoken in the phone's language via {@link NavVoice}
+     * (the on-screen card stays English); no-op when voice is off.
      */
     private void announce(int maneuverKey, int mi, String instruction, double distToNext, double remaining) {
-        if (!voiceOn || tts == null || !tts.isReady()) return;
+        if (!voiceOn || tts == null || !tts.isReady() || navVoice == null) return;
 
         boolean isArrive = (mi < 0) || (mi == maneuverIdx.length - 1);
         if (isArrive) {
             if (!announcedArrive && remaining <= ARRIVE_ANNOUNCE_M) {
                 announcedArrive = true;
-                tts.speak("Arriving at your destination");
+                tts.speak(navVoice.arrive());
             }
             return;
         }
 
-        String phrase = speechFor(instruction);
+        String phrase = navVoice.maneuver(instruction);
         // Far heads-up (~200 m).
         if (distToNext <= ANNOUNCE_FAR_M && distToNext > ANNOUNCE_NEAR_M && lastFarIdx != maneuverKey) {
             lastFarIdx = maneuverKey;
-            tts.speak("In 200 meters, " + phrase);
+            tts.speak(navVoice.far(phrase));
         }
         // At-the-turn cue (~30 m).
         if (distToNext <= ANNOUNCE_NEAR_M && lastNearIdx != maneuverKey) {
             lastNearIdx = maneuverKey;
-            tts.speak(phrase + " now");
+            tts.speak(navVoice.near(phrase));
         }
-    }
-
-    /** Map the on-screen instruction to a short natural English phrase for speech. */
-    private static String speechFor(String instruction) {
-        if (instruction == null || instruction.trim().isEmpty()) return "Continue";
-        // The existing maneuver strings ("Turn left", "Turn right", "Turn sharp left/right") are
-        // already natural spoken phrases, so they are used as-is.
-        return instruction;
     }
 
     private static String turnText(double turn) {

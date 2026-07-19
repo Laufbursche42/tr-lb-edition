@@ -1,0 +1,188 @@
+# Builds per-country offline POI databases (camping + EV-charging points) from OpenStreetMap and
+# publishes them as assets on the "poi" GitHub Release, next to a manifest.json. The Laufbursche
+# Edition app downloads <base>.poi from that release into nav/maps/<base>.poi (next to the country map).
+#
+# Data: (c) OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
+# Pipeline per country: Geofabrik europe/<base>-latest.osm.pbf -> osmosis + mapsforge-poi-writer
+# (all-tags=true keeps socket:type2 / socket:schuko searchable; ways=true keeps area-mapped sites).
+#
+# Trigger it by hand (Actions -> Build POI databases -> Run) or monthly. Big countries (France,
+# Germany, Italy, Spain, Great Britain, Poland) download multi-GB extracts, so each country runs as
+# its own matrix job (own 14 GB disk + 6 h budget). Tune max-parallel if you hit rate limits.
+
+name: Build POI databases
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 1 * *'   # 03:00 UTC on the 1st of each month
+
+permissions:
+  contents: write
+
+env:
+  OSMOSIS_VERSION: '0.49.2'
+  POI_WRITER_VERSION: '0.28.0'
+
+jobs:
+  build:
+    name: Build ${{ matrix.base }}.poi
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        base:
+          - albania
+          - andorra
+          - austria
+          - belgium
+          - bosnia-herzegovina
+          - bulgaria
+          - croatia
+          - cyprus
+          - czech-republic
+          - denmark
+          - estonia
+          - finland
+          - france
+          - germany
+          - great-britain
+          - greece
+          - hungary
+          - iceland
+          - ireland-and-northern-ireland
+          - italy
+          - latvia
+          - liechtenstein
+          - lithuania
+          - luxembourg
+          - malta
+          - moldova
+          - monaco
+          - montenegro
+          - netherlands
+          - macedonia
+          - norway
+          - poland
+          - portugal
+          - romania
+          - serbia
+          - slovakia
+          - slovenia
+          - spain
+          - sweden
+          - switzerland
+          - ukraine
+    steps:
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install osmium + osmconvert
+        run: sudo apt-get update && sudo apt-get install -y osmium-tool osmctools
+
+      - name: Install Osmosis + mapsforge-poi-writer plugin
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/openstreetmap/osmosis/releases/download/${OSMOSIS_VERSION}/osmosis-${OSMOSIS_VERSION}.tar" -o osmosis.tar
+          mkdir -p osmosis && tar -xf osmosis.tar -C osmosis --strip-components=1
+          chmod +x osmosis/bin/osmosis
+          mkdir -p "$HOME/.openstreetmap/osmosis/plugins"
+          curl -fsSL "https://repo1.maven.org/maven2/org/mapsforge/mapsforge-poi-writer/${POI_WRITER_VERSION}/mapsforge-poi-writer-${POI_WRITER_VERSION}-jar-with-dependencies.jar" \
+            -o "$HOME/.openstreetmap/osmosis/plugins/mapsforge-poi-writer.jar"
+
+      - name: Write POI category mapping (charging + camping only)
+        run: |
+          cat > poi-mapping.xml <<'XML'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <category xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:noNamespaceSchemaLocation="poi-mapping.xsd"
+                    title="root">
+            <category title="Charging">
+              <mapping tag="amenity=charging_station" />
+              <mapping tag="amenity=ev_charging" />
+            </category>
+            <category title="Camping">
+              <mapping tag="tourism=camp_site" />
+              <mapping tag="tourism=caravan_site" />
+            </category>
+          </category>
+          XML
+
+      - name: Download, filter + build ${{ matrix.base }}.poi
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://download.geofabrik.de/europe/${{ matrix.base }}-latest.osm.pbf" -o country.osm.pbf
+          ls -lh country.osm.pbf
+          # 1) Filter the (multi-GB) country extract to just charging + camping. nwr/ keeps nodes, ways
+          #    AND relations plus their referenced geometry. The result is a few MB, so the rest is fast.
+          osmium tags-filter country.osm.pbf \
+            nwr/amenity=charging_station nwr/amenity=ev_charging \
+            nwr/tourism=camp_site nwr/tourism=caravan_site \
+            -o filtered.osm.pbf --overwrite
+          # 2) Reduce every way/relation area to one centroid node. poi-writer ignores relations and
+          #    ~80-90% of campsites are areas, so without this most sites would be lost.
+          osmconvert filtered.osm.pbf --all-to-nodes -o=points.osm.pbf
+          # 3) Write the .poi from points only (all-tags keeps socket:type2 / socket:schuko / name).
+          export JAVACMD_OPTIONS="-Xmx2g"
+          osmosis/bin/osmosis --rb file=points.osm.pbf \
+            --pw file="${{ matrix.base }}.poi" tag-conf-file=poi-mapping.xml all-tags=true ways=false
+          ls -lh "${{ matrix.base }}.poi"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: poi-${{ matrix.base }}
+          path: ${{ matrix.base }}.poi
+          retention-days: 1
+
+  publish:
+    name: Assemble manifest + publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Collect all .poi artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: pois
+          pattern: poi-*
+          merge-multiple: true
+
+      - name: Build manifest.json
+        run: |
+          set -euo pipefail
+          date_utc="$(date -u +%Y-%m-%d)"
+          base_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/poi"
+          echo '{' > manifest.json
+          echo "  \"generated\": \"${date_utc}\"," >> manifest.json
+          echo '  "license": "ODbL-1.0",' >> manifest.json
+          echo '  "attribution": "(c) OpenStreetMap contributors",' >> manifest.json
+          echo '  "countries": {' >> manifest.json
+          first=1
+          for f in $(ls pois/*.poi | sort); do
+            base="$(basename "$f" .poi)"
+            bytes="$(stat -c%s "$f")"
+            sha="$(sha256sum "$f" | cut -d' ' -f1)"
+            [ $first -eq 1 ] && first=0 || echo ',' >> manifest.json
+            printf '    "%s": {"url": "%s/%s.poi", "bytes": %s, "sha256": "%s", "osm_date": "%s"}' \
+              "$base" "$base_url" "$base" "$bytes" "$sha" "$date_utc" >> manifest.json
+          done
+          echo '' >> manifest.json
+          echo '  }' >> manifest.json
+          echo '}' >> manifest.json
+          cat manifest.json
+
+      - name: Publish / update the "poi" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: poi
+          name: POI data (camping + EV charging)
+          body: |
+            Offline POI databases (camping + EV-charging points) per country, built from OpenStreetMap.
+            Data (c) OpenStreetMap contributors, ODbL 1.0. Rebuilt automatically; see manifest.json.
+          files: |
+            pois/*.poi
+            manifest.json

@@ -56,6 +56,10 @@ public class MapDownloadActivity extends Activity {
     static final String MAP_BASE_URL =
             "https://ftp-stud.hs-esslingen.de/pub/Mirrors/download.mapsforge.org/maps/v5/europe/";
 
+    /** Per-country POI databases (camping + EV charging) on this project's GitHub Releases. */
+    static final String POI_BASE_URL =
+            "https://github.com/Laufbursche42/tr-lb-edition/releases/download/poi/";
+
     /** {display name, file base (== mirror filename without .map), approx download size}. */
     private static final String[][] COUNTRIES = {
             {"Albania", "albania", "41 MB"},
@@ -346,6 +350,7 @@ public class MapDownloadActivity extends Activity {
         final String base;
         final String approxSize;
         final File file;
+        final File poiFile;
 
         final LinearLayout view;
         final TextView status;
@@ -353,12 +358,14 @@ public class MapDownloadActivity extends Activity {
         final Button action;   // Download / Resume / Cancel / Re-download
         final Button use;      // Use (set active) / Active
         final Button delete;   // Delete
+        final Button poi;      // Get POI / Delete POI (camping + charging)
 
         Row(String display, String base, String approxSize) {
             this.display = display;
             this.base = base;
             this.approxSize = approxSize;
             this.file = new File(mapsDir, base + ".map");
+            this.poiFile = new File(mapsDir, base + ".poi");
 
             view = new LinearLayout(MapDownloadActivity.this);
             view.setOrientation(LinearLayout.VERTICAL);
@@ -415,6 +422,20 @@ public class MapDownloadActivity extends Activity {
             delete.setText("Delete");
             delete.setOnClickListener(v -> confirmDelete(this));
             btnRow.addView(delete);
+
+            poi = new Button(MapDownloadActivity.this);
+            poi.setOnClickListener(v -> {
+                boolean have = poiFile != null && poiFile.isFile() && poiFile.length() > 0;
+                if (have) {
+                    //noinspection ResultOfMethodCallIgnored
+                    poiFile.delete();
+                    toast(display + " POI deleted");
+                    refreshAll();
+                } else {
+                    startPoiDownload(this);
+                }
+            });
+            btnRow.addView(poi);
 
             view.addView(btnRow);
         }
@@ -475,6 +496,16 @@ public class MapDownloadActivity extends Activity {
             r.action.setVisibility(View.VISIBLE);
             r.use.setVisibility(View.GONE);
             r.delete.setVisibility(partial ? View.VISIBLE : View.GONE);
+        }
+
+        // POI (camping + charging): offered once the country map is installed; hidden while a download
+        // runs on this row. The tiny .poi sits next to the .map so NavActivity picks it up automatically.
+        boolean poiExists = r.poiFile != null && r.poiFile.isFile() && r.poiFile.length() > 0;
+        if (exists && !active) {
+            r.poi.setVisibility(View.VISIBLE);
+            r.poi.setText(poiExists ? "Delete POI" : "Get POI");
+        } else {
+            r.poi.setVisibility(View.GONE);
         }
     }
 
@@ -789,6 +820,34 @@ public class MapDownloadActivity extends Activity {
         r.progress.setIndeterminate(true);
         refresh(r);
         r.status.setText("Connecting…");
+    }
+
+    /** Download this country's POI database (camping + charging) next to its map, via the shared
+     *  foreground service. Progress shows on the row + in the notification; the .poi files are small. */
+    private void startPoiDownload(final Row r) {
+        if (MapDownloadService.activeBase != null || activeBase != null) {
+            toast("A download is already running");
+            return;
+        }
+        activeBase = r.base;
+        Intent i = new Intent(this, MapDownloadService.class);
+        i.setAction(MapDownloadService.ACTION_START);
+        i.putExtra(MapDownloadService.EXTRA_URL, POI_BASE_URL + r.base + ".poi");
+        i.putExtra(MapDownloadService.EXTRA_DEST, r.poiFile.getAbsolutePath());
+        i.putExtra(MapDownloadService.EXTRA_BASE, r.base);
+        i.putExtra(MapDownloadService.EXTRA_DISPLAY, r.display + " POI");
+        i.putExtra(MapDownloadService.EXTRA_SUFFIX, ".poi");
+        try {
+            ContextCompat.startForegroundService(this, i);
+        } catch (Throwable t) {
+            Log.e(TAG, "start POI download failed", t);
+            activeBase = null;
+            toast("Could not start POI download");
+            return;
+        }
+        r.progress.setIndeterminate(true);
+        refresh(r);
+        r.status.setText("Connecting POI…");
     }
 
     /** Ask the foreground service to cancel the in-flight download. */

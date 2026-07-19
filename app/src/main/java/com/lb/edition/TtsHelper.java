@@ -12,12 +12,14 @@ import java.util.Locale;
 
 /**
  * Thin wrapper around the device's built-in {@link TextToSpeech} engine for spoken bike-navigation
- * guidance. It speaks ENGLISH text using whatever voice data is ALREADY installed on the phone - it
- * never triggers an install / download flow and never prompts the user to fetch voice data.
+ * guidance. It speaks the text it is given (localized by {@link NavVoice} to the phone's language)
+ * using whatever voice data is ALREADY installed on the phone - it never triggers an install /
+ * download flow and never prompts the user to fetch voice data.
  *
- * <p>On init it tries {@link Locale#US}; if that voice data is missing/unsupported it falls back to
- * the device's default locale so it still speaks with whatever voice is present. If nothing works it
- * degrades silently to on-screen guidance only ({@link #isReady()} stays {@code false}).</p>
+ * <p>On init it tries the preferred locale (the phone language chosen by {@link NavVoice}); if that
+ * voice data is missing/unsupported it falls back to {@link Locale#US}, then the device default, so it
+ * still speaks with whatever voice is present. If nothing works it degrades silently to on-screen
+ * guidance only ({@link #isReady()} stays {@code false}).</p>
  */
 final class TtsHelper {
 
@@ -26,7 +28,7 @@ final class TtsHelper {
     private TextToSpeech tts;
     private volatile boolean ready = false;
 
-    TtsHelper(Context context) {
+    TtsHelper(Context context, Locale preferred) {
         try {
             tts = new TextToSpeech(context.getApplicationContext(), status -> {
                 if (status != TextToSpeech.SUCCESS) {
@@ -34,22 +36,30 @@ final class TtsHelper {
                     return;
                 }
                 try {
-                    int r = tts.setLanguage(Locale.US);
-                    if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        // Do NOT prompt to install voice data - fall back to whatever is present.
-                        int r2 = tts.setLanguage(Locale.getDefault());
-                        if (r2 == TextToSpeech.LANG_MISSING_DATA || r2 == TextToSpeech.LANG_NOT_SUPPORTED) {
-                            Log.w(TAG, "no usable TTS voice installed; voice guidance disabled");
-                            return;
-                        }
+                    // Prefer the phone-language voice (matching NavVoice's chosen text language); if it
+                    // is not installed, fall back to US English, then the device default. Never prompt.
+                    if (trySet(preferred) || trySet(Locale.US) || trySet(Locale.getDefault())) {
+                        ready = true;
+                    } else {
+                        Log.w(TAG, "no usable TTS voice installed; voice guidance disabled");
                     }
-                    ready = true;
                 } catch (Throwable t) {
                     Log.w(TAG, "TTS setLanguage failed", t);
                 }
             });
         } catch (Throwable t) {
             Log.w(TAG, "TTS construction failed", t);
+        }
+    }
+
+    /** @return true if the engine accepted this locale (its voice data is present). */
+    private boolean trySet(Locale loc) {
+        if (loc == null || tts == null) return false;
+        try {
+            int r = tts.setLanguage(loc);
+            return r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED;
+        } catch (Throwable t) {
+            return false;
         }
     }
 
