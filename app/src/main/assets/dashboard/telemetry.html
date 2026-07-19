@@ -253,6 +253,13 @@ html, body {
   background: #B8F02022; color: var(--ble);
   font-size: var(--fs-2xs); font-weight: var(--fw-bold); margin-left: 4px;
 }
+.ride-stop-btn {
+  width: 100%; padding: 10px; border: none; border-radius: 8px; cursor: pointer;
+  background: var(--danger); color: #fff;
+  font-size: var(--fs-md); font-weight: var(--fw-bold);
+  -webkit-tap-highlight-color: transparent;
+}
+.ride-stop-btn:active { opacity: .85; }
 .no-routes {
   padding: 24px; text-align: center; color: var(--label);
   font-size: var(--fs-md);
@@ -883,6 +890,9 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
         <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label">GPS fix</span><button type="button" class="set-help" data-set-help="dg-gps" aria-label="What is this?">?</button></span><span class="dg-value" id="dg-gps">-</span></div>
         <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label">Points</span><button type="button" class="set-help" data-set-help="dg-pts" aria-label="What is this?">?</button></span><span class="dg-value" id="dg-pts">-</span></div>
       </div>
+      <div class="dg-row" id="dg-stop-row" style="grid-template-columns:1fr; display:none">
+        <button type="button" id="btn-stop-ride" class="ride-stop-btn">Stop ride</button>
+      </div>
     </div>
 
     <!-- All battery/cell values (scrollable like Lite) -->
@@ -1021,8 +1031,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <div class="settings-group-title">GPS recording</div>
     <div class="settings-row">
       <div class="settings-row-left">
-        <div class="settings-row-label">Auto start</div>
-        <div class="settings-row-sublabel">Starts when BLE is connected</div>
+        <div class="settings-row-label">Auto-track rides</div>
+        <div class="settings-row-sublabel">Records a GPS ride after ~20 m; stops when the scooter disconnects</div>
       </div>
       <button type="button" class="set-help" data-set-help="gps-auto" aria-label="What is this?">?</button>
       <div class="toggle-wrap">
@@ -1655,6 +1665,9 @@ const state = {
   gpsPos: null,         // last GPS position
   gpsSats: null,        // satellite count if available
   currentRide: null,    // { id, startTime, points, dist, hmPlus, hmMinus }
+  armDistM: 0,          // metres travelled since connect (scooter speed integral) for 20 m auto-arm
+  armLastTs: null,      // last live-data ts used by the arming integral
+  rideStopped: false,   // set by the Stop button: block auto-re-arm until the next reconnect
   routes: [],           // loaded from lb_routes
   rideTimer: null,      // for elapsed time display
   saveTimer: null,      // periodic save
@@ -1837,7 +1850,7 @@ const SETTINGS_HELP = {
   "disp-mph": { title: "Unit: mph (app)", text: "Shows speed and distance IN THIS APP in mph instead of km/h. This is the app's display unit only; it does not change the scooter's own display (see Scooter settings → 'Unit: miles' for that)." },
   "disp-fullscreen": { title: "Fullscreen", text: "Hides the Android status bar (battery, clock, notifications) for an immersive view. Turn it off to keep the status bar visible." },
   "motor-mode": { title: "Motor mode", text: "Selects which motor(s) drive: Dual (both), Rear only, or Front only. Single-motor saves energy; Dual gives the most power and traction. This is written to the controller immediately when you tap it." },
-  "gps-auto": { title: "GPS auto start", text: "Automatically starts recording a GPS track when the scooter connects, so you don't have to start it by hand." },
+  "gps-auto": { title: "Auto-track rides", text: "When on, a GPS-tracked ride starts automatically once the scooter has moved about 20 m, and stops when the scooter disconnects or powers off. GPS runs only during a ride, not while parked. You can also stop a ride by hand with the Stop button." },
   "gps-interval": { title: "GPS interval", text: "How often a GPS point is stored for the track. A larger interval saves battery and storage; a smaller one records a more detailed route." },
   "debug-mode": { title: "Debug mode", text: "Turns on persistent in-app logging (a red banner shows while it is active). Use 'Export debug logs' to share the log if something goes wrong - no PC or adb needed." },
   "gear-profile": { title: "Gear / assist profile", text: "Selects which gear you are editing below. On eKFV units the internal gears 2, 3 and 4 are shown as 1, 2 and 3 on the scooter's own display. Each gear stores its own power limit, recuperation and start levels, so you can make e.g. one gear gentle and another sporty. IMPORTANT: if a gear's values are missing here, switch through all gears once on the scooter - the firmware only ever sends the CURRENTLY active gear to the app, so each gear has to be active once to be read. Values are read live and are NOT stored on the phone (stale values must never be written back). Edits apply to the selected gear only and are written when you press Save gear." },
@@ -1995,6 +2008,9 @@ function updateBLEUI(data) {
   // Fighter-Mini-only features (firmware / FIN unlock) are gated, and the Tetra is flagged unsupported.
   try { applyModelUi(liveRaw().btName); } catch (e) {}
 
+  // Auto-arm a ride once the scooter has actually moved ~20 m (keeps GPS off while parked).
+  try { maybeArmRide(data); } catch (e) {}
+
   // Speed
   setTxt('ble-speed', convSpeed(data.speed));
   // VCU speed colour = FIN lock state: red when the FIN has NO "TDE" (Gate 1 off / speed unlocked),
@@ -2082,19 +2098,19 @@ function tickBLE() {
 
 function onBLEConnectionChange(nowConnected) {
   if (nowConnected) {
-    // BLE reconnected: start new ride if auto-start enabled
-    if (state.gpsAutoStart) {
-      startGPSWatch();
-    }
-    if (!state.currentRide) {
-      startRide();
-    }
+    // Fresh link: begin "waiting for movement". The ride arms itself (maybeArmRide) once the
+    // scooter has travelled ARM_DISTANCE_M. No GPS runs until then.
+    state.armDistM = 0;
+    state.armLastTs = null;
+    state.rideStopped = false;
   } else {
-    // BLE disconnected: finalize current ride
-    if (state.currentRide && state.currentRide.points.length > 0) {
-      finalizeRide();
-    }
+    // BLE dropped (manual disconnect or the scooter powered off - same thing): always finalize
+    // the ride and stop GPS.
+    finalizeRide();
     stopGPSWatch();
+    state.armDistM = 0;
+    state.armLastTs = null;
+    state.rideStopped = false;
   }
 }
 
@@ -2116,6 +2132,24 @@ function saveRoutes(routes) {
   } catch(e) {}
 }
 
+const ARM_DISTANCE_M = 20;   // auto-start a ride after this much real movement (metres)
+
+// While connected, integrate the scooter's own reported speed to detect genuine movement and
+// auto-start (arm) a ride once ARM_DISTANCE_M has been covered. Measuring from the scooter (not
+// GPS) means GPS stays off while parked-but-connected.
+function maybeArmRide(data) {
+  if (!state.gpsAutoStart) return;                      // ride auto-tracking master switch
+  if (state.currentRide || state.rideStopped) return;   // already riding, or stopped this session
+  const now = (data && data.ts) ? data.ts : Date.now();
+  const spd = (data && typeof data.speed === 'number') ? data.speed : 0;   // km/h
+  if (state.armLastTs != null && spd > 0) {
+    const dtH = (now - state.armLastTs) / 3600000;
+    if (dtH > 0 && dtH < 0.02) state.armDistM += spd * dtH * 1000;   // km/h * h * 1000 = metres
+  }
+  state.armLastTs = now;
+  if (state.armDistM >= ARM_DISTANCE_M) startRide();
+}
+
 function startRide() {
   const id = `ride_${Date.now()}`;
   state.currentRide = {
@@ -2128,10 +2162,13 @@ function startRide() {
     points: []
   };
   state.routes = loadRoutes();
+  if (state.gpsAutoStart) startGPSWatch();   // GPS runs only for the duration of the ride
   clearInterval(state.rideTimer);
   state.rideTimer = setInterval(updateRideUI, 1000);
   clearInterval(state.saveTimer);
   state.saveTimer = setInterval(periodicSaveRide, 10000);
+  renderRoutes();
+  updateRideUI();
 }
 
 function finalizeRide() {
@@ -2146,8 +2183,15 @@ function finalizeRide() {
   state.currentRide = null;
   clearInterval(state.rideTimer);
   clearInterval(state.saveTimer);
+  stopGPSWatch();          // GPS is tied to the ride: stop it when the ride ends
   renderRoutes();
   updateRideUI();
+}
+
+// Stop button for a live ride: finalize now and block auto-re-arm until the next reconnect.
+function stopLiveRide() {
+  state.rideStopped = true;
+  finalizeRide();
 }
 
 function periodicSaveRide() {
@@ -2270,6 +2314,8 @@ function addPointToRide(lat, lon, alt, ts, speed) {
 
 function updateRideUI() {
   const ride = state.currentRide;
+  const stopRow = document.getElementById('dg-stop-row');
+  if (stopRow) stopRow.style.display = ride ? '' : 'none';
   if (ride) {
     const elapsed = Date.now() - ride.startTime;
     setTxt('dg-dist', `${ride.dist.toFixed(2)} km`);
@@ -2290,6 +2336,30 @@ function updateRideUI() {
 }
 
 /* ── Route Rendering ──────────────────────────────────────── */
+
+// One-time crash recovery at startup: an app kill mid-ride leaves the 10 s autosave in lb_routes
+// with endTime === 0, which then renders forever as "LIVE". Finalize any such orphan (no ride is
+// active at startup) and drop rides that never gathered real data.
+function recoverStuckRides() {
+  try {
+    const routes = loadRoutes();
+    let changed = false;
+    const out = [];
+    for (const r of routes) {
+      let rr = r;
+      if (r && r.endTime === 0) {
+        const pts = Array.isArray(r.points) ? r.points : [];
+        const end = pts.length ? pts[pts.length - 1].ts : r.startTime;
+        rr = { ...r, endTime: end || r.startTime || Date.now() };
+        changed = true;
+      }
+      const nPts = (rr && Array.isArray(rr.points)) ? rr.points.length : 0;
+      if (nPts >= 2 || (rr && rr.dist > 0.01)) out.push(rr);
+      else changed = true;   // drop empty / degenerate rides
+    }
+    if (changed) saveRoutes(out);
+  } catch (e) {}
+}
 
 function renderRoutes() {
   const routes = loadRoutes();
@@ -2352,6 +2422,14 @@ function makeRouteItem(route, live) {
   `;
 
   el.appendChild(info);
+
+  if (live) {
+    const stopBtn = document.createElement('button');
+    stopBtn.className = 'route-gpx-btn';
+    stopBtn.textContent = 'Stop ride';
+    stopBtn.addEventListener('click', e => { e.stopPropagation(); stopLiveRide(); });
+    el.appendChild(stopBtn);
+  }
 
   if (!live && route.points.length > 0) {
     const mapsBtn = document.createElement('button');
@@ -4045,6 +4123,8 @@ function wireEvents() {
   document.getElementById('btn-connect-back').addEventListener('click', closeConnectPage);
   document.getElementById('btn-scan').addEventListener('click', startScan);
   document.getElementById('btn-disconnect').addEventListener('click', doDisconnect);
+  const stopRideBtn = document.getElementById('btn-stop-ride');
+  if (stopRideBtn) stopRideBtn.addEventListener('click', stopLiveRide);
 
   // Routes sub-page open/close
   document.getElementById('btn-open-routes').addEventListener('click', () => {
@@ -4190,6 +4270,11 @@ function wireEvents() {
   document.getElementById('toggle-gps-auto').addEventListener('change', e => {
     state.gpsAutoStart = e.target.checked;
     storage.set('lb_gps_auto', state.gpsAutoStart ? 'on' : 'off');
+    if (!state.gpsAutoStart) {
+      // Turning ride auto-tracking off stops any running ride + GPS right away.
+      if (state.currentRide) finalizeRide(); else stopGPSWatch();
+      state.armDistM = 0;
+    }
   });
 
   // GPS recording interval: persist and apply live to the ongoing/next recording.
@@ -4296,6 +4381,7 @@ function init() {
   wireEvents();
   loadModelOverride();
   populateModelSelect();
+  recoverStuckRides();
   renderRoutes();
 
   // Start BLE polling
@@ -4311,13 +4397,15 @@ function init() {
     }
   }, 1500);
 
-  // Check initial BLE state and start GPS if connected
+  // Check initial BLE state. Do NOT auto-start GPS or a ride here - a ride arms itself only after
+  // ~20 m of real movement (maybeArmRide), and GPS starts with the ride.
   const raw = storage.get('lb_live_data');
   const data = parseBLE(raw);
   if (data && isFresh(data.ts)) {
     state.bleConnected = true;
-    if (state.gpsAutoStart) startGPSWatch();
-    startRide();
+    state.armDistM = 0;
+    state.armLastTs = null;
+    state.rideStopped = false;
   }
 }
 
