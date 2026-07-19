@@ -235,6 +235,21 @@ All screenshots are from the app running on a real scooter; any scooter-identify
     <td align="center"><img src="screenshots/SideMenu2.jpg" width="240" alt="Settings: GPS recording and debug"></td>
     <td align="center"><img src="screenshots/SRT-Streaming.jpg" width="240" alt="Screen streaming over SRT"></td>
   </tr>
+  <tr>
+    <td align="center"><img src="screenshots/POIs.jpg" width="240" alt="Camping and charging POI overlay on the offline map"></td>
+    <td align="center"><img src="screenshots/FirmwarePatcher1.jpg" width="240" alt="Firmware patcher: speed options (Full unlock / Live toggle / stock)"></td>
+    <td align="center"><img src="screenshots/FirmwarePatcher2.jpg" width="240" alt="Firmware patcher: R5.4.19 patch options"></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/FirmwareUpdater.jpg" width="240" alt="Firmware update: choose a .hex to flash"></td>
+    <td align="center"><img src="screenshots/FirmwareUpdater2.jpg" width="240" alt="Firmware update: .hex validated, ready to flash"></td>
+    <td align="center"><img src="screenshots/FirmwareUpdater3.jpg" width="240" alt="Firmware update: flash confirmation with Auto-Off warning"></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/FirmwareUpdater4.jpg" width="240" alt="Firmware update in progress"></td>
+    <td align="center"><img src="screenshots/FirmwareUpdater5.jpg" width="240" alt="Firmware update complete"></td>
+    <td align="center"></td>
+  </tr>
 </table>
 
 ## Installing the app
