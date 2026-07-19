@@ -91,16 +91,16 @@ jobs:
           mkdir -p osmosis && tar -xf osmosis.tar -C osmosis --strip-components=1
           chmod +x osmosis/bin/osmosis
           mkdir -p "$HOME/.openstreetmap/osmosis/plugins"
-          curl -fsSL "https://repo1.maven.org/maven2/org/mapsforge/mapsforge-poi-writer/${POI_WRITER_VERSION}/mapsforge-poi-writer-${POI_WRITER_VERSION}-jar-with-dependencies.jar" \
+          curl -fsSL "https://github.com/mapsforge/mapsforge/releases/download/${POI_WRITER_VERSION}/mapsforge-poi-writer-${POI_WRITER_VERSION}-jar-with-dependencies.jar" \
             -o "$HOME/.openstreetmap/osmosis/plugins/mapsforge-poi-writer.jar"
 
       - name: Write POI category mapping (charging + camping only)
         run: |
           cat > poi-mapping.xml <<'XML'
           <?xml version="1.0" encoding="UTF-8"?>
-          <category xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:noNamespaceSchemaLocation="poi-mapping.xsd"
-                    title="root">
+          <category xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" title="root"
+                    xmlns="http://mapsforge.org/poi-mapping"
+                    xsi:schemaLocation="http://mapsforge.org/poi-mapping https://raw.githubusercontent.com/mapsforge/mapsforge/master/resources/poi-mapping.xsd">
             <category title="Charging">
               <mapping tag="amenity=charging_station" />
               <mapping tag="amenity=ev_charging" />
