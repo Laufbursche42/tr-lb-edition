@@ -164,8 +164,8 @@
          Typed and sized by importance, each caption carrying a render
          priority so bigger places win label-collision culling: cities
          appear first and largest, then towns, villages, suburbs and
-         hamlets as the zoom increases. This keeps small towns labelled at mid zoom, not only
-         when the map is fully zoomed in. -->
+         hamlets as the zoom increases. This keeps small towns labelled
+         at mid zoom, not only when the map is fully zoomed in. -->
     <rule e="node" k="place" v="city" zoom-min="8">
         <caption k="name" priority="40" fill="#F5F8FD" stroke="#0B0E12" stroke-width="3.2" font-size="18" font-style="bold" />
     </rule>

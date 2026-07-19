@@ -19,10 +19,13 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Html;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -32,7 +35,6 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -184,9 +186,6 @@ public class NavActivity extends Activity {
     private final List<Marker> poiMarkers = new ArrayList<>();
     private boolean showCamping = false;
     private boolean showCharging = false;
-    private boolean filterSchuko = false;
-    private boolean filterType2 = false;
-    private ToggleButton tgSchuko, tgType2;
 
     // ── UI ──
     private TextView banner;
@@ -685,10 +684,15 @@ public class NavActivity extends Activity {
         updateProfileDesc();
 
         // POI toggle row - only shown when a POI database is present (hidden gracefully otherwise).
+        // Two toggles only (Camping / Charging): they always fit side by side, and each shows ALL
+        // sites of its kind. No socket sub-filter - roughly half of OSM charging stations carry no
+        // socket:* tag at all, so a Schuko/Type2 filter would silently hide most real stations.
+        // The socket type, when known, is shown on tap.
         if (hasPoi()) {
             LinearLayout chips = new LinearLayout(this);
             chips.setOrientation(LinearLayout.HORIZONTAL);
             chips.setPadding(p, p, p, p);
+            chips.setBackgroundColor(cBar);
 
             final ToggleButton tgCamp = chip("⛺ Camping");
             tgCamp.setOnCheckedChangeListener((b, checked) -> {
@@ -700,33 +704,11 @@ public class NavActivity extends Activity {
             final ToggleButton tgCharge = chip("⚡ Charging");
             tgCharge.setOnCheckedChangeListener((b, checked) -> {
                 showCharging = checked;
-                tgSchuko.setEnabled(checked);
-                tgType2.setEnabled(checked);
                 reloadPois();
             });
             chips.addView(tgCharge);
 
-            tgSchuko = chip("Schuko");
-            tgSchuko.setEnabled(false);
-            tgSchuko.setOnCheckedChangeListener((b, checked) -> {
-                filterSchuko = checked;
-                reloadPois();
-            });
-            chips.addView(tgSchuko);
-
-            tgType2 = chip("Type 2");
-            tgType2.setEnabled(false);
-            tgType2.setOnCheckedChangeListener((b, checked) -> {
-                filterType2 = checked;
-                reloadPois();
-            });
-            chips.addView(tgType2);
-
-            HorizontalScrollView chipsScroll = new HorizontalScrollView(this);
-            chipsScroll.setHorizontalScrollBarEnabled(false);
-            chipsScroll.setBackgroundColor(cBar);
-            chipsScroll.addView(chips);
-            topContainer.addView(chipsScroll);
+            topContainer.addView(chips);
         }
 
         FrameLayout.LayoutParams topContainerLp = new FrameLayout.LayoutParams(
@@ -955,7 +937,8 @@ public class NavActivity extends Activity {
             Log.w(TAG, "external theme load failed, using bundled", t);
         }
         // DEFAULT is the bundled Mapsforge theme; unlike OSMARENDER it labels place=town from
-        // zoom 8 and place=village from zoom 12, so moderately sized towns are named at mid zoom, not only when fully zoomed in.
+        // zoom 8 and place=village from zoom 12, so moderately sized towns are named at mid zoom,
+        // not only when fully zoomed in.
         return InternalRenderTheme.DEFAULT;
     }
 
@@ -1722,14 +1705,11 @@ public class NavActivity extends Activity {
         }
         final boolean wantCamp = showCamping;
         final boolean wantCharge = showCharging;
-        final boolean wantSchuko = filterSchuko;
-        final boolean wantType2 = filterType2;
-        worker.execute(() -> loadPois(bb, wantCamp, wantCharge, wantSchuko, wantType2));
+        worker.execute(() -> loadPois(bb, wantCamp, wantCharge));
     }
 
     /** Worker thread: query the offline POI database and filter by tags. */
-    private void loadPois(BoundingBox bb, boolean wantCamp, boolean wantCharge,
-                          boolean wantSchuko, boolean wantType2) {
+    private void loadPois(BoundingBox bb, boolean wantCamp, boolean wantCharge) {
         try {
             PoiPersistenceManager mgr = ensurePoiManager();
             if (mgr == null) {
@@ -1753,14 +1733,7 @@ public class NavActivity extends Activity {
                 if (kind == PoiKind.CAMPING && wantCamp) {
                     hits.add(new PoiHit(poi, kind));
                 } else if (kind == PoiKind.CHARGING && wantCharge) {
-                    boolean schuko = hasSchuko(poi);
-                    boolean type2 = hasType2(poi);
-                    boolean pass;
-                    if (wantSchuko && wantType2) pass = schuko || type2;
-                    else if (wantSchuko) pass = schuko;
-                    else if (wantType2) pass = type2;
-                    else pass = true; // no sub-filter → all charging
-                    if (pass) hits.add(new PoiHit(poi, kind));
+                    hits.add(new PoiHit(poi, kind));
                 }
             }
             ui.post(() -> renderPois(hits));
@@ -1814,38 +1787,85 @@ public class NavActivity extends Activity {
     }
 
     private void showPoiDialog(PoiHit hit) {
-        StringBuilder sb = new StringBuilder();
         String name = hit.poi.getName();
         if (name == null || name.trim().isEmpty()) name = "(unnamed)";
-        sb.append(String.format(Locale.US, "%.5f, %.5f%n%n",
-                hit.poi.getLatitude(), hit.poi.getLongitude()));
+
+        // Curated, human-readable detail view. We deliberately do NOT dump every raw OSM tag - many
+        // are noise (wikidata refs, normalized_name, source, wheelchair, ...) that only confuse. We
+        // surface the handful of fields a rider cares about, and render the website as a clickable link.
+        StringBuilder html = new StringBuilder();
+        html.append(String.format(Locale.US, "%.5f, %.5f", hit.poi.getLatitude(), hit.poi.getLongitude()));
+
         if (hit.kind == PoiKind.CHARGING) {
             List<String> sockets = new ArrayList<>();
             if (hasSchuko(hit.poi)) sockets.add("Schuko");
             if (hasType2(hit.poi)) sockets.add("Type 2");
-            sb.append("Sockets: ")
-                    .append(sockets.isEmpty() ? "unknown" : String.join(", ", sockets))
-                    .append("\n");
+            appendField(html, "Sockets", sockets.isEmpty() ? "unknown" : TextUtils.join(", ", sockets));
         }
-        if (hit.poi.getTags() != null) {
-            for (Tag tag : hit.poi.getTags()) {
-                if (tag == null || tag.key == null) continue;
-                sb.append(tag.key).append(" = ").append(tag.value).append("\n");
-            }
+        appendField(html, "Operator", tagValue(hit.poi, "operator", "brand", "network"));
+        appendField(html, "Capacity", tagValue(hit.poi, "capacity"));
+        appendField(html, "Opening hours", tagValue(hit.poi, "opening_hours"));
+        appendField(html, "Fee", tagValue(hit.poi, "fee", "charge"));
+        appendField(html, "Access", tagValue(hit.poi, "access"));
+        appendField(html, "Description", tagValue(hit.poi, "description", "description:de", "note"));
+        appendField(html, "Phone", tagValue(hit.poi, "phone", "contact:phone"));
+
+        String web = tagValue(hit.poi, "website", "contact:website", "url", "operator:website");
+        if (web != null && !web.trim().isEmpty()) {
+            String url = web.trim();
+            if (!url.matches("(?i)^https?://.*")) url = "https://" + url;
+            html.append("<br><br><b>Website</b><br><a href=\"")
+                    .append(escapeHtml(url)).append("\">")
+                    .append(escapeHtml(web.trim())).append("</a>");
         }
+
         try {
-            new AlertDialog.Builder(this)
+            AlertDialog dlg = new AlertDialog.Builder(this)
                     .setTitle((hit.kind == PoiKind.CAMPING ? "⛺ " : "⚡ ") + name)
-                    .setMessage(sb.toString())
+                    .setMessage(fromHtml(html.toString()))
                     .setPositiveButton("Close", null)
                     .setNeutralButton("Route here", (d, w) -> {
                         setDestination(new LatLong(hit.poi.getLatitude(), hit.poi.getLongitude()), false);
                         requestRoute();
                     })
-                    .show();
+                    .create();
+            dlg.show();
+            // Make the website link tappable. Reusing the themed message TextView keeps the dialog's
+            // own text colors (a fully custom view would risk unreadable text on some themes).
+            TextView msg = dlg.findViewById(android.R.id.message);
+            if (msg != null) msg.setMovementMethod(LinkMovementMethod.getInstance());
         } catch (Throwable t) {
             Log.e(TAG, "poi dialog failed", t);
         }
+    }
+
+    private void appendField(StringBuilder html, String label, String value) {
+        if (value == null || value.trim().isEmpty()) return;
+        html.append("<br><b>").append(label).append("</b>: ").append(escapeHtml(value.trim()));
+    }
+
+    /** First non-empty value among the given OSM tag keys (case-insensitive), or null. */
+    private static String tagValue(PointOfInterest poi, String... keys) {
+        if (poi.getTags() == null) return null;
+        for (String want : keys) {
+            for (Tag t : poi.getTags()) {
+                if (t == null || t.key == null || t.value == null) continue;
+                if (t.key.equalsIgnoreCase(want) && !t.value.trim().isEmpty()) return t.value;
+            }
+        }
+        return null;
+    }
+
+    private static String escapeHtml(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    @SuppressWarnings("deprecation")
+    private static CharSequence fromHtml(String s) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            return Html.fromHtml(s, Html.FROM_HTML_MODE_LEGACY);
+        }
+        return Html.fromHtml(s);
     }
 
     // POI classification helpers (OSM tags are the source of truth, independent of POI category naming).
