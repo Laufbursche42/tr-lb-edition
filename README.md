@@ -196,6 +196,8 @@ If every check passes, **Start** is enabled. If a check fails, Start is disabled
 
 On the **Live toggle** firmware the scooter's **FIN identity** is the speed switch, so the app can lock or unlock the speed live over Bluetooth with no re-flash - triple-tap the speed tile on the main screen or edit the identity in Scooter info. A FIN starting with "TDE" caps you at 22; take the "DE" out and you get full speed (with Kickstart and Cruise). Locking back to a "TDE" FIN also switches Cruise off and resets the wheel size to stock for a correct legal speed reading; unlocking restores exactly what you had. Every step is reversible.
 
+<p align="center"><img src="screenshots/livetoogle.png" width="260" alt="Live toggle - triple-tap the speed tile to lock or unlock the FIN"></p>
+
 **Full unlock works differently** - it pins the speed cap off for good by removing BOTH gates (the display clamp and the FIN clamp), so the speed is always open and editing the FIN does NOT re-lock it. On a Full-unlock scooter the triple-tap still renames the FIN (and runs the Cruise / wheel housekeeping) but the top speed stays open. Pick Full unlock for a permanently open scooter or Live toggle to keep the FIN as the live switch between the legal 22 and full speed.
 
 ## Screenshots
