@@ -65,6 +65,8 @@ An alternative app for Teverun e-scooters.
 
 Laufbursche Edition is a standalone, alternative Android app for Teverun / Laufbursche e-scooters. It works completely offline and talks to your scooter directly over Bluetooth LE. There is no Teverun account, no login and no cloud - just install the app, connect to your scooter and you are ready to go.
 
+**Device support.** The dashboard, live telemetry and the scooter settings work with Teverun / Laufbursche scooters generally (Fighter Mini / Pro, Fighter Eleven, Supreme, Blade Mini, GT, Space and the like) - the app reads whatever settings your scooter reports and writes only the single field you change, so it stays safe across models. The **speed unlock (FIN)** and the **firmware update / patcher** are specific to the **Fighter Mini Pro eKFV** and are only offered when that scooter is connected. The **Tetra** (multi-motor) is **not supported yet**: its extra motor nodes are not handled, so the app flags it as unsupported and hides the settings when a Tetra is connected.
+
 ## Features
 
 Everything below is implemented and shipping in the app.

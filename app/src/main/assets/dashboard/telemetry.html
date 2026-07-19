@@ -927,6 +927,18 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
   </div>
 </div>
 
+<style>
+  /* Model gating: the settings UI works on every Teverun scooter. Fighter-Mini-only features carry
+     .fighter-only and hide only when a known non-Fighter model is connected (so they stay visible by
+     default and when disconnected). The Tetra (unsupported) additionally hides all settings groups. */
+  #model-banner { padding: 8px 2px 2px; font-size: 13px; color: var(--label); }
+  #model-name { font-weight: 600; color: var(--text); }
+  #model-unsupported { display: none; color: var(--danger); font-weight: 600; }
+  body.is-tetra #model-unsupported { display: inline; }
+  body.is-other .fighter-only, body.is-tetra .fighter-only { display: none !important; }
+  body.is-tetra #settings-sheet .settings-group { display: none !important; }
+</style>
+
 <!-- ── Settings Overlay ────────────────────────────── -->
 <div id="settings-overlay"></div>
 <div id="settings-sheet">
@@ -934,6 +946,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <h2>Settings</h2>
     <button class="icon-btn" id="btn-close-settings">&#10005;</button>
   </div>
+
+  <div id="model-banner">Model: <span id="model-name">-</span><span id="model-unsupported"> - the Tetra is not supported by this app yet; settings and firmware are disabled for it.</span></div>
 
   <!-- Scooter connection + settings -->
   <div class="settings-group">
@@ -1037,10 +1051,12 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 
   <!-- Version info + disclaimer (opens a modal) -->
   <div class="settings-group" style="border-top:1px solid var(--border)">
-    <button id="btn-firmware">&#9889; Firmware update</button>
-    <div class="settings-row-sublabel note-gap">Flash an IVCU .hex over Bluetooth (scooter must be connected)</div>
-    <button id="btn-firmware-patcher">&#128295; Firmware Patcher</button>
-    <div class="settings-row-sublabel note-gap">Build an unlocked/fixed .hex from a bundled firmware, then flash it</div>
+    <div class="fighter-only">
+      <button id="btn-firmware">&#9889; Firmware update</button>
+      <div class="settings-row-sublabel note-gap">Flash an IVCU .hex over Bluetooth (scooter must be connected)</div>
+      <button id="btn-firmware-patcher">&#128295; Firmware Patcher</button>
+      <div class="settings-row-sublabel note-gap">Build an unlocked/fixed .hex from a bundled firmware, then flash it</div>
+    </div>
     <button id="btn-version-info">&#8505; Version Info &amp; Disclaimer</button>
   </div>
 </div>
@@ -1100,7 +1116,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
         <div class="settings-row-sublabel" id="gs-note">
           Values are read live for the currently active gear (never stored). If a gear is missing,
           switch through ALL gears on the scooter once - the firmware only ever sends the active gear.
-          eKFV: internal gears 2/3/4 show as 1/2/3 on the scooter display.
+          <span class="fighter-only">eKFV: internal gears 2/3/4 show as 1/2/3 on the scooter display.</span>
         </div>
       </div>
       <div class="settings-row">
@@ -1306,7 +1322,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       <!-- Change the VCU identity / BLE name (cmd 0x1f). Swaps the region code in the FIN and keeps
            the serial; the first 3 chars must NOT be "TDE". Reversible via Reset. This only clears
            Gate 1 - the speed stays limited until the separate display step. -->
-      <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="settings-row fighter-only" style="flex-direction:column;align-items:stretch;gap:8px">
         <div class="settings-row-left">
           <div class="settings-row-label">Change identity (unlock Gate 1)</div>
           <div class="settings-row-sublabel">Prefilled with the full current FIN - edit the whole name and press Set. First 3 chars not "TDE" = Gate 1 off; type your original "TDE..." FIN to re-lock. Speed stays limited until the display step.</div>
@@ -1853,7 +1869,12 @@ function ensureSettingsHelpDelegation() {
     if (!btn) return;
     const key = btn.getAttribute('data-set-help');
     const h = key && SETTINGS_HELP[key];
-    if (h) { e.preventDefault(); e.stopPropagation(); openHelp(h.title, h.text); }
+    if (h) {
+      e.preventDefault(); e.stopPropagation();
+      // On a non-Fighter model, drop the Fighter-Mini-eKFV "NOTE (eKFV): ..." tail from the help text.
+      const txt = fighterFeatures() ? h.text : h.text.split(/\n\s*NOTE \(eKFV\)/i)[0].trim();
+      openHelp(h.title, txt);
+    }
   });
   settingsHelpDelegated = true;
 }
@@ -1956,14 +1977,20 @@ function updateBLEUI(data) {
     return;
   }
 
+  // Adapt the UI to the connected model: settings work on every Teverun scooter; only the
+  // Fighter-Mini-only features (firmware / FIN unlock) are gated, and the Tetra is flagged unsupported.
+  try { applyModelUi(liveRaw().btName); } catch (e) {}
+
   // Speed
   setTxt('ble-speed', convSpeed(data.speed));
   // VCU speed colour = FIN lock state: red when the FIN has NO "TDE" (Gate 1 off / speed unlocked),
   // default green when "TDE" is present (locked). Triple-tap the VCU tile to toggle (toggleFinLock).
   {
-    const finU = ((liveRaw().btName || '') + '').toUpperCase();
+    // The FIN-lock tile colour is a Fighter-Mini-eKFV concept (the TDE Gate-1 marker). Only colour it
+    // for the Fighter Mini (or the unknown/disconnected default); on other models keep it neutral.
     const spEl = document.getElementById('ble-speed');
-    if (spEl) spEl.style.color = (finU && !finU.includes('TDE')) ? 'var(--danger)' : '';
+    const finU = ((liveRaw().btName || '') + '').toUpperCase();
+    if (spEl) spEl.style.color = (fighterFeatures() && finU && !finU.includes('TDE')) ? 'var(--danger)' : '';
   }
   setTxt('dg-avg', `${convSpeed(data.avgSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
   setTxt('dg-max', `${convSpeed(data.maxSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
@@ -2769,6 +2796,58 @@ function liveRaw() {
   try { const o = JSON.parse(storage.get('lb_live_data')); return (o && typeof o === 'object') ? o : {}; }
   catch (e) { return {}; }
 }
+
+/* ── Model detection from the BLE name + feature gating ──
+   The app can talk to EVERY Teverun scooter: settings read (55 71) and write (0x18) are model-agnostic,
+   and a write only changes the ONE field the user touched, merged onto the device's REAL reported state
+   (the native received71 guard blocks a write until that state is known). So writing settings is safe on
+   any model. Only the FIN unlock / speed clamp / firmware patcher stay Fighter-Mini-only (gated by the
+   body.is-fighter class). The Tetra is not supported (its 4-motor node frames are not handled). The name
+   decode mirrors the original Teverun app (T2-prefix: code at chars 7-9; legacy: chars 6-9). */
+function detectModel(name) {
+  name = (name || '').trim();
+  let code = '', model = '';
+  if (name.startsWith('T2') && name.length >= 9) {
+    code = name.substring(7, 9);
+    model = ({ FM: 'FIGHTER MINI', FP: 'FIGHTER MINI PRO', FE: 'FIGHTER ELEVEN', FU: 'FIGHTER ELEVEN+',
+               SU: 'SUPREM ULTRA', SR: 'SUPREM 7260', T4: 'TETRA 4 MOTOR', T2: 'TETRA 2 MOTOR' })[code] || '';
+  } else if (name.length >= 9) {
+    code = name.substring(6, 9);
+    const tbl = [[/^GT[EP]/, 'TEVERUN GT'], [/^T40/, 'TETRA 4 MOTOR'], [/^T20/, 'TETRA 2 MOTOR'],
+                 [/^FTE/, 'FIGHTER TEN'], [/^FE[EP]/, 'FIGHTER ELEVEN'], [/^SPP/, 'SUPREME PLUS'],
+                 [/^SPU/, 'SUPREME ULTRA'], [/^SPR/, 'SUPREME 7260R'], [/^BM[EPU]/, 'BLADE MINI'],
+                 [/^FM[EOP]/, 'FIGHTER MINI'], [/^BQ[EP]/, 'BLADE Q'], [/^FQ/, 'FIGHTER Q']];
+    for (const [re, nm] of tbl) { if (re.test(code)) { model = nm; break; } }
+  }
+  return { code, name: model, known: !!model,
+           isFighter: /^FIGHTER MINI/.test(model), isTetra: /TETRA/.test(model) };
+}
+
+let _lastModelKey = null;
+function applyModelUi(btName) {
+  const m = detectModel(btName);
+  const key = m.name + '|' + m.isFighter + '|' + m.isTetra;
+  if (key === _lastModelKey) return;   // only touch the DOM when the model actually changes
+  _lastModelKey = key;
+  const cl = document.body.classList;
+  cl.toggle('is-fighter', m.isFighter);
+  cl.toggle('is-tetra', m.isTetra);
+  // is-other = a KNOWN non-Fighter, non-Tetra model is connected. Fighter-only features (firmware,
+  // FIN unlock) hide only then - so they stay visible by default / when disconnected (the app's
+  // primary audience is Fighter Mini owners, who patch offline).
+  cl.toggle('is-other', m.known && !m.isFighter && !m.isTetra);
+  const nameEl = document.getElementById('model-name');
+  if (nameEl) nameEl.textContent = m.known ? m.name : (btName ? 'Unknown Teverun model' : '-');
+}
+
+// True unless a KNOWN non-Fighter model is connected. Fighter-Mini-only behaviour (FIN unlock/lock,
+// the eKFV notes, the speed-tile lock colour) keys on this, so it stays active by default and when
+// disconnected (the app's primary audience is Fighter Mini owners; a non-Fighter model turns it off).
+function fighterFeatures() {
+  const c = document.body.classList;
+  return !c.contains('is-other') && !c.contains('is-tetra');
+}
+
 function pick(d, keys) {
   for (const k of keys) { if (d[k] !== undefined && d[k] !== null && d[k] !== '') return d[k]; }
   return undefined;
@@ -2999,6 +3078,7 @@ function onVcuTileTap() {
   _finTapTimer = setTimeout(() => { _finTapCount = 0; }, 700);
 }
 function toggleFinLock() {
+  if (!fighterFeatures()) { showToast('The FIN speed-unlock is only for the Fighter Mini', 3000, 'err'); return; }
   if (typeof LB === 'undefined' || !LB.setBleName) { showToast('Only available in the app'); return; }
   if (!state.bleConnected) { showToast('Connect the scooter first', 3000, 'err'); return; }
   const fin = ((liveRaw().btName || '') + '').trim();
@@ -3201,6 +3281,7 @@ function closeInfoPage() {
 const fwState = { meta: null, compat: null, running: false };
 
 function openFirmwarePage() {
+  if (!fighterFeatures()) { showToast('Firmware update is only for the Fighter Mini', 3000, 'err'); return; }
   let active = false;
   try { active = (typeof LB !== 'undefined' && LB.isOtaActive && LB.isOtaActive()); } catch (e) {}
   if (active) {
@@ -3226,6 +3307,7 @@ function closeFirmwarePage() {
 
 /* ── Firmware Patcher ─────────────────────────────────────── */
 function openPatcherPage() {
+  if (!fighterFeatures()) { showToast('The firmware patcher is only for the Fighter Mini', 3000, 'err'); return; }
   const st = document.getElementById('pt-status');
   if (st) st.textContent = 'Choose a firmware. Pick options to patch, or leave all off to get the original.';
   ptOnFirmwareChange();
@@ -3742,12 +3824,14 @@ function refreshGearNote() {
   const note = document.getElementById('gs-note');
   if (!note) return;
   const ag = activeGear();
-  const dispMap = n => (n >= 2 && n <= 4) ? (' (display ' + (n - 1) + ')') : '';
+  // The "(display N)" gear remap + the eKFV note are Fighter-Mini-eKFV concepts; drop them on other models.
+  const dispMap = n => (fighterFeatures() && n >= 2 && n <= 4) ? (' (display ' + (n - 1) + ')') : '';
   const known = (gsSelectedGear != null && gearCache[gsSelectedGear]) ? ''
     : ' - not read yet: switch through ALL gears on the scooter once (the firmware only ever sends the currently active gear to the app)';
   note.textContent = 'Active gear: ' + (ag == null ? '-' : ag + dispMap(ag))
     + '. Editing gear ' + (gsSelectedGear == null ? '-' : gsSelectedGear + dispMap(gsSelectedGear)) + known
-    + '. eKFV: internal gears 2/3/4 show as 1/2/3 on the scooter display. Values are read live, never stored.';
+    + (fighterFeatures() ? '. eKFV: internal gears 2/3/4 show as 1/2/3 on the scooter display.' : '')
+    + ' Values are read live, never stored.';
 }
 
 /* Select a gear and prefill the six fields from the cache (blank if that gear is unread). */
