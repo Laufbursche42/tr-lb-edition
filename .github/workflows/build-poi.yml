@@ -180,6 +180,8 @@ jobs:
         with:
           tag_name: poi
           name: POI data (camping + EV charging)
+          prerelease: true      # keep it out of "Latest" so the app APK stays the latest release
+          make_latest: false
           body: |
             Offline POI databases (camping + EV-charging points) per country, built from OpenStreetMap.
             Data (c) OpenStreetMap contributors, ODbL 1.0. Rebuilt automatically; see manifest.json.
