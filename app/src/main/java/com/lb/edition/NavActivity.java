@@ -12,9 +12,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -572,7 +575,7 @@ public class NavActivity extends Activity {
         startHere.setOnClickListener(v -> useCurrentLocation(start));
         startRow.addView(startHere);
 
-        // Destination row: [Destination input .............] [📍] [➜] - pin fills GPS, arrow routes.
+        // Destination row: [Destination input .............] [📍] - the pin fills the field with my GPS.
         LinearLayout destRow = new LinearLayout(this);
         destRow.setOrientation(LinearLayout.HORIZONTAL);
         destRow.setBackgroundColor(cBar);
@@ -593,7 +596,18 @@ public class NavActivity extends Activity {
         destHere.setOnClickListener(v -> useCurrentLocation(dest));
         destRow.addView(destHere);
 
-        Button route = iconButton("➜", "Calculate route");
+        // Action row (above the "Route:" profile selector): [Route] [Start] [Center], three text
+        // buttons in the same segmented look as the three profile buttons. "Route" computes the route
+        // from the Start / Destination fields; "Start" enters active turn-by-turn navigation and stays
+        // hidden until a route exists; "Center" recenters the map on the current position and resumes
+        // auto-follow.
+        LinearLayout actionRow = new LinearLayout(this);
+        actionRow.setOrientation(LinearLayout.HORIZONTAL);
+        actionRow.setBackgroundColor(cBar);
+        actionRow.setPadding(p, p, p, dp(8)); // small gap before the "Route:" selector row below
+
+        Button route = segButton("Route");
+        styleSeg(route, false);
         route.setOnClickListener(v -> {
             // Start: empty means "current GPS position"; otherwise it must parse as lat, lon.
             String sTxt = start.getText().toString().trim();
@@ -615,24 +629,15 @@ public class NavActivity extends Activity {
             }
             requestRoute();
         });
-        destRow.addView(route);
+        actionRow.addView(route);
 
-        // Action row (above the "Route:" profile selector): [▶ Start] [⌖ Center], both drawn with the
-        // same segmented-button look as the profile buttons. "Start" enters active turn-by-turn
-        // navigation and stays hidden until a route is computed; "Center" recenters the map on the
-        // current position and resumes auto-follow.
-        LinearLayout actionRow = new LinearLayout(this);
-        actionRow.setOrientation(LinearLayout.HORIZONTAL);
-        actionRow.setBackgroundColor(cBar);
-        actionRow.setPadding(p, p, p, 0);
-
-        startBtn = segButton("▶ Start");
+        startBtn = segButton("Start");
         styleSeg(startBtn, false);
         startBtn.setVisibility(View.GONE);
         startBtn.setOnClickListener(v -> startNavigation());
         actionRow.addView(startBtn);
 
-        Button center = segButton("⌖ Center");
+        Button center = segButton("Center");
         styleSeg(center, false);
         center.setOnClickListener(v -> {
             followMode = true;
@@ -763,10 +768,27 @@ public class NavActivity extends Activity {
         t.setTextOn(label);
         t.setTextOff(label);
         t.setText(label);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        t.setAllCaps(false);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        t.setIncludeFontPadding(false);
+        t.setMinWidth(0);
+        t.setMinimumWidth(0);
+        t.setMinHeight(0);
+        t.setMinimumHeight(0);
+        t.setPadding(dp(6), dp(3), dp(6), dp(3));
+        // Flat segmented look matching the route-profile buttons: cBorder when off, cAccent when on.
+        // A state-driven background + text color restyle the toggle on check, so callers keep their
+        // own OnCheckedChangeListener purely for behaviour (no styling code needed there).
+        StateListDrawable bg = new StateListDrawable();
+        bg.addState(new int[]{android.R.attr.state_checked}, new ColorDrawable(cAccent));
+        bg.addState(new int[0], new ColorDrawable(cBorder));
+        t.setBackground(bg);
+        t.setTextColor(new ColorStateList(
+                new int[][]{ new int[]{android.R.attr.state_checked}, new int[0] },
+                new int[]{ cOnAccent, cText }));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.rightMargin = dp(6);
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        lp.leftMargin = dp(4);
         t.setLayoutParams(lp);
         return t;
     }
