@@ -2109,6 +2109,8 @@ function tickBLE() {
   const raw = storage.get('lb_live_data');
   const data = parseBLE(raw);
   updateBLEUI(data);
+  // After a FIN unlock, restore the remembered cruise/wheel once the open FIN + config are live.
+  try { maybeRestoreFinSettings(); } catch (e) {}
   updateRideUI();
   // Keep the main-screen motor-mode quick toggle mirroring the scooter (~2x/s), including
   // its connected/disconnected enabled state.
@@ -3230,24 +3232,50 @@ function setFinCruise(v) { _finCruise = (v == null ? null : v); storage.set('lb_
 //  - Unlocking: restore that remembered cruise mode + wheel.
 // All writes go out only when the settings are actually known (so we never write stale defaults), then
 // the identity change is sent.
+// After unlocking, the remembered cruise/wheel must be re-applied ONLY once the scooter is really in
+// the open FIN state - while it is still eKFV the controller write-protects cruise (and ignores the
+// wheel), so an immediate write is silently dropped. We mark the restore pending and apply it from
+// maybeRestoreFinSettings() after the identity change + reconnect.
+let _pendingFinRestore = null;
+
 function sendFinChange(newFin) {
   const locking = /^T2?DE/i.test((newFin || '').trim());
   if (typeof LB !== 'undefined' && LB.sendSetting) {
     if (locking) {
+      _pendingFinRestore = null;   // a fresh lock cancels any pending restore
       const c = liveRaw().cruise;
       if (c != null) {
-        // Remember the exact cruise mode (auto/manual) only if it was on; then switch it off.
+        // Remember the exact cruise mode (auto/manual) only if it was on; then switch it off. This
+        // write goes out while still OPEN, so it is accepted.
         if (c !== 0) setFinCruise(c);
         try { LB.sendSetting(JSON.stringify({ cruise: 0 })); } catch (e) {}
       }
       const w = liveRaw().wheel;
       if (w != null && w !== 10) { setFinWheel(w); try { LB.sendSetting(JSON.stringify({ wheel: 10 })); } catch (e) {} }
     } else {
-      if (_finCruise != null) { try { LB.sendSetting(JSON.stringify({ cruise: _finCruise })); } catch (e) {} setFinCruise(null); }
-      if (_finWheel != null) { try { LB.sendSetting(JSON.stringify({ wheel: _finWheel })); } catch (e) {} setFinWheel(null); }
+      // Unlocking: do NOT write now (still eKFV = write-protected). Defer to when the open FIN is live.
+      _pendingFinRestore = { cruise: _finCruise, wheel: _finWheel };
     }
   }
   LB.setBleName(newFin);
+}
+
+// Apply the remembered cruise (+ wheel) after an unlock, once the OPEN FIN is live and the controller
+// has reported its config - only then are cruise/wheel writes accepted. Called every BLE tick.
+function maybeRestoreFinSettings() {
+  if (!_pendingFinRestore) return;
+  const d = liveRaw();
+  const fin = ((d.btName || '') + '').trim().toUpperCase();
+  if (!fin || /^T2?DE/.test(fin)) return;   // still locked, or the new FIN not re-read yet -> wait
+  if (!d.settingsReady) return;             // wait until the controller has reported its settings
+  const r = _pendingFinRestore;
+  _pendingFinRestore = null;
+  if (typeof LB !== 'undefined' && LB.sendSetting) {
+    if (r.cruise != null) { try { LB.sendSetting(JSON.stringify({ cruise: r.cruise })); } catch (e) {} }
+    if (r.wheel != null) { try { LB.sendSetting(JSON.stringify({ wheel: r.wheel })); } catch (e) {} }
+  }
+  setFinCruise(null);
+  setFinWheel(null);
 }
 
 // Validate the full identity and send it (cmd 0x1f). Non-destructive and reversible (edit it back).
