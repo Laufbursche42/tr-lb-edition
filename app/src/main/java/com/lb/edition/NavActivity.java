@@ -238,6 +238,9 @@ public class NavActivity extends Activity {
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
 
+    // Observes the foreground NavigationService so this screen just draws the published guidance.
+    private final NavSession.Listener navListener = s -> ui.post(() -> onNavState(s));
+
     // Marker bitmaps (created once the graphic factory is up).
     private Bitmap dotMe, dotDest, dotCamp, dotCharge;
 
@@ -300,7 +303,13 @@ public class NavActivity extends Activity {
         tts = new TtsHelper(this, navVoice.locale());
 
         ensureLocationPermission();
-        startLocationUpdates();
+        // If a navigation session is already running (started earlier, then this screen was left and
+        // reopened), re-attach to it and redraw the route instead of starting fresh.
+        if (NavSession.isActive()) {
+            resumeActiveNav();
+        } else {
+            startLocationUpdates();
+        }
         UiChrome.applyFullscreen(this);
     }
 
@@ -1253,7 +1262,9 @@ public class NavActivity extends Activity {
         }
         mapView.getLayerManager().redrawLayers();
 
-        if (routePts != null && !routePts.isEmpty()) {
+        // While the foreground service owns the active session it computes guidance + speaks; this
+        // Activity only draws (its own listener is stopped during nav, but guard anyway).
+        if (routePts != null && !routePts.isEmpty() && !NavSession.isActive()) {
             updateNavigation(here);
         }
     }
@@ -1486,6 +1497,126 @@ public class NavActivity extends Activity {
         lastFarIdx = -1;
         lastNearIdx = -1;
         announcedArrive = false;
+
+        // If a session is live (this is a reroute while navigating), publish the new route to it.
+        if (NavSession.isActive()) pushRouteToSession();
+    }
+
+    // ── Foreground-service navigation glue ──
+
+    /** Flatten the current route + guidance arrays into the shared session for the service. */
+    private void pushRouteToSession() {
+        if (routePts == null || routePts.isEmpty() || cumDist == null
+                || maneuverIdx == null || maneuverText == null) return;
+        int n = routePts.size();
+        double[] la = new double[n], lo = new double[n];
+        for (int i = 0; i < n; i++) {
+            LatLong p = routePts.get(i);
+            la[i] = p.latitude;
+            lo[i] = p.longitude;
+        }
+        double dLat = destination != null ? destination.latitude : Double.NaN;
+        double dLon = destination != null ? destination.longitude : Double.NaN;
+        NavSession.setRoute(la, lo, cumDist, maneuverIdx, maneuverText, dLat, dLon, routeProfile);
+    }
+
+    /** UI thread: draw one guidance snapshot published by the service (me-marker, card, reroute). */
+    private void onNavState(NavSession.State s) {
+        if (mapView == null || s == null) return;
+        // Session ended elsewhere (e.g. the notification's End action) -> leave nav mode (UI only).
+        if (!s.active) {
+            if (navigating) exitNavUi();
+            return;
+        }
+        if (s.hasFix && !Double.isNaN(s.meLat)) {
+            LatLong here = new LatLong(s.meLat, s.meLon);
+            Location l = new Location("nav");
+            l.setLatitude(s.meLat);
+            l.setLongitude(s.meLon);
+            lastLocation = l;
+            if (meMarker == null) {
+                meMarker = new Marker(here, dotMe, 0, 0);
+                mapView.getLayerManager().getLayers().add(meMarker);
+            } else {
+                meMarker.setLatLong(here);
+            }
+            if (followMode) mapView.setCenter(here);
+            mapView.getLayerManager().redrawLayers();
+        }
+        if (navigating && navTurnText != null) {
+            navTurnArrow.setText(s.turnArrow);
+            navTurnText.setText(s.offRoute ? "Recalculating…" : s.turnText);
+            navTurnDist.setText(s.offRoute ? "" : formatMeters(s.distToTurnM));
+            if (navSecondary != null) {
+                navSecondary.setText(s.offRoute ? "Off route"
+                        : formatMeters(s.remainingM) + " to destination · " + etaText(s.remainingM));
+            }
+        }
+        // While the map is visible this screen does the actual re-routing (the service only flags
+        // off-route); throttled like the old inline guidance.
+        if (s.offRoute && !Double.isNaN(s.meLat) && destination != null) {
+            long now = System.currentTimeMillis();
+            if (now - lastRerouteAt > REROUTE_COOLDOWN_MS) {
+                lastRerouteAt = now;
+                final double fLat = s.meLat, fLon = s.meLon;
+                final double tLat = destination.latitude, tLon = destination.longitude;
+                final String prof = routeProfile;
+                worker.execute(() -> routeFlow(fLat, fLon, tLat, tLon, prof));
+            }
+        }
+    }
+
+    /** Draw only the blue route polyline (used when re-attaching to a running session on reopen). */
+    private void drawRouteLine(List<LatLong> pts) {
+        if (mapView == null || pts == null || pts.size() < 2) return;
+        if (routeLayer != null) {
+            mapView.getLayerManager().getLayers().remove(routeLayer);
+            routeLayer = null;
+        }
+        Paint paint = AndroidGraphicFactory.INSTANCE.createPaint();
+        paint.setColor(0xFF2FA0EB);
+        paint.setStrokeWidth(dp(6));
+        paint.setStyle(Style.STROKE);
+        routeLayer = new Polyline(paint, AndroidGraphicFactory.INSTANCE);
+        routeLayer.addPoints(pts);
+        mapView.getLayerManager().getLayers().add(routeLayer);
+        if (meMarker != null) {
+            mapView.getLayerManager().getLayers().remove(meMarker);
+            mapView.getLayerManager().getLayers().add(meMarker);
+        }
+        if (destMarker != null) {
+            mapView.getLayerManager().getLayers().remove(destMarker);
+            mapView.getLayerManager().getLayers().add(destMarker);
+        }
+        mapView.getLayerManager().redrawLayers();
+    }
+
+    /** Re-attach this screen to an already-running navigation session (redraw route, enter nav UI). */
+    private void resumeActiveNav() {
+        try {
+            double[] la = NavSession.lats, lo = NavSession.lons;
+            if (la == null || lo == null || la.length < 2) {
+                startLocationUpdates();
+                return;
+            }
+            List<LatLong> pts = new ArrayList<>(la.length);
+            for (int i = 0; i < la.length; i++) pts.add(new LatLong(la[i], lo[i]));
+            routePts = pts;
+            cumDist = NavSession.cumDist;
+            maneuverIdx = NavSession.maneuverIdx;
+            maneuverText = NavSession.maneuverText;
+            if (NavSession.profile != null) routeProfile = NavSession.profile;
+            if (!Double.isNaN(NavSession.destLat)) {
+                setDestination(new LatLong(NavSession.destLat, NavSession.destLon), false);
+            }
+            drawRouteLine(pts);
+            enterNavUi();
+            NavSession.addListener(navListener);
+            onNavState(NavSession.state());
+        } catch (Throwable t) {
+            Log.e(TAG, "resumeActiveNav failed", t);
+            startLocationUpdates();
+        }
     }
 
     /** Live guidance: update the banner and trigger re-routing when off-route. */
@@ -1558,35 +1689,61 @@ public class NavActivity extends Activity {
             toast("Compute a route first");
             return;
         }
-        navigating = true;
         // Fresh run - let every maneuver announce again.
         lastFarIdx = -1;
         lastNearIdx = -1;
         announcedArrive = false;
 
+        enterNavUi();
+
+        // Hand the route to the shared session and start the foreground service, which now OWNS the
+        // GPS, the guidance and the voice - so navigation survives leaving this screen and keeps
+        // announcing on the dashboard. This screen becomes a view that draws the published state.
+        pushRouteToSession();
+        NavSession.begin();
+        NavSession.addListener(navListener);
+        try {
+            startForegroundService(new Intent(this, NavigationService.class));
+        } catch (Throwable t) {
+            Log.e(TAG, "starting NavigationService failed", t);
+        }
+        // The service owns location now; stop this Activity's own listener to avoid a second GPS user.
+        try {
+            if (locationManager != null) locationManager.removeUpdates(locationListener);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** Switch the map chrome into active-navigation mode (hide setup, show the card, close zoom). */
+    private void enterNavUi() {
+        navigating = true;
         if (topContainer != null) topContainer.setVisibility(View.GONE);
         if (banner != null) banner.setVisibility(View.GONE);
         if (startBtn != null) startBtn.setVisibility(View.GONE);
         if (navCard != null) navCard.setVisibility(View.VISIBLE);
-
         followMode = true;
         if (mapView != null) {
             preNavZoom = mapView.getModel().mapViewPosition.getZoomLevel();
             mapView.getModel().mapViewPosition.setZoomLevel(NAV_ZOOM);
             LatLong center = lastLocation != null
                     ? new LatLong(lastLocation.getLatitude(), lastLocation.getLongitude())
-                    : routePts.get(0);
-            mapView.setCenter(center);
+                    : (routePts != null && !routePts.isEmpty() ? routePts.get(0) : null);
+            if (center != null) mapView.setCenter(center);
         }
-
-        LatLong here = lastLocation != null
-                ? new LatLong(lastLocation.getLatitude(), lastLocation.getLongitude())
-                : routePts.get(0);
-        updateNavigation(here);
     }
 
-    /** Leave active navigation and return to the route overview (normal zoom + banner). */
+    /** Stop button: END the whole navigation session (stops the service) and return to overview. */
     private void stopNavigation() {
+        NavSession.removeListener(navListener);
+        NavigationService.stop(this);   // -> NavSession.end()
+        exitNavUi();
+        // Resume this Activity's own location updates for the route-overview me-marker.
+        startLocationUpdates();
+    }
+
+    /** UI-only return to the route overview. Does NOT touch the service (used when the session ends
+     *  externally, e.g. via the notification's End action). */
+    private void exitNavUi() {
         navigating = false;
         if (tts != null) tts.stop();
         if (navCard != null) navCard.setVisibility(View.GONE);
@@ -2086,6 +2243,12 @@ public class NavActivity extends Activity {
     @Override
     protected void onDestroy() {
         routeCancel.set(true);
+        // Stop observing the session, but do NOT stop the service - navigation must keep running
+        // (and speaking) after this screen is left.
+        try {
+            NavSession.removeListener(navListener);
+        } catch (Throwable ignored) {
+        }
         try {
             if (tts != null) tts.shutdown();
         } catch (Throwable ignored) {

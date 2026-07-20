@@ -115,6 +115,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        // Observe navigation and mirror the current state to the dashboard banner immediately.
+        NavSession.addListener(navListener);
+        navListener.onNavState(NavSession.state());
         // First time we resume with BT permission available, reconnect to the remembered scooter.
         if (!autoConnectTried) {
             boolean btOk = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
@@ -185,6 +188,25 @@ public class MainActivity extends Activity {
             }
         });
     }
+
+    /** Push each navigation guidance snapshot to the WebView (window.__onNav) for the dashboard banner. */
+    private final NavSession.Listener navListener = new NavSession.Listener() {
+        @Override
+        public void onNavState(NavSession.State s) {
+            try {
+                org.json.JSONObject o = new org.json.JSONObject();
+                o.put("active", s.active);
+                o.put("arrived", s.arrived);
+                o.put("offRoute", s.offRoute);
+                o.put("turnText", s.turnText);
+                o.put("turnArrow", s.turnArrow);
+                o.put("distToTurnM", s.distToTurnM);
+                o.put("remainingM", s.remainingM);
+                runJs("(function(){try{if(window.__onNav)window.__onNav(" + o + ");}catch(e){}})();");
+            } catch (Throwable ignored) {
+            }
+        }
+    };
 
     private final BleManager.Listener bleListener = new BleManager.Listener() {
         @Override
@@ -382,6 +404,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         try {
+            NavSession.removeListener(navListener);
+        } catch (Throwable ignored) {
+        }
+        try {
             if (ble != null) ble.shutdown();
         } catch (Throwable ignored) {
         }
@@ -415,6 +441,17 @@ public class MainActivity extends Activity {
      * Every method is null/exception-safe - nothing throws across the bridge.
      */
     private class LbBridge {
+
+        /** End the active turn-by-turn navigation session (stops the foreground service). */
+        @JavascriptInterface
+        public void endNav() {
+            try {
+                Log.i(TAG, "LB.endNav()");
+                NavigationService.stop(MainActivity.this);
+            } catch (Throwable t) {
+                Log.e(TAG, "endNav failed", t);
+            }
+        }
 
         @JavascriptInterface
         public void scan() {

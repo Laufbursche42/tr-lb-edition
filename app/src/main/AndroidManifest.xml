@@ -24,6 +24,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
@@ -77,6 +78,14 @@
             android:name="com.lb.edition.RideLoggerService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice"/>
+
+        <!-- Foreground service that owns an active turn-by-turn navigation session (GPS + voice
+             guidance) so navigation survives leaving the map screen and keeps announcing on the
+             dashboard. Started only internally by NavActivity; stopped by the user (End). -->
+        <service
+            android:name=".NavigationService"
+            android:exported="false"
+            android:foregroundServiceType="location"/>
 
         <!-- Screen streaming module (package com.lb.srt).
              exported=false: launched only internally via an explicit Intent from MainActivity

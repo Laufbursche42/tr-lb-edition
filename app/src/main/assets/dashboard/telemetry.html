@@ -954,7 +954,33 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
   body.model-manual #model-manual-note { display: block; }
   body.is-other .fighter-only, body.is-tetra .fighter-only { display: none !important; }
   body.is-tetra #settings-sheet .settings-group { display: none !important; }
+
+  /* Draggable dashboard navigation banner (bottom, low profile). Fed by window.__onNav. */
+  #nav-banner { position: fixed; left: 8px; right: 8px; bottom: 12px; z-index: 950;
+    display: none; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 12px;
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+    box-shadow: 0 4px 16px rgba(0,0,0,.35); touch-action: none; user-select: none;
+    -webkit-user-select: none; cursor: grab; }
+  #nav-arrow { font-size: 24px; line-height: 1; color: #2FA0EB; flex: 0 0 auto; }
+  #nav-texts { flex: 1 1 auto; min-width: 0; }
+  #nav-turn { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #nav-sub { font-size: 11px; color: var(--label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #nav-dist { font-weight: 700; font-size: 16px; color: #2FA0EB; flex: 0 0 auto; }
+  #nav-end { flex: 0 0 auto; width: 28px; height: 28px; border: none; border-radius: 8px;
+    background: var(--danger); color: #fff; font-size: 14px; line-height: 28px; text-align: center;
+    cursor: pointer; padding: 0; }
 </style>
+
+<!-- Draggable turn-by-turn banner on the dashboard (shown while a navigation session is active) -->
+<div id="nav-banner">
+  <span id="nav-arrow">↑</span>
+  <div id="nav-texts">
+    <div id="nav-turn">-</div>
+    <div id="nav-sub"></div>
+  </div>
+  <span id="nav-dist"></span>
+  <button type="button" id="nav-end" aria-label="End navigation">✕</button>
+</div>
 
 <!-- ── Settings Overlay ────────────────────────────── -->
 <div id="settings-overlay"></div>
@@ -1850,7 +1876,7 @@ const SETTINGS_HELP = {
   "disp-mph": { title: "Unit: mph (app)", text: "Shows speed and distance IN THIS APP in mph instead of km/h. This is the app's display unit only; it does not change the scooter's own display (see Scooter settings → 'Unit: miles' for that)." },
   "disp-fullscreen": { title: "Fullscreen", text: "Hides the Android status bar (battery, clock, notifications) for an immersive view. Turn it off to keep the status bar visible." },
   "motor-mode": { title: "Motor mode", text: "Selects which motor(s) drive: Dual (both), Rear only, or Front only. Single-motor saves energy; Dual gives the most power and traction. This is written to the controller immediately when you tap it." },
-  "gps-auto": { title: "Auto-track rides", text: "When on, a GPS-tracked ride starts automatically once the scooter has moved about 20 m, and stops when the scooter disconnects or powers off. GPS runs only during a ride, not while parked. You can also stop a ride by hand with the Stop button." },
+  "gps-auto": { title: "Auto-track rides", text: "The live GPS speed on the main screen always runs while you are connected. This switch only controls automatic ride RECORDING: when on, a ride starts recording once the scooter has moved about 20 m and stops when it disconnects or you press Stop." },
   "gps-interval": { title: "GPS interval", text: "How often a GPS point is stored for the track. A larger interval saves battery and storage; a smaller one records a more detailed route." },
   "debug-mode": { title: "Debug mode", text: "Turns on persistent in-app logging (a red banner shows while it is active). Use 'Export debug logs' to share the log if something goes wrong - no PC or adb needed." },
   "gear-profile": { title: "Gear / assist profile", text: "Selects which gear you are editing below. On eKFV units the internal gears 2, 3 and 4 are shown as 1, 2 and 3 on the scooter's own display. Each gear stores its own power limit, recuperation and start levels, so you can make e.g. one gear gentle and another sporty. IMPORTANT: if a gear's values are missing here, switch through all gears once on the scooter - the firmware only ever sends the CURRENTLY active gear to the app, so each gear has to be active once to be read. Values are read live and are NOT stored on the phone (stale values must never be written back). Edits apply to the selected gear only and are written when you press Save gear." },
@@ -2098,8 +2124,10 @@ function tickBLE() {
 
 function onBLEConnectionChange(nowConnected) {
   if (nowConnected) {
-    // Fresh link: begin "waiting for movement". The ride arms itself (maybeArmRide) once the
-    // scooter has travelled ARM_DISTANCE_M. No GPS runs until then.
+    // Live GPS speed on the main screen runs the WHOLE time you are connected - it is independent
+    // of ride recording. The ride itself only arms (starts recording points) once the scooter has
+    // actually travelled ARM_DISTANCE_M (maybeArmRide).
+    startGPSWatch();
     state.armDistM = 0;
     state.armLastTs = null;
     state.rideStopped = false;
@@ -2162,7 +2190,7 @@ function startRide() {
     points: []
   };
   state.routes = loadRoutes();
-  if (state.gpsAutoStart) startGPSWatch();   // GPS runs only for the duration of the ride
+  startGPSWatch();   // ensure GPS is running (no-op if already active from the connect event)
   clearInterval(state.rideTimer);
   state.rideTimer = setInterval(updateRideUI, 1000);
   clearInterval(state.saveTimer);
@@ -2183,7 +2211,7 @@ function finalizeRide() {
   state.currentRide = null;
   clearInterval(state.rideTimer);
   clearInterval(state.saveTimer);
-  stopGPSWatch();          // GPS is tied to the ride: stop it when the ride ends
+  // GPS keeps running while connected (live speed on the main screen); it stops only on disconnect.
   renderRoutes();
   updateRideUI();
 }
@@ -3779,6 +3807,68 @@ window.__onOtaProgress = function(pArg) {
   const ph = document.getElementById('fw-phase'); if (ph && p.phase) ph.textContent = p.phase;
 };
 
+// ── Dashboard navigation banner (fed by MainActivity via NavSession) ──
+window.__onNav = function(o) {
+  try {
+    const b = document.getElementById('nav-banner');
+    if (!b) return;
+    if (!o || !o.active) { b.style.display = 'none'; return; }
+    b.style.display = 'flex';
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('nav-arrow', o.turnArrow || '↑');
+    set('nav-turn', o.offRoute ? 'Recalculating…' : (o.turnText || '-'));
+    set('nav-dist', o.offRoute ? '' : navFmtM(o.distToTurnM));
+    set('nav-sub', o.offRoute ? 'Off route' : (navFmtM(o.remainingM) + ' to destination'));
+  } catch (e) {}
+};
+
+function navFmtM(m) {
+  m = +m || 0;
+  return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km';
+}
+
+// Make the nav banner draggable (position persisted); the End button stops navigation via the bridge.
+function initNavBanner() {
+  const b = document.getElementById('nav-banner');
+  if (!b) return;
+  const end = document.getElementById('nav-end');
+  if (end) end.addEventListener('click', (e) => {
+    e.stopPropagation();
+    try { if (typeof LB !== 'undefined' && LB.endNav) LB.endNav(); } catch (err) {}
+  });
+  const KEY = 'lb_nav_banner_pos';
+  try {
+    const p = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (p && typeof p.left === 'number' && typeof p.top === 'number') {
+      b.style.left = p.left + 'px'; b.style.top = p.top + 'px';
+      b.style.right = 'auto'; b.style.bottom = 'auto';
+    }
+  } catch (e) {}
+  let drag = null;
+  b.addEventListener('pointerdown', (e) => {
+    if (e.target && e.target.id === 'nav-end') return;
+    const r = b.getBoundingClientRect();
+    b.style.width = r.width + 'px';
+    b.style.left = r.left + 'px'; b.style.top = r.top + 'px';
+    b.style.right = 'auto'; b.style.bottom = 'auto';
+    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    try { b.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  b.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const w = b.offsetWidth, h = b.offsetHeight;
+    const left = Math.max(4, Math.min(e.clientX - drag.dx, window.innerWidth - w - 4));
+    const top = Math.max(4, Math.min(e.clientY - drag.dy, window.innerHeight - h - 4));
+    b.style.left = left + 'px'; b.style.top = top + 'px';
+  });
+  const drop = () => {
+    if (!drag) return; drag = null;
+    try { localStorage.setItem(KEY, JSON.stringify({ left: parseFloat(b.style.left), top: parseFloat(b.style.top) })); } catch (e) {}
+  };
+  b.addEventListener('pointerup', drop);
+  b.addEventListener('pointercancel', drop);
+}
+
 window.__onOtaState = function(sArg) {
   let s = sArg;
   try { if (typeof sArg === 'string') s = JSON.parse(sArg); } catch (e) { return; }
@@ -4271,8 +4361,8 @@ function wireEvents() {
     state.gpsAutoStart = e.target.checked;
     storage.set('lb_gps_auto', state.gpsAutoStart ? 'on' : 'off');
     if (!state.gpsAutoStart) {
-      // Turning ride auto-tracking off stops any running ride + GPS right away.
-      if (state.currentRide) finalizeRide(); else stopGPSWatch();
+      // Turning auto-tracking off stops the current RECORDING only - the live GPS speed keeps running.
+      if (state.currentRide) finalizeRide();
       state.armDistM = 0;
     }
   });
@@ -4383,6 +4473,7 @@ function init() {
   populateModelSelect();
   recoverStuckRides();
   renderRoutes();
+  initNavBanner();
 
   // Start BLE polling
   tickBLE();
@@ -4398,11 +4489,12 @@ function init() {
   }, 1500);
 
   // Check initial BLE state. Do NOT auto-start GPS or a ride here - a ride arms itself only after
-  // ~20 m of real movement (maybeArmRide), and GPS starts with the ride.
+  // ~20 m of real movement (maybeArmRide). GPS speed, however, starts right away when connected.
   const raw = storage.get('lb_live_data');
   const data = parseBLE(raw);
   if (data && isFresh(data.ts)) {
     state.bleConnected = true;
+    startGPSWatch();   // live GPS speed on the main screen whenever connected
     state.armDistM = 0;
     state.armLastTs = null;
     state.rideStopped = false;
