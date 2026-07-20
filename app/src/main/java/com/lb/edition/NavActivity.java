@@ -18,6 +18,8 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -50,6 +52,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -571,7 +574,7 @@ public class NavActivity extends Activity {
         startRow.setPadding(p, p, p, 0);
 
         final EditText start = new EditText(this);
-        start.setHint("Start: lat, lon (empty = current position)");
+        start.setHint("Start: address or lat, lon (empty = current position)");
         start.setTextColor(cText);
         start.setHintTextColor(cMuted);
         start.setSingleLine(true);
@@ -592,7 +595,7 @@ public class NavActivity extends Activity {
         destRow.setPadding(p, p, p, 0);
 
         final EditText dest = new EditText(this);
-        dest.setHint("Destination: lat, lon");
+        dest.setHint("Destination: address or lat, lon");
         dest.setTextColor(cText);
         dest.setHintTextColor(cMuted);
         dest.setSingleLine(true);
@@ -618,25 +621,35 @@ public class NavActivity extends Activity {
         Button route = segButton("Route");
         styleSeg(route, false);
         route.setOnClickListener(v -> {
-            // Start: empty means "current GPS position"; otherwise it must parse as lat, lon.
-            String sTxt = start.getText().toString().trim();
-            if (sTxt.isEmpty()) {
-                startPoint = null;
-            } else {
-                LatLong s = parseLatLon(sTxt);
-                if (s == null) {
-                    toast("Enter start as lat, lon, or leave it empty for your current position");
-                    return;
-                }
-                startPoint = s;
-            }
-            LatLong d = parseLatLon(dest.getText().toString());
-            if (d != null) setDestination(d, false);
-            if (destination == null) {
-                toast("Enter a destination (lat, lon) or long-press the map");
+            // Both fields accept an ADDRESS or "lat, lon". Start empty = current GPS position.
+            final String sTxt = start.getText().toString().trim();
+            final String dTxt = dest.getText().toString().trim();
+            if (dTxt.isEmpty()) {
+                toast("Enter a destination (address or lat, lon) or long-press the map");
                 return;
             }
-            requestRoute();
+            setBanner("Finding places…");
+            resolvePlace(dTxt, d -> {
+                if (d == null) {
+                    setBanner("Destination not found.");
+                    return;
+                }
+                setDestination(d, false);
+                if (sTxt.isEmpty()) {
+                    startPoint = null;
+                    requestRoute();
+                } else {
+                    resolvePlace(sTxt, s -> {
+                        if (s == null) {
+                            toast("Start not found - using your current position");
+                            startPoint = null;
+                        } else {
+                            startPoint = s;
+                        }
+                        requestRoute();
+                    });
+                }
+            });
         });
         actionRow.addView(route);
 
@@ -2167,6 +2180,78 @@ public class NavActivity extends Activity {
         g.setSize(size, size);
         g.setBounds(0, 0, size, size);
         return AndroidGraphicFactory.convertToBitmap(g);
+    }
+
+    /**
+     * Resolve free text to a point: "lat, lon" is parsed directly; anything else is geocoded via the
+     * device {@link Geocoder} (backed by Google Play Services on most phones, so it needs internet for
+     * the address case). Calls back on the UI thread with the point, or null (with a toast) on failure.
+     */
+    @SuppressWarnings("deprecation")   // getFromLocationName(String,int) is the only sync API below 33
+    private void resolvePlace(String text, Consumer<LatLong> cb) {
+        if (text == null || text.trim().isEmpty()) {
+            cb.accept(null);
+            return;
+        }
+        LatLong direct = parseLatLon(text);
+        if (direct != null) {   // already coordinates - no geocoding needed
+            cb.accept(direct);
+            return;
+        }
+        if (!Geocoder.isPresent()) {
+            toast("Address search is not available on this device");
+            cb.accept(null);
+            return;
+        }
+        final String q = text.trim();
+        final Geocoder geo = new Geocoder(this, Locale.getDefault());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            try {
+                geo.getFromLocationName(q, 1, new Geocoder.GeocodeListener() {
+                    @Override
+                    public void onGeocode(List<Address> results) {
+                        ui.post(() -> {
+                            LatLong p = firstPoint(results);
+                            if (p == null) toast("Address not found");
+                            cb.accept(p);
+                        });
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        ui.post(() -> {
+                            toast("Address search failed (no internet?)");
+                            cb.accept(null);
+                        });
+                    }
+                });
+            } catch (Throwable t) {
+                Log.w(TAG, "geocode failed", t);
+                cb.accept(null);
+            }
+        } else {
+            worker.execute(() -> {
+                List<Address> results = null;
+                try {
+                    results = geo.getFromLocationName(q, 1);
+                } catch (Throwable t) {
+                    Log.w(TAG, "geocode failed", t);
+                }
+                final List<Address> r = results;
+                ui.post(() -> {
+                    LatLong p = firstPoint(r);
+                    if (p == null) toast("Address not found (no internet?)");
+                    cb.accept(p);
+                });
+            });
+        }
+    }
+
+    private static LatLong firstPoint(List<Address> results) {
+        if (results == null || results.isEmpty()) return null;
+        Address a = results.get(0);
+        if (!a.hasLatitude() || !a.hasLongitude()) return null;
+        return new LatLong(a.getLatitude(), a.getLongitude());
     }
 
     private static LatLong parseLatLon(String s) {
