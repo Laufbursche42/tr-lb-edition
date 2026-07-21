@@ -792,10 +792,39 @@ final class BleManager {
                 if (o.has("atMode")) mode = 8;
                 else if (o.has("isSmart")) mode = 5;
             }
-            enqueueWrite(CommandBuilder.sendSettingCode(settings, mode, 1));
+            // The wheel diameter is global to the rider, but the VCU stores it per gear (a mode-2 0x18
+            // frame is memcpy'd into config slot ARR[a[3]]). Writing one gear leaves the others with a
+            // stale wheel, and the live speed uses the ACTIVE gear's slot - so the same scooter reads a
+            // different speed per gear. On a wheel change, push it into every gear slot instead of one.
+            if (o != null && o.has("wheel")) {
+                writeWheelAllGears();
+            } else {
+                enqueueWrite(CommandBuilder.sendSettingCode(settings, mode, 1));
+            }
         } catch (Throwable t) {
             Log.e(TAG, "sendSetting failed", t);
         }
+    }
+
+    /**
+     * Write the current maintained config into EVERY gear slot (0..5), so the (global) wheel diameter
+     * carried in a[6] of every 0x18 frame lands in all per-gear slots and no gear keeps a stale wheel.
+     * The current gear is written LAST so the runtime the VCU re-applies after each write settles on
+     * the gear the rider is actually on. Per-gear speed/current ride along from the maintained state
+     * (neither app caches all gears' values, so this necessarily makes them uniform - matching the
+     * single-value model and the user's intent that the wheel is the same on every gear).
+     */
+    private void writeWheelAllGears() {
+        int cur = settings.gear & 0xFF;
+        for (int g = 0; g <= 5; g++) {
+            if (g == cur) continue;
+            enqueueWrite(CommandBuilder.sendGearSetting(settings, g, settings.assistSpeedLimit,
+                    settings.eabsLevel, settings.fStartLevel, settings.rStartLevel,
+                    settings.fCurrent, settings.rCurrent));
+        }
+        enqueueWrite(CommandBuilder.sendGearSetting(settings, cur, settings.assistSpeedLimit,
+                settings.eabsLevel, settings.fStartLevel, settings.rStartLevel,
+                settings.fCurrent, settings.rCurrent));
     }
 
     /** mode: 0 = dual, 1 = rear-only, 2 = front-only (BLE_PROTOCOL §4). */

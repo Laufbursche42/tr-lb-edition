@@ -148,6 +148,7 @@ final class FirmwarePatcher {
     private static final int WD_VAR    = 0x2000029D;   // WheelDiameter RAM var (speed formula 287*WD)
     private static final int WD_MIRROR = 0x20001A28;   // EEPROM settings mirror (WD at +3)
     private static final int WD_ASSIST = 0x200002A5;   // displaced-instr target (record[6] -> here)
+    private static final int WD_FLAG   = 0x2000030C;   // speed-clamp/lock flag (1 = locked/FIN=TDE, 0 = open)
     private static final int WD_SAVE   = 0x0801700C;   // native save dispatcher (r0 = block idx; 1 = mirror block)
     // Boot clobber: boot-load reads the persisted wheel into the WD var, then unconditionally overwrites
     // it with 100 (10.0"). NOP that store so the persisted value survives a reboot. (Disasm-verified.)
@@ -196,29 +197,36 @@ final class FirmwarePatcher {
         for (int i = 0; i < footer.length; i++) wr(footerAddr + i, footer[i]);
     }
 
-    /** 0x30-byte app-path cave: record[4] (the app's cmd-0x18 wheel) -> WD var; if changed, write the
-     *  EEPROM mirror (+3) and call the native save (r0=1). Then redo the 2 displaced instructions
-     *  (ldrb r0,[r0,#6]; ldr r1,=0x200002A5) and return. Byte layout disassembly-verified. */
+    /** 0x3C-byte app-path cave WITH a lock-gate. r2 = record[4] (the app's cmd-0x18 wheel). If the lock
+     *  flag 0x2000030C != 0 (locked / FIN=TDE) force r2 = 100 (10.0"), so the wheel is ALWAYS 10 when
+     *  locked - independent of any stale per-gear record the loop drags in; only when open (flag 0) does
+     *  the user's wheel take. Then WD = r2, and if changed write the EEPROM mirror (+3) + native save
+     *  (r0=1). Finally redo the 2 displaced instructions (ldrb r0,[r0,#6]; ldr r1,=0x200002A5) and
+     *  return. Fixes the intermittent "unlock = 15 km/h" bug (a stale per-gear wheel leaking into WD).
+     *  Byte layout disassembly-verified (capstone). */
     private int[] buildWdCave(int cave) {
-        int[] head = {                                            // +0x00..0x13
-            0x02, 0x79, 0x08, 0x49, 0x0b, 0x78, 0x0a, 0x70,       // ldrb r2,[r0,#4]; ldr WD_VAR; ldrb r3,[r1]; strb r2,[r1]
-            0x9a, 0x42, 0x06, 0xd0, 0x06, 0x49, 0xca, 0x70,       // cmp r2,r3; beq redo; ldr WD_MIRROR; strb r2,[r1,#3]
-            0x01, 0xb5, 0x01, 0x20,                               // push {r0,lr}; movs r0,#1
+        int[] head = {                                            // +0x00..0x1B
+            0x02, 0x79, 0x0A, 0x49, 0x09, 0x78, 0x01, 0xB1,       // ldrb r2,[r0,#4]; ldr WD_FLAG; ldrb r1,[r1]; cbz r1,+0x0A
+            0x64, 0x22,                                           // movs r2,#0x64  (locked -> wheel 100 = 10.0")
+            0x09, 0x49, 0x0B, 0x78, 0x0A, 0x70,                   // ldr WD_VAR; ldrb r3,[r1]; strb r2,[r1]
+            0x9A, 0x42, 0x06, 0xD0, 0x07, 0x49, 0xCA, 0x70,       // cmp r2,r3; beq redo; ldr WD_MIRROR; strb r2,[r1,#3]
+            0x01, 0xB5, 0x01, 0x20,                               // push {r0,lr}; movs r0,#1
         };
-        int[] mid = {                                             // +0x18..0x1D
-            0x03, 0xbc,                                           // pop {r0,r1}
-            0x80, 0x79, 0x03, 0x49,                               // ldrb r0,[r0,#6]; ldr WD_ASSIST  (redo displaced)
+        int[] mid = {                                             // +0x20..0x25
+            0x03, 0xBC,                                           // pop {r0,r1}
+            0x80, 0x79, 0x04, 0x49,                               // ldrb r0,[r0,#6]; ldr WD_ASSIST  (redo displaced)
         };
-        int[] out = new int[0x30];
+        int[] out = new int[0x3C];
         int p = put(out, 0, head);                                // +0x00
-        p = put(out, p, encBranch(cave + 0x14, WD_SAVE, true));   // +0x14 bl WD_SAVE
-        p = put(out, p, mid);                                     // +0x18
-        p = put(out, p, encBranch(cave + 0x1E, WD_RET, false));   // +0x1E b.w WD_RET
-        p = put(out, p, new int[]{0x00, 0xBF});                   // +0x22 nop (align literals)
-        p = put(out, p, le32(WD_VAR));                            // +0x24 literal
-        p = put(out, p, le32(WD_MIRROR));                         // +0x28 literal
-        p = put(out, p, le32(WD_ASSIST));                         // +0x2C literal
-        if (p != 0x30) throw new RuntimeException("cave size " + p);
+        p = put(out, p, encBranch(cave + 0x1C, WD_SAVE, true));   // +0x1C bl WD_SAVE
+        p = put(out, p, mid);                                     // +0x20
+        p = put(out, p, encBranch(cave + 0x26, WD_RET, false));   // +0x26 b.w WD_RET
+        p = put(out, p, new int[]{0x00, 0xBF});                   // +0x2A nop (align literals)
+        p = put(out, p, le32(WD_FLAG));                           // +0x2C literal
+        p = put(out, p, le32(WD_VAR));                            // +0x30 literal
+        p = put(out, p, le32(WD_MIRROR));                         // +0x34 literal
+        p = put(out, p, le32(WD_ASSIST));                         // +0x38 literal
+        if (p != 0x3C) throw new RuntimeException("cave size " + p);
         return out;
     }
 
