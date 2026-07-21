@@ -1444,6 +1444,13 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       foreground (the screen stays on), and do not turn the scooter off. If the flash is interrupted
       the IVCU stays in update mode and can simply be flashed again - it is not bricked. Only
       flash a .hex that matches your IVCU.
+      <br><br>
+      <b>Reset the display wheel to 10 before you start.</b> If you ever set the wheel size in the
+      scooter's own display menu (P-settings) to anything other than 10, change it back to 10 on the
+      scooter now, then flash. This firmware never changes the display's stored wheel, so the display
+      keeps showing that number - and a roadside check reads the wheel there. You set your real wheel
+      size in this app instead: it applies only while unlocked and is forced back to 10 when you lock,
+      so the display always reads 10.
     </div>
 
     <div id="fw-ver2-note" class="fw-warn" style="display:none;border-color:var(--ble);background:color-mix(in srgb, var(--ble) 12%, transparent)">
@@ -1894,7 +1901,7 @@ const SETTINGS_HELP = {
   "ss-rcur": { title: "Rear current limit", text: "Read-only - shows the REAR motor current limit of the currently active gear. It is a per-gear value: to change it, edit the rear current in the per-gear editor and Save there. On eKFV units it stays 0 (the motor controller reports and enforces 0)." },
   "ss-abs": { title: "ABS", text: "Enables the controller's anti-lock braking behavior: it modulates the electronic brake to reduce wheel lock-up during hard braking. (Different from EABS, which is the recuperation strength.)" },
   "ss-packvolt": { title: "Pack voltage (nominal)", text: "The battery's nominal voltage (e.g. 60 V). The controller uses it in its power/speed calculations - set it to match your actual battery, or the math will be off." },
-  "ss-wheel": { title: "Wheel size", text: "Wheel diameter in inches. The controller converts motor RPM to speed and distance with this, so set it to your real tire size or the speedometer and odometer will read wrong.\n\nSet it HERE, not in the original app. The controller stores the wheel size PER GEAR, and the original Teverun app writes it to only one gear - so the other gears keep an old value and your speed changes when you shift gear (this is the cause of the \"unlocked = only 15 km/h\" reports). This app writes the wheel size into EVERY gear slot, so it stays consistent across all gears.\n\nNOTE (eKFV): while locked the wheel is always forced back to 10.0 in firmware; a custom size only takes effect when the scooter is open." },
+  "ss-wheel": { title: "Wheel size", text: "Wheel diameter in inches. The controller converts motor RPM to speed and distance with this, so set it to your real tire size or the speedometer and odometer will read wrong.\n\nSet it HERE, not in the original app. The controller stores the wheel size PER GEAR, and the original Teverun app writes it to only one gear - so the other gears keep an old value and your speed changes when you shift gear (this is the cause of the \"unlocked = only 15 km/h\" reports). This app writes the wheel size into EVERY gear slot, so it stays consistent across all gears.\n\nThe scooter's own display menu (P-settings) has a SEPARATE wheel value that this firmware never changes. Before flashing, set that display value back to 10 if you had changed it - the display keeps showing it and a roadside check reads the wheel there. Set your real size only here in the app.\n\nNOTE (eKFV): while locked the wheel is always forced back to 10.0 in firmware; a custom size only takes effect when the scooter is open, so the display always reads 10." },
   "ss-fstart": { title: "Front start level", text: "Global launch aggressiveness of the FRONT motor from a standstill. Higher = punchier; lower = smoother." },
   "ss-rstart": { title: "Rear start level", text: "Global launch aggressiveness of the REAR motor from a standstill. Higher = punchier; lower = smoother." },
   "ss-eabs": { title: "EABS level", text: "Global strength of the electronic regenerative brake (recuperation): how hard the motor brakes and recharges the battery when you let off the throttle. 0 = coast." },
