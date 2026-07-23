@@ -792,39 +792,52 @@ final class BleManager {
                 if (o.has("atMode")) mode = 8;
                 else if (o.has("isSmart")) mode = 5;
             }
-            // The wheel diameter is global to the rider, but the VCU stores it per gear (a mode-2 0x18
-            // frame is memcpy'd into config slot ARR[a[3]]). Writing one gear leaves the others with a
-            // stale wheel, and the live speed uses the ACTIVE gear's slot - so the same scooter reads a
-            // different speed per gear. On a wheel change, push it into every gear slot instead of one.
-            if (o != null && o.has("wheel")) {
-                writeWheelAllGears();
-            } else {
-                enqueueWrite(CommandBuilder.sendSettingCode(settings, mode, 1));
+            // Wheel + cruise fan out to EVERY gear (each keeps its own per-gear values), mirroring the
+            // web app: a wheel/cruise change must apply across all gears without disturbing another
+            // gear's settings. Every OTHER setting (speed/current per gear, modes) writes the active
+            // gear only. Detected in Java so the dashboard can keep calling LB.sendSetting({wheel/cruise}).
+            if (o != null && (o.has("wheel") || o.has("cruise"))) {
+                writeWheelCruiseAllGears();
+                return;
             }
+            // Single write to the ACTIVE gear only - round-trips that gear's own per-gear values and
+            // applies the global wheel + cruise carried in the same frame. Never touches other gears,
+            // so per-gear settings are never overwritten across gears.
+            enqueueWrite(CommandBuilder.sendSettingCode(settings, mode, settings.gear & 0xFF));
         } catch (Throwable t) {
             Log.e(TAG, "sendSetting failed", t);
         }
     }
 
     /**
-     * Write the current maintained config into EVERY gear slot (0..5), so the (global) wheel diameter
-     * carried in a[6] of every 0x18 frame lands in all per-gear slots and no gear keeps a stale wheel.
-     * The current gear is written LAST so the runtime the VCU re-applies after each write settles on
-     * the gear the rider is actually on. Per-gear speed/current ride along from the maintained state
-     * (neither app caches all gears' values, so this necessarily makes them uniform - matching the
-     * single-value model and the user's intent that the wheel is the same on every gear).
+     * Write the GLOBAL wheel + cruise into EVERY gear we have telemetry for, carrying each gear's OWN
+     * cached per-gear values (speed/current/assist) so ONLY wheel + cruise change and every gear keeps
+     * its other per-gear settings. The active gear is written last. Gears never seen this session are
+     * skipped (never overwritten with wrong data). Mirrors the web app's writeWheelCruiseAllGears.
      */
-    private void writeWheelAllGears() {
-        int cur = settings.gear & 0xFF;
-        for (int g = 0; g <= 5; g++) {
-            if (g == cur) continue;
-            enqueueWrite(CommandBuilder.sendGearSetting(settings, g, settings.assistSpeedLimit,
-                    settings.eabsLevel, settings.fStartLevel, settings.rStartLevel,
-                    settings.fCurrent, settings.rCurrent));
+    void writeWheelCruiseAllGears() {
+        if (!settingsReady()) return;
+        try {
+            synchronized (settings) {
+                int cur = settings.gear & 0xFF;
+                // non-active gears first, active gear last
+                for (Map.Entry<Integer, int[]> e : settings.gearCache.entrySet()) {
+                    Integer g = e.getKey();
+                    if (g == null || (g & 0xFF) == cur) continue;
+                    int[] c = e.getValue();
+                    if (c != null) enqueueWrite(settings.gearFrameCached(g, c));
+                }
+                int[] cc = settings.gearCache.get(cur);
+                if (cc == null) {
+                    // active gear not cached yet (no 55 71 for it) - use the current maintained values
+                    cc = new int[]{settings.assistSpeedLimit, settings.fCurrent, settings.rCurrent,
+                            settings.eabsLevel, settings.fStartLevel, settings.rStartLevel};
+                }
+                enqueueWrite(settings.gearFrameCached(cur, cc));
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "writeWheelCruiseAllGears failed", t);
         }
-        enqueueWrite(CommandBuilder.sendGearSetting(settings, cur, settings.assistSpeedLimit,
-                settings.eabsLevel, settings.fStartLevel, settings.rStartLevel,
-                settings.fCurrent, settings.rCurrent));
     }
 
     /** mode: 0 = dual, 1 = rear-only, 2 = front-only (BLE_PROTOCOL §4). */
@@ -878,6 +891,19 @@ final class BleManager {
             enqueueWrite(CommandBuilder.setDeviceName(name));
         } catch (Throwable t) {
             Log.e(TAG, "setBleName failed", t);
+        }
+    }
+
+    /**
+     * Set the VCU speed lock directly via cmd 0x1B (TESTLOCK firmware), instead of renaming the FIN.
+     * {@code unlocked} = true unlocks (val 1), false locks (val 0). The real lock state comes back
+     * streamed in 55 71 t[2] (parsed into {@code vcuUnlock}). Null/exception-safe.
+     */
+    void setLock(boolean unlocked) {
+        try {
+            enqueueWrite(CommandBuilder.setLockState(unlocked));
+        } catch (Throwable t) {
+            Log.e(TAG, "setLock failed", t);
         }
     }
 

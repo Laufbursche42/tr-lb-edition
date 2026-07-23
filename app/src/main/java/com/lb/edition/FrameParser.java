@@ -40,6 +40,9 @@ final class FrameParser {
     private int rMotorTemp, fMotorTemp;
     private double singleMile, totalMile, enFeedBack;
     private int gear, speedLimit, chargeCounter, customKey;
+    // 55 71 on-wire t[2] speed-lock flag (TESTLOCK firmware): 0 = LOCKED, 1 = UNLOCKED, -1 = unknown
+    // (old firmware that does not stream the byte).
+    private int vcuUnlock = -1;
     private int doubleMotor, rmStatus;
     private int[] systemStatus = new int[8];
     private int[] ecuStatus1 = new int[8];
@@ -207,6 +210,7 @@ final class FrameParser {
     }
 
     private synchronized void parse71(int[] t) {
+        vcuUnlock = u8(t, 2);   // TESTLOCK firmware: 0 = LOCKED, 1 = UNLOCKED
         gear = u8(t, 3);
         rControlStatus = bits(u8(t, 4));
         speedLimit = u8(t, 11);
@@ -308,6 +312,7 @@ final class FrameParser {
             o.put("enFeedBack", round1(enFeedBack));
             o.put("gear", gear);
             o.put("speedLimit", speedLimit);
+            o.put("vcuUnlock", vcuUnlock);   // 55 71 t[2] speed lock: 0=LOCKED, 1=UNLOCKED, -1=unknown
             o.put("chargeCounter", chargeCounter);
             o.put("customKey", customKey);
             o.put("doubleMotor", doubleMotor);

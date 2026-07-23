@@ -1,19 +1,29 @@
 package com.lb.edition;
 
 import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Native port of the Spooonky "web patcher" core (github.com/Spooonky, patcher-core), which is
- * verified on real hardware (DAP-Link, 2026-06-12). Patches Teverun VCU firmware in place and
- * rebuilds the Intel-HEX so {@link OtaEngine} can flash it. The patch addresses/bytes and the
- * combo logic are taken byte-for-byte from the patcher-core profiles ({@code r5_4_19.json},
- * {@code d5_4_14_11.json}) and {@code r5_4_19_features.py}; the ALI path mirrors {@code bin_to_hex.py}.
+ * Builds a flashable Teverun VCU firmware from a bundled stock base HEX and hands the result to
+ * {@link OtaEngine} for flashing. The image produced is the R5.4.19 "TESTLOCK9" design: a direct
+ * BLE speed lock on command 0x1B (the scooter boots LOCKED at 22 km/h and is unlocked / re-locked
+ * live over Bluetooth), plus two optional add-ons - a blinker fix and a speedometer wheel-diameter
+ * fix.
  *
- * Everything is expect-checked before it is written, so the wrong firmware (or an already patched
- * one) can never be silently corrupted.
+ * <p>The patches are applied as an exact byte-diff table against the stock base (see the
+ * {@code AWIVCU_TESTLOCK9_R5_4_19_VERIFY.txt} reference). Three groups:
+ * <ul>
+ *   <li>CORE  - always applied: the boot-lock hook + boot_cave, the two-value clamp caves and the
+ *       cmd-0x1B dispatcher hook, the four r7-clamp bl sites, the FLAG==1 immediate and the
+ *       lock-state injection into the 55 71 telemetry frame. This is the BLE speed lock.</li>
+ *   <li>BLINKER - the R5.4.19 indicator-blink fix at 0x08019610.</li>
+ *   <li>WHEEL   - the speedometer wheel-diameter caves (0x0801DAFC region + the two boot NOPs) that
+ *       let the app's wheel value feed the tacho calibration.</li>
+ * </ul>
+ * Every overwrite is expect-checked against the stock byte first, so the wrong firmware (or an
+ * already-patched one) can never be silently corrupted. After the selected groups are applied the
+ * CRC-16/MODBUS over the app span is recomputed and the proprietary trailer record is rewritten.
  */
 final class FirmwarePatcher {
 
@@ -90,165 +100,111 @@ final class FirmwarePatcher {
 
     private void wr(int addr, int val) { mem.put(addr, val & 0xFF); }
 
-    /** expect-checked multi-byte patch (mirrors patcher-core _wr / the profile 'expected' check). */
-    private void patch(int addr, int[] oldB, int[] newB) {
-        for (int i = 0; i < oldB.length; i++) {
-            int cur = rd(addr + i);
-            if (cur != oldB[i]) {
-                throw new RuntimeException(String.format(
-                        "@0x%08X expected 0x%02X but found 0x%02X (wrong firmware or already patched)",
-                        addr + i, oldB[i], cur));
+    // ─────────────────────────── patch groups ───────────────────────────
+    // Exact byte-diff table (stock R5.4.19 base -> TESTLOCK9). A row is {addr, old, new}: for an
+    // in-place overwrite `old` is the stock bytes (expect-checked before writing); for an APPENDED
+    // region (address past the stock image end 0x0801DAFB) `old` is null and the bytes are just
+    // written. Groups are additive and address-fixed, so any subset combination is self-consistent:
+    // the CORE caves always land at their fixed addresses and the fixed hook branches reach them
+    // whether or not WHEEL/BLINKER are present.
+
+    private static final class P {
+        final int addr; final int[] oldB; final int[] newB;
+        P(int addr, int[] oldB, int[] newB) { this.addr = addr; this.oldB = oldB; this.newB = newB; }
+    }
+    private static P p(int addr, int[] oldB, int[] newB) { return new P(addr, oldB, newB); }
+    private static int[] b(int... v) { return v; }
+
+    // CORE - the direct BLE speed lock (cmd 0x1B). Always applied.
+    private static final P[] CORE = {
+        // boot-lock reset hook -> b.w boot_cave (writes unlockFlag=0 + everUnlocked=0 on every reset)
+        p(0x08007150, b(0x00,0x48,0x00,0x47), b(0x16,0xF0,0x2C,0xBD)),
+        // 55 71 telemetry: inject unlockFlag 0x200002A0 into on-wire byte t[2] so the app reads the
+        // lock state live (0 = LOCKED, 1 = UNLOCKED). Inline over a proven-dead fill loop, no size change.
+        p(0x0800BF5E, b(0x10,0x24,0x06,0xE0,0xFF,0x22,0x0D,0xF1,0x06,0x00,0x61,0x1C,0x42,0x54,0x60,0x1C,0xC4,0xB2,0x10,0x2C,0xF6,0xD3),
+                      b(0x40,0xF2,0xA0,0x20,0xC2,0xF2,0x00,0x00,0x00,0x78,0x0D,0xF1,0x06,0x01,0x08,0x70,0x00,0xBF,0x00,0xBF,0x00,0xBF)),
+        // BLE 0x1B dispatcher hook -> cmpcave (reads the command's value byte into unlockFlag)
+        p(0x0800D9DE, b(0x1F,0x28,0x40,0xD1), b(0x10,0xF0,0xB9,0xB8)),
+        // FLAG==1 immediate (clamp flag stays engaged; the 0x1B lock is what gates speed now)
+        p(0x0800F9D0, b(0x00), b(0x01)),
+        // four r7-clamp bl sites -> clampcave (two-value clamp selected by everUnlocked)
+        p(0x08010058, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0x72,0xFD,0x02,0xE0,0x00,0xBF)),
+        p(0x08010208, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0x9A,0xFC,0x02,0xE0,0x00,0xBF)),
+        p(0x080103B0, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0xC6,0xFB,0x02,0xE0,0x00,0xBF)),
+        p(0x080105D0, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0xB6,0xFA,0x02,0xE0,0x00,0xBF)),
+        // appended cave block @0x0801DB40..0x0801DBCF: clampcave entry + cmpcave 0x1B handler +
+        // newclampcave (two-value 0x15/0x16 by everUnlocked) + arm_cave (everUnlocked latch) +
+        // boot_cave (clears both flags) + literals, then the relocated 8-byte end marker.
+        p(0x0801DB40, null, b(0x18,0xE0,0x00,0x78,0x10,0xB9,0x16,0x2F,0x00,0xDD,0x16,0x27,0x70,0x47,0x00,0xBF,
+                              0xA0,0x02,0x00,0x20,0x1F,0x28,0x09,0xD0,0x1B,0x28,0x01,0xD0,0xEF,0xF7,0x82,0xBF,
+                              0x9D,0xF8,0x06,0x10,0x02,0x48,0x01,0x70,0x00,0xF0,0x16,0xB8,0xEF,0xF7,0x6C,0xBF,
+                              0xA0,0x02,0x00,0x20,0x06,0x48,0x00,0x78,0x48,0xB9,0x06,0x48,0x00,0x78,0x18,0xB1,
+                              0x15,0x2F,0x04,0xDD,0x15,0x27,0x02,0xE0,0x16,0x2F,0x00,0xDD,0x16,0x27,0x70,0x47,
+                              0xA0,0x02,0x00,0x20,0xD0,0x03,0x00,0x20,0x01,0x29,0x02,0xD1,0x01,0x21,0x02,0x48,
+                              0x01,0x70,0xEF,0xF7,0x60,0xBF,0x00,0xBF,0xD0,0x03,0x00,0x20,0x00,0x20,0x03,0x49,
+                              0x08,0x70,0x03,0x49,0x08,0x70,0x03,0x48,0x00,0x47,0x00,0xBF,0xA0,0x02,0x00,0x20,
+                              0xD0,0x03,0x00,0x20,0x7D,0xB8,0x00,0x08,0xA5,0x01,0x19,0x02,0x57,0x19,0x00,0x00)),
+    };
+
+    // BLINKER - the R5.4.19 indicator-blink fix (extra PB5 reset -> NOP).
+    private static final P[] BLINKER = {
+        p(0x08019610, b(0xFF,0xF7,0x90,0xFF), b(0x00,0xBF,0x00,0xBF)),
+    };
+
+    // WHEEL - speedometer wheel-diameter fix: the app's cmd-0x18 wheel value feeds the tacho WD var.
+    private static final P[] WHEEL = {
+        // 0x18 sub-cmd-2 hook -> WD cave (record[4] -> WD var, mirror + native save)
+        p(0x0800D3B0, b(0x80,0x79,0xAE,0x49), b(0x10,0xF0,0xA4,0xBB)),
+        // boot NOP: stop the boot-load overwriting the persisted wheel with 100 (10.0")
+        p(0x0801730E, b(0x08,0x70), b(0x00,0xBF)),
+        // appended WD cave @0x0801DAFC..0x0801DB3F: cave code + literals (incl. the WD-force NOP at
+        // 0x0801DB04) + carried end marker. Sits before the CORE cave block.
+        p(0x0801DAFC, null, b(0x02,0x79,0x0A,0x49,0x09,0x78,0x01,0xB1,0x00,0xBF,0x09,0x49,0x0B,0x78,0x0A,0x70,
+                              0x9A,0x42,0x06,0xD0,0x07,0x49,0xCA,0x70,0x01,0xB5,0x01,0x20,0xF9,0xF7,0x78,0xFA,
+                              0x03,0xBC,0x80,0x79,0x04,0x49,0xEF,0xF7,0x47,0xBC,0x00,0xBF,0x0C,0x03,0x00,0x20,
+                              0x9D,0x02,0x00,0x20,0x28,0x1A,0x00,0x20,0xA5,0x02,0x00,0x20,0xA5,0x01,0x19,0x02,
+                              0x57,0x19,0x00,0x00)),
+    };
+
+    /** Apply one group: expect-check the stock bytes (for in-place rows) then write the new bytes. */
+    private void applyGroup(P[] group, String what) {
+        for (P pr : group) {
+            if (pr.oldB != null) {
+                for (int i = 0; i < pr.oldB.length; i++) {
+                    int cur = rd(pr.addr + i);
+                    if (cur != pr.oldB[i]) {
+                        throw new RuntimeException(String.format(
+                                "%s @0x%08X expected 0x%02X but found 0x%02X (wrong firmware or already patched)",
+                                what, pr.addr + i, pr.oldB[i], cur));
+                    }
+                }
             }
+            for (int i = 0; i < pr.newB.length; i++) wr(pr.addr + i, pr.newB[i]);
         }
-        for (int i = 0; i < newB.length; i++) wr(addr + i, newB[i]);
     }
 
-    // ─────────────────────────── R5.4.19 patches ───────────────────────────
-    // Clamp flag 0x2000030C = (identity=="TDE") OR (display[6]&4). It gates the speed clamp + bit5 (kick)
-    // in the 4 motor builders AND whether the cruise sync-block runs. Flag=0 -> full speed + bit5=0
-    // (kickstart released) + cruise. See teverun/R5419_PATCH_MATRIX.md for the full analysis.
-    private static final int[] MOVS_OLD = {0x16, 0x27}, MOVS_NOP = {0x00, 0xBF};             // movs r7,#0x16 -> nop (D5 only)
-    private static final int[] GATE_FLAG_OLD = {0x72, 0x48}, GATE_FLAG_NEW = {0x0E, 0xE0};   // @0x0800F99C (Gate 1 / TDE identity)
-    private static final int[] GATE2_OLD = {0x01, 0x20}, GATE2_NEW = {0x00, 0x20};           // @0x0800F9C8 (Gate 2 / display bit)
-    private static final int[] BLINKER_OLD = {0xFF, 0xF7, 0x90, 0xFF}, BLINKER_NEW = {0x00, 0xBF, 0x00, 0xBF};
+    /** CORE - the direct BLE speed lock (cmd 0x1B). Always applied for R5.4.19. */
+    void applyCore() { applyGroup(CORE, "core"); }
 
-    /**
-     * "Full unlock" speed mode: pin the clamp flag 0x2000030C to 0 (Gate 1 + Gate 2 off). With the flag
-     * always 0 the four motor builders take their open branch everywhere: full speed, bit5=0 (kickstart
-     * released) AND the cruise sync-block runs clean. So full speed + Kickstart + Cruise all come from
-     * this ONE state - the display still toggles Kickstart/Cruise on/off at runtime. There is no separate
-     * ZeroStart or Cruise patch: they ARE the unlock. (= patcher-core build_zerostart_full.)
-     */
-    void applyR519Unlock() {
-        patch(0x0800F99C, GATE_FLAG_OLD, GATE_FLAG_NEW);   // Gate 1 (TDE identity) branch away -> flag stays 0
-        patch(0x0800F9C8, GATE2_OLD, GATE2_NEW);           // Gate 2 (display bit) -> 0
-    }
+    /** BLINKER fix (R5.4.19). */
+    void applyBlinker() { applyGroup(BLINKER, "blinker"); }
 
-    /** "Live toggle" speed mode: only Gate 2 (display clamp bit) removed, so the FIN identity stays
-     *  the live switch (FIN=TDE -> flag=1 = 22/locked; FIN without TDE -> flag=0 = full + kickstart +
-     *  cruise). Same flag=0 state as Full unlock, just switched live by the FIN instead of pinned. */
-    void applyR519LiveToggle() { patch(0x0800F9C8, GATE2_OLD, GATE2_NEW); }
-
-    /** Blinker-Fix (R5.4.19 only): the extra PB5_RESET @0x08019610 that kills the blink -> NOP. */
-    void applyR519Blinker() { patch(0x08019610, BLINKER_OLD, BLINKER_NEW); }
-
-    // ─────────────────────────── D5.4.14 patches ───────────────────────────
-    /** D5.4.14 speed: NOP the 4 output-clamps so the natural (ALI-like) value is sent. */
-    void applyD5Speed() {
-        patch(0x0800FEEA, new int[]{0x4F, 0xF0, 0x16, 0x08}, new int[]{0xAF, 0xF3, 0x00, 0x80}); // MOV.W -> NOP.W
-        patch(0x0801011A, new int[]{0x4F, 0xF0, 0x16, 0x08}, new int[]{0xAF, 0xF3, 0x00, 0x80});
-        patch(0x080102B0, MOVS_OLD, MOVS_NOP); // movs r7,#0x16 -> nop
-        patch(0x080104B6, MOVS_OLD, MOVS_NOP);
-    }
-
-    // ─────────────────────── WheelDiameter (R5.4.19, code cave) ───────────────────────
-    private static final int WD_HOOK = 0x0800D3B0;     // inside cmd-0x18 sub-cmd-2: the app's wheel = record[4]
-    private static final int[] WD_HOOK_OLD = {0x80, 0x79, 0xAE, 0x49}; // ldrb r0,[r0,#6]; ldr r1,[pc,#0x2b8]
-    private static final int WD_RET = 0x0800D3B4;      // return past the 2 displaced instructions
-    private static final int WD_VAR    = 0x2000029D;   // WheelDiameter RAM var (speed formula 287*WD)
-    private static final int WD_MIRROR = 0x20001A28;   // EEPROM settings mirror (WD at +3)
-    private static final int WD_ASSIST = 0x200002A5;   // displaced-instr target (record[6] -> here)
-    private static final int WD_FLAG   = 0x2000030C;   // speed-clamp/lock flag (1 = locked/FIN=TDE, 0 = open)
-    private static final int WD_SAVE   = 0x0801700C;   // native save dispatcher (r0 = block idx; 1 = mirror block)
-    // Boot clobber: boot-load reads the persisted wheel into the WD var, then unconditionally overwrites
-    // it with 100 (10.0"). NOP that store so the persisted value survives a reboot. (Disasm-verified.)
-    private static final int WD_BOOT = 0x0801730A;
-    private static final int[] WD_BOOT_OLD = {0x64, 0x20, 0x44, 0x49, 0x08, 0x70}; // movs r0,#0x64; ldr r1,=WD; strb r0,[r1]
-    private static final int[] WD_BOOT_NEW = {0x64, 0x20, 0x44, 0x49, 0x00, 0xBF}; // movs r0,#0x64; ldr r1,=WD; nop
-
-    /**
-     * Makes the app's "Wheel size" setting take + PERSIST on R5.4.19 (disassembly-verified). The app sends
-     * the wheel as cmd 0x18 a[6] = record[4], but R5's 0x18 handler silently DROPS record[4] (it was
-     * stripped vs the open ALI build, which keeps it). Two parts, both required:
-     *   1. App-path cave (hook 0x0800D3B0, inside sub-cmd 2 where record[4] is available): record[4] ->
-     *      WD var 0x2000029D, and when changed mirror 0x20001A28+3 + native save 0x0801700C(1) - commits
-     *      to I2C EEPROM with a correct CRC. Cleaner than a display-frame cave: it writes ONLY on the
-     *      user's 0x18 command, so it never fights the display's periodic re-broadcast of its own default.
-     *   2. Boot-clobber NOP (0x0801730A = WD_BOOT, NOPs the strb at +4): the boot-load reads the persisted wheel from the mirror, then
-     *      unconditionally overwrites the WD var with 100 (10.0"). NOP that store so the value survives a
-     *      reboot.
-     * Cave sits at the app end; the 8-byte end marker is carried along. a[6] and the WD var are the same
-     * unit (wheel*10; boot default 100 = 10.0"), so record[4] is copied straight - no scaling.
-     */
-    void applyWheelDiameter() {
-        for (int i = 0; i < WD_HOOK_OLD.length; i++) {
-            if (rd(WD_HOOK + i) != WD_HOOK_OLD[i])
-                throw new RuntimeException("WheelDiameter: hook mismatch (only R5.4.19).");
-        }
-        // Part 2: neutralize the boot clobber that resets WD to 100, so the persisted value survives.
-        patch(WD_BOOT, WD_BOOT_OLD, WD_BOOT_NEW);
-        int preMax = mem.lastKey();
-        int[] footer = new int[8];
-        for (int i = 0; i < 8; i++) footer[i] = rd(preMax - 7 + i);
-
-        int appEnd = preMax + 1;
-        int cave = (appEnd + 3) & ~3;
-        for (int a = appEnd; a < cave; a++) wr(a, 0xFF);
-        int[] caveBytes = buildWdCave(cave);
-        for (int i = 0; i < caveBytes.length; i++) wr(cave + i, caveBytes[i]);
-
-        int[] hookBranch = encBranch(WD_HOOK, cave, false);
-        for (int i = 0; i < hookBranch.length; i++) wr(WD_HOOK + i, hookBranch[i]);
-
-        int tail = mem.lastKey() + 1;
-        int pad = (4 - (tail + 8 - FLASH_BASE) % 4) % 4;
-        for (int i = 0; i < pad; i++) wr(tail + i, 0xFF);
-        int footerAddr = tail + pad;
-        for (int i = 0; i < footer.length; i++) wr(footerAddr + i, footer[i]);
-    }
-
-    /** 0x3C-byte app-path cave WITH a lock-gate. r2 = record[4] (the app's cmd-0x18 wheel). If the lock
-     *  flag 0x2000030C != 0 (locked / FIN=TDE) force r2 = 100 (10.0"), so the wheel is ALWAYS 10 when
-     *  locked - independent of any stale per-gear record the loop drags in; only when open (flag 0) does
-     *  the user's wheel take. Then WD = r2, and if changed write the EEPROM mirror (+3) + native save
-     *  (r0=1). Finally redo the 2 displaced instructions (ldrb r0,[r0,#6]; ldr r1,=0x200002A5) and
-     *  return. Fixes the intermittent "unlock = 15 km/h" bug (a stale per-gear wheel leaking into WD).
-     *  Byte layout disassembly-verified (capstone). */
-    private int[] buildWdCave(int cave) {
-        int[] head = {                                            // +0x00..0x1B
-            0x02, 0x79, 0x0A, 0x49, 0x09, 0x78, 0x01, 0xB1,       // ldrb r2,[r0,#4]; ldr WD_FLAG; ldrb r1,[r1]; cbz r1,+0x0A
-            0x64, 0x22,                                           // movs r2,#0x64  (locked -> wheel 100 = 10.0")
-            0x09, 0x49, 0x0B, 0x78, 0x0A, 0x70,                   // ldr WD_VAR; ldrb r3,[r1]; strb r2,[r1]
-            0x9A, 0x42, 0x06, 0xD0, 0x07, 0x49, 0xCA, 0x70,       // cmp r2,r3; beq redo; ldr WD_MIRROR; strb r2,[r1,#3]
-            0x01, 0xB5, 0x01, 0x20,                               // push {r0,lr}; movs r0,#1
-        };
-        int[] mid = {                                             // +0x20..0x25
-            0x03, 0xBC,                                           // pop {r0,r1}
-            0x80, 0x79, 0x04, 0x49,                               // ldrb r0,[r0,#6]; ldr WD_ASSIST  (redo displaced)
-        };
-        int[] out = new int[0x3C];
-        int p = put(out, 0, head);                                // +0x00
-        p = put(out, p, encBranch(cave + 0x1C, WD_SAVE, true));   // +0x1C bl WD_SAVE
-        p = put(out, p, mid);                                     // +0x20
-        p = put(out, p, encBranch(cave + 0x26, WD_RET, false));   // +0x26 b.w WD_RET
-        p = put(out, p, new int[]{0x00, 0xBF});                   // +0x2A nop (align literals)
-        p = put(out, p, le32(WD_FLAG));                           // +0x2C literal
-        p = put(out, p, le32(WD_VAR));                            // +0x30 literal
-        p = put(out, p, le32(WD_MIRROR));                         // +0x34 literal
-        p = put(out, p, le32(WD_ASSIST));                         // +0x38 literal
-        if (p != 0x3C) throw new RuntimeException("cave size " + p);
-        return out;
-    }
-
-    private static int[] le32(int v) {
-        return new int[]{v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF};
-    }
-
-    /** Thumb-2 B.W (link=false) / BL (link=true), 4 bytes little-endian. */
-    private static int[] encBranch(int pc, int target, boolean link) {
-        int imm = target - (pc + 4);
-        int s = (imm >> 24) & 1, i1 = (imm >> 23) & 1, i2 = (imm >> 22) & 1;
-        int imm10 = (imm >> 12) & 0x3FF, imm11 = (imm >> 1) & 0x7FF;
-        int j1 = 1 - (i1 ^ s), j2 = 1 - (i2 ^ s);
-        int hw1 = 0xF000 | (s << 10) | imm10;
-        int hw2 = (link ? 0xD000 : 0x9000) | (j1 << 13) | (j2 << 11) | imm11;
-        return new int[]{hw1 & 0xFF, (hw1 >> 8) & 0xFF, hw2 & 0xFF, (hw2 >> 8) & 0xFF};
-    }
+    /** WHEEL-diameter (tacho) fix (R5.4.19). */
+    void applyWheel() { applyGroup(WHEEL, "wheel"); }
 
     // ─────────────────────────── HEX output ───────────────────────────
 
+    /** Fill any hole between the first and last address with 0xFF so the app image is one contiguous
+     *  span (matches erased flash). No-op when nothing is missing (e.g. the full blinker+wheel build). */
+    private void seal() {
+        if (mem.isEmpty()) return;
+        int lo = mem.firstKey(), hi = mem.lastKey();
+        for (int a = lo; a <= hi; a++) if (!mem.containsKey(a)) mem.put(a, 0xFF);
+    }
+
     /** Rebuild the flashable Intel-HEX (04 ELA per 64K, 00 data 16B, 05 start, EOF, :07AAA555 CRC16). */
     String buildHex() {
+        seal();
         StringBuilder sb = new StringBuilder();
         ByteArrayOutputStream app = new ByteArrayOutputStream();
         Integer[] addrs = mem.keySet().toArray(new Integer[0]); // sorted
@@ -280,6 +236,7 @@ final class FirmwarePatcher {
     }
 
     int crc16OfApp() {
+        seal();
         ByteArrayOutputStream app = new ByteArrayOutputStream();
         for (Map.Entry<Integer, Integer> e : mem.entrySet()) app.write(e.getValue());
         byte[] b = app.toByteArray();
@@ -314,16 +271,4 @@ final class FirmwarePatcher {
 
     // ─────────────────────────── small helpers ───────────────────────────
     private static int h(String s, int a, int b) { return Integer.parseInt(s.substring(a, b), 16); }
-
-    private static int put(int[] dst, int pos, int[] src) {
-        System.arraycopy(src, 0, dst, pos, src.length);
-        return pos + src.length;
-    }
-
-    /** hex string -> int[] of bytes. */
-    private static int[] u(String hex) {
-        int[] out = new int[hex.length() / 2];
-        for (int i = 0; i < out.length; i++) out[i] = Integer.parseInt(hex.substring(2 * i, 2 * i + 2), 16);
-        return out;
-    }
 }

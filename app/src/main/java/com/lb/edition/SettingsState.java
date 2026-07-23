@@ -47,6 +47,11 @@ final class SettingsState {
 
     volatile boolean received71 = false;
 
+    // Per-gear cache: each gear's OWN per-gear/assist values, filled from every 55 71, so wheel +
+    // cruise can be fanned out to EVERY gear without disturbing that gear's other per-gear settings.
+    // int[] layout: {assistSpeedLimit, fCurrent, rCurrent, eabsLevel, fStartLevel, rStartLevel}.
+    final java.util.Map<Integer, int[]> gearCache = new java.util.HashMap<>();
+
     /** Update the state from a decoded 55 71 main-control frame (t = 20 unsigned bytes). */
     synchronized void updateFrom71(int[] t) {
         gear = t[3] & 0xFF;
@@ -82,6 +87,22 @@ final class SettingsState {
         prTime = (sp >> 3) & 0x1F;
 
         received71 = true;
+
+        // Cache this gear's own per-gear/assist values so a later wheel/cruise fan-out to all gears
+        // can carry each gear's real values (never overwrite one gear with another gear's settings).
+        gearCache.put(gear, new int[]{assistSpeedLimit, fCurrent, rCurrent,
+                eabsLevel, fStartLevel, rStartLevel});
+    }
+
+    /**
+     * Build ONE per-gear 0x18 frame from cached per-gear values (layout matches {@link #gearCache}):
+     * {assistSpeedLimit, fCurrent, rCurrent, eabsLevel, fStartLevel, rStartLevel}. The GLOBAL wheel +
+     * cruise (and every other shared config byte) are taken from the maintained current state, so a
+     * fan-out write changes only wheel + cruise while keeping each gear's own per-gear settings.
+     */
+    synchronized byte[] gearFrameCached(int gear, int[] c) {
+        return CommandBuilder.sendGearSetting(this, gear & 0xFF,
+                c[0], c[3], c[4], c[5], c[1], c[2]);
     }
 
     /** Merge a partial settings JSON object from the dashboard. All keys optional; unknown ignored. */

@@ -166,6 +166,25 @@ final class CommandBuilder {
         return finalizeFrame(a);
     }
 
+    // ── setLockState - cmd 0x1B: BLE speed lock/unlock (TESTLOCK firmware) ──
+
+    /**
+     * Build a cmd-0x1B frame that sets the VCU speed lock directly (TESTLOCK firmware), instead of
+     * renaming the FIN via cmd 0x1f. Frame: {@code AA 1B <val> 00*16 CRC}, where {@code val} = 1
+     * UNLOCK, 0 LOCK. The payload is ZERO-padded (NOT the usual 0xFF): the firmware handler reads
+     * only the value byte and expects the remaining payload to be 0, so this does NOT use base()
+     * (which fills 0xFF). Verified CRC-8: LOCK last byte 0x1E, UNLOCK last byte 0x10.
+     *
+     * @param unlocked true = unlock (val 1), false = lock (val 0)
+     */
+    static byte[] setLockState(boolean unlocked) {
+        int[] a = new int[19];       // all zero (do NOT use base(): the firmware needs the rest 0)
+        a[0] = 170;                  // 0xAA
+        a[1] = 0x1B;                 // cmd 0x1B (unlockFlag)
+        a[2] = unlocked ? 1 : 0;
+        return finalizeFrame(a);
+    }
+
     // ── Voltage code a[14] derived from packVolt (§3.4) ──
 
     static int voltCode(int packVolt) {

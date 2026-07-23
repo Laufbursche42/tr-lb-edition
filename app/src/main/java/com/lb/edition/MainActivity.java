@@ -577,6 +577,17 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Set the VCU speed lock via cmd 0x1B (TESTLOCK firmware). true = unlock, false = lock. */
+        @JavascriptInterface
+        public void setLock(boolean unlocked) {
+            try {
+                Log.i(TAG, "LB.setLock(" + unlocked + ")");
+                if (ble != null) ble.setLock(unlocked);
+            } catch (Throwable t) {
+                Log.e(TAG, "setLock bridge failed", t);
+            }
+        }
+
         // ── Firmware update (OTA) ──
 
         /** Open the system file picker to choose a firmware .hex; result comes back via __onOtaFile. */
@@ -600,10 +611,10 @@ public class MainActivity extends Activity {
          * Patch a bundled VCU firmware and hand the result to the flash flow, exactly as if the user
          * had picked it (sets {@code otaHexText} and pushes the metadata to {@code __onOtaFile}).
          * fwId: "r5" (R5.4.19), "ali" (open ALI D3.4.12, convert only).
-         * speedMode (r5): "unlock" = pin flag 0 (full speed + Kickstart + Cruise) / "live" = Gate-2 only
-         * (FIN stays the 22/open switch) / "capped" = keep the stock ~22. Kickstart + Cruise are NOT
-         * options - they come with flag=0 (see teverun/R5419_PATCH_MATRIX.md). blinker/wheel are the two
-         * flag-independent add-ons and work in any speed mode. Returns the metadata JSON for the summary.
+         * For R5 the CORE direct BLE speed lock (cmd 0x1B) is ALWAYS applied; blinker and wheel are the
+         * two optional add-ons. {@code speedMode} is accepted for call compatibility but no longer
+         * selects a speed build - the lock is live over Bluetooth, not baked in. Returns the metadata
+         * JSON for the summary.
          */
         @JavascriptInterface
         public String patchFirmware(String fwId, String speedMode, boolean blinker, boolean wheel) {
@@ -620,21 +631,17 @@ public class MainActivity extends Activity {
                         ? FirmwarePatcher.fromHex(new String(raw, StandardCharsets.ISO_8859_1))
                         : FirmwarePatcher.fromAliDump(raw);
 
-                // Keep the original AWIVCU_<mode>_<model>_<ver> file-name shape: the mode token goes in the
+                // Keep the AWIVCU_<mode>_<model>_<ver> file-name shape: the mode token goes in the
                 // "APP" slot and the model stays R5_4_19, so split("_")[2] == "R5" - the exact spot the
-                // original app's isComplyRules reads the model + major version (R5/R3). Mode: FULL = full
-                // unlock, LIVE = live toggle, EKFV = stock 22. Optional add-on suffixes: WHEEL (wheel
-                // diameter) then TURN (blinker fix), in that order. No timestamp is appended.
+                // original app's isComplyRules reads the model + major version (R5/R3). Mode LOCK = the
+                // TESTLOCK9 direct BLE speed lock (always applied). Optional add-on suffixes: WHEEL (wheel
+                // diameter fix) then TURN (blinker fix), in that order. No timestamp is appended.
                 String name;
                 if ("r5".equals(fwId)) {
-                    String mode;
-                    if ("unlock".equals(speedMode)) { fp.applyR519Unlock(); mode = "FULL"; }
-                    else if ("live".equals(speedMode)) { fp.applyR519LiveToggle(); mode = "LIVE"; }
-                    else { mode = "EKFV"; }   // "capped" = keep the stock ~22 km/h
-                    // Blinker + WheelDiameter are flag-independent add-ons (any mode).
-                    if (wheel) fp.applyWheelDiameter();
-                    if (blinker) fp.applyR519Blinker();
-                    name = "AWIVCU_" + mode + "_R5_4_19"
+                    fp.applyCore();                 // direct BLE speed lock (cmd 0x1B) - always
+                    if (wheel) fp.applyWheel();      // optional: speedometer wheel-diameter fix
+                    if (blinker) fp.applyBlinker();  // optional: indicator-blink fix
+                    name = "AWIVCU_LOCK_R5_4_19"
                             + (wheel ? "_WHEEL" : "") + (blinker ? "_TURN" : "")
                             + ".hex";
                 } else {

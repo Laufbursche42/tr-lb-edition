@@ -1370,12 +1370,12 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
         <button id="btn-copy-btname" class="route-gpx-btn">Copy</button>
       </div>
       <!-- Change the VCU identity / BLE name (cmd 0x1f). Swaps the region code in the FIN and keeps
-           the serial; the first 3 chars must NOT be "TDE". Reversible via Reset. This only clears
-           Gate 1 - the speed stays limited until the separate display step. -->
+           the serial. On the patched (0x1B lock) firmware the FIN no longer controls the speed lock -
+           that is the live Bluetooth lock. This just renames the identity. Reversible via Reset. -->
       <div class="settings-row fighter-only" style="flex-direction:column;align-items:stretch;gap:8px">
         <div class="settings-row-left">
-          <div class="settings-row-label">Change identity (unlock Gate 1)</div>
-          <div class="settings-row-sublabel">Prefilled with the full current FIN - edit the whole name and press Set. First 3 chars not "TDE" = Gate 1 off; type your original "TDE..." FIN to re-lock. Speed stays limited until the display step.</div>
+          <div class="settings-row-label">Change identity / BLE name</div>
+          <div class="settings-row-sublabel">Prefilled with the full current FIN - edit the whole name and press Set. Changes the region code in the identity / Bluetooth name. On the patched firmware this does NOT lock or unlock the speed (that is the live Bluetooth speed lock, read from the scooter); it only affects unpatched firmware where the "TDE" prefix still gates the clamp.</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <input id="info-btname-input" type="text" maxlength="16" autocomplete="off"
@@ -1445,12 +1445,12 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       the IVCU stays in update mode and can simply be flashed again - it is not bricked. Only
       flash a .hex that matches your IVCU.
       <br><br>
-      <b>Reset the display wheel to 10 before you start.</b> If you ever set the wheel size in the
-      scooter's own display menu (P-settings) to anything other than 10, change it back to 10 on the
-      scooter now, then flash. This firmware never changes the display's stored wheel, so the display
-      keeps showing that number - and a roadside check reads the wheel there. You set your real wheel
-      size in this app instead: it applies only while unlocked and is forced back to 10 when you lock,
-      so the display always reads 10.
+      <b>The wheel value in the display's P-menu is not touched.</b> This firmware never changes the
+      wheel size stored in the scooter's own display menu (P-settings) - it keeps whatever it is set to
+      (typically 10) so a roadside check reads the real wheel there. The "Wheel-diameter fix" option only
+      calibrates the speedometer/odometer (tacho) reading from this app's Wheel size setting; it does not
+      change the display value or the controller (ESC). If you want the display to read 10, set it to 10
+      on the scooter itself.
     </div>
 
     <div id="fw-ver2-note" class="fw-warn" style="display:none;border-color:var(--ble);background:color-mix(in srgb, var(--ble) 12%, transparent)">
@@ -1513,17 +1513,14 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     </div>
 
     <div class="settings-group" id="pt-speed-group" style="border-top:1px solid var(--border)">
-      <div class="settings-group-title">Speed</div>
-      <label class="pt-opt"><input type="radio" name="pt-speed" value="unlock"><span><span class="pt-lbl">Full unlock</span><span class="pt-help">Full speed - pins the clamp flag off, so Kickstart and Cruise are released too (toggle them in the display menu). Fine-tune top speed per gear via GearLimitSpeed in the display hidden menu.</span></span></label>
-      <label class="pt-opt" id="pt-speed-live"><input type="radio" name="pt-speed" value="live"><span><span class="pt-lbl">Live toggle (FIN)</span><span class="pt-help">Removes only the display clamp (Gate 2) - the FIN identity stays your live switch (FIN with "TDE" = 22, without = open). With an open FIN you also get Kickstart and Cruise.</span></span></label>
-      <label class="pt-opt" id="pt-speed-capped"><input type="radio" name="pt-speed" value="capped" checked><span><span class="pt-lbl">Keep ~22 km/h (stock)</span><span class="pt-help">No speed change - the stock ~22 km/h cap. This is the default; on its own it gives the unmodified original firmware. Kickstart and Cruise need an unlock (Full unlock or an open FIN).</span></span></label>
+      <div class="settings-group-title">Speed lock (always included)</div>
+      <div class="settings-row-sublabel">The core direct BLE speed lock is always built in. The firmware boots LOCKED at 22 km/h and you unlock or re-lock it live over Bluetooth (command 0x1B); the current lock state is read straight from the scooter. There is no FIN rename and no display step - lock and unlock are a live Bluetooth command.</div>
     </div>
 
     <div class="settings-group" id="pt-r5-options" style="border-top:1px solid var(--border)">
-      <div class="settings-group-title">Options (R5.4.19 only)</div>
-      <div class="settings-row-sublabel" id="pt-unlock-note" style="margin-bottom:6px"></div>
+      <div class="settings-group-title">Optional fixes (R5.4.19)</div>
       <label class="pt-opt" id="pt-bl-wrap"><input type="checkbox" id="pt-blinker"><span><span class="pt-lbl">Blinker fix</span><span class="pt-help">Fixes the 5.4.19 bug where the indicators glow solid instead of blinking. Only needed if the VCU drives the indicators (no separate blinker module).</span></span></label>
-      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">WheelDiameter persists</span><span class="pt-help">Lets you set the wheel size in the app (Scooter settings -> Wheel size) and makes it stick - stock 5.4.19 ignores the app's wheel value. Only with Full unlock or Live toggle: on Keep 22 (legal eKFV) the wheel must stay stock so the speed reading stays honest.</span></span></label>
+      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">Wheel-diameter fix</span><span class="pt-help">Makes the app's Wheel size setting drive the speedometer (tacho) reading - stock 5.4.19 ignores it, so speed and distance read wrong without this fix. It only calibrates the app/tacho display: it does NOT change the controller (ESC) and does NOT change the wheel value stored in the display's P-menu (that stays whatever the scooter is set to, typically 10).</span></span></label>
     </div>
 
     <div class="settings-group" id="pt-ali-note" style="border-top:1px solid var(--border);display:none">
@@ -1531,8 +1528,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     </div>
 
     <div class="settings-group" style="border-top:1px solid var(--border)">
-      <button id="btn-pt-run">Original Firmware &amp; Continue</button>
-      <div class="settings-row-sublabel" id="pt-status" style="margin:8px 0 0">Choose a firmware. Pick options to patch, or leave all off to get the original.</div>
+      <button id="btn-pt-run">Build patch &amp; Continue</button>
+      <div class="settings-row-sublabel" id="pt-status" style="margin:8px 0 0">R5.4.19 always builds the core BLE speed lock; tick the optional fixes you want. ALI is converted unchanged.</div>
     </div>
   </div>
 </div>
@@ -1901,7 +1898,7 @@ const SETTINGS_HELP = {
   "ss-rcur": { title: "Rear current limit", text: "Read-only - shows the REAR motor current limit of the currently active gear. It is a per-gear value: to change it, edit the rear current in the per-gear editor and Save there. On eKFV units it stays 0 (the motor controller reports and enforces 0)." },
   "ss-abs": { title: "ABS", text: "Enables the controller's anti-lock braking behavior: it modulates the electronic brake to reduce wheel lock-up during hard braking. (Different from EABS, which is the recuperation strength.)" },
   "ss-packvolt": { title: "Pack voltage (nominal)", text: "The battery's nominal voltage (e.g. 60 V). The controller uses it in its power/speed calculations - set it to match your actual battery, or the math will be off." },
-  "ss-wheel": { title: "Wheel size", text: "Wheel diameter in inches. The controller converts motor RPM to speed and distance with this, so set it to your real tire size or the speedometer and odometer will read wrong.\n\nSet it HERE, not in the original app. The controller stores the wheel size PER GEAR and the original Teverun app writes it to only one gear - so the other gears keep an old value and your speed changes when you shift gear (this is the cause of the \"unlocked = only 15 km/h\" reports). This app writes the wheel size into EVERY gear slot, so it stays consistent across all gears.\n\nNOTE (eKFV): while locked the wheel is always forced back to 10.0 in firmware; a custom size only takes effect when the scooter is open." },
+  "ss-wheel": { title: "Wheel size", text: "Wheel diameter in inches used for the speedometer and odometer (tacho) reading, so set it to your real tire size or the speed and distance will read wrong.\n\nThis calibrates the tacho ONLY. It does not change the motor controller (ESC) and it does not change the wheel value stored in the display's P-menu - that stays whatever is set on the scooter (typically 10), which is what a roadside check reads.\n\nNOTE: this needs the \"Wheel-diameter fix\" firmware from the patcher. Stock 5.4.19 ignores the app's wheel value, so on unpatched firmware this setting has no effect on the speed reading." },
   "ss-fstart": { title: "Front start level", text: "Global launch aggressiveness of the FRONT motor from a standstill. Higher = punchier; lower = smoother." },
   "ss-rstart": { title: "Rear start level", text: "Global launch aggressiveness of the REAR motor from a standstill. Higher = punchier; lower = smoother." },
   "ss-eabs": { title: "EABS level", text: "Global strength of the electronic regenerative brake (recuperation): how hard the motor brakes and recharges the battery when you let off the throttle. 0 = coast." },
@@ -2046,14 +2043,18 @@ function updateBLEUI(data) {
 
   // Speed
   setTxt('ble-speed', convSpeed(data.speed));
-  // VCU speed colour = FIN lock state: red when the FIN has NO "TDE" (Gate 1 off / speed unlocked),
-  // default green when "TDE" is present (locked). Triple-tap the VCU tile to toggle (toggleFinLock).
+  // VCU speed colour = speed-lock state: red when UNLOCKED (speed uncapped). Driven by the streamed
+  // 55 71 lock byte (data.vcuUnlock: 0 = LOCKED, 1 = UNLOCKED) on TESTLOCK firmware; falls back to the
+  // FIN "TDE" heuristic only when the byte is absent (-1 / old fw). Triple-tap the VCU tile to toggle.
   {
-    // The FIN-lock tile colour is a Fighter-Mini-eKFV concept (the TDE Gate-1 marker). Only colour it
-    // for the Fighter Mini (or the unknown/disconnected default); on other models keep it neutral.
+    // The lock tile colour is a Fighter-Mini-eKFV concept. Only colour it for the Fighter Mini (or the
+    // unknown/disconnected default); on other models keep it neutral.
     const spEl = document.getElementById('ble-speed');
     const finU = ((liveRaw().btName || '') + '').toUpperCase();
-    if (spEl) spEl.style.color = (fighterFeatures() && finU && !finU.includes('TDE')) ? 'var(--danger)' : '';
+    const known = (data.vcuUnlock === 0 || data.vcuUnlock === 1);
+    const locked = (data.vcuUnlock === 0);
+    const unlocked = known ? !locked : (finU && !finU.includes('TDE'));
+    if (spEl) spEl.style.color = (fighterFeatures() && unlocked) ? 'var(--danger)' : '';
   }
   setTxt('dg-avg', `${convSpeed(data.avgSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
   setTxt('dg-max', `${convSpeed(data.maxSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
@@ -3299,10 +3300,11 @@ function setBleName() {
   catch (e) { showToast('Error: ' + e); }
 }
 
-/* Hidden gesture on the VCU speed tile: triple-tap toggles the Gate-1 speed lock by removing/adding
-   "DE" in the FIN (cmd 0x1f). On the Gate-2-patched firmware the FIN is the live speed lock, so this
-   is an instant lock/unlock. Locked FIN starts with "TDE" -> remove the "DE" ("TDE.." -> "T..") to
-   unlock; add it back to re-lock. The tile colour (updateBLEUI) shows the state. */
+/* Hidden gesture on the VCU speed tile: triple-tap toggles the speed lock via cmd 0x1B (TESTLOCK
+   firmware) - a direct lock/unlock, NOT a FIN rename. The current state comes from the streamed
+   55 71 lock byte (data.vcuUnlock: 0 = LOCKED, 1 = UNLOCKED): locked -> send unlock, unlocked ->
+   send lock. No FIN rename, no wheel/cruise housekeeping (the wheel byte now feeds the tacho WD
+   calibration, so forcing it would fight that). The tile colour (updateBLEUI) shows the state. */
 let _finTapCount = 0, _finTapTimer = null;
 function onVcuTileTap() {
   _finTapCount++;
@@ -3311,18 +3313,18 @@ function onVcuTileTap() {
   _finTapTimer = setTimeout(() => { _finTapCount = 0; }, 700);
 }
 function toggleFinLock() {
-  if (!fighterFeatures()) { showToast('The FIN speed-unlock is only for the Fighter Mini', 3000, 'err'); return; }
-  if (typeof LB === 'undefined' || !LB.setBleName) { showToast('Only available in the app'); return; }
+  if (!fighterFeatures()) { showToast('The speed-unlock is only for the Fighter Mini', 3000, 'err'); return; }
+  if (typeof LB === 'undefined' || !LB.setLock) { showToast('Only available in the app'); return; }
   if (!state.bleConnected) { showToast('Connect the scooter first', 3000, 'err'); return; }
-  const fin = ((liveRaw().btName || '') + '').trim();
-  if (!fin) { showToast('FIN not read yet - open Scooter info once', 3500, 'err'); return; }
-  const up = fin.toUpperCase();
-  let next, msg;
-  if (up.startsWith('TDE')) { next = 'T' + fin.slice(3); msg = 'Unlocking - removing DE from the FIN'; }
-  else if (up.startsWith('T')) { next = 'TDE' + fin.slice(1); msg = 'Locking - restoring DE in the FIN'; }
-  else { next = 'TDE' + fin; msg = 'Locking - restoring DE in the FIN'; }
-  try { sendFinChange(next); showToast(msg + ' (scooter renames and reconnects)', 4000); }
-  catch (e) { showToast('Error: ' + e); }
+  const d = liveRaw();
+  const known = (d.vcuUnlock === 0 || d.vcuUnlock === 1);
+  if (!known) { showToast('Lock state not read yet - wait for telemetry', 3500, 'err'); return; }
+  const locked = (d.vcuUnlock === 0);
+  // locked -> unlock (setLock true); unlocked -> lock (setLock false). LB.setLock(unlocked).
+  try {
+    LB.setLock(locked);
+    showToast(locked ? 'Unlocking speed (cmd 0x1B)...' : 'Locking speed (cmd 0x1B)...', 3000);
+  } catch (e) { showToast('Error: ' + e); }
 }
 
 // Copy the Bluetooth advertised name (from live BLE data) to the Android clipboard.
@@ -3542,66 +3544,39 @@ function closeFirmwarePage() {
 function openPatcherPage() {
   if (!fighterFeatures()) { showToast('The firmware patcher is only for the Fighter Mini', 3000, 'err'); return; }
   const st = document.getElementById('pt-status');
-  if (st) st.textContent = 'Choose a firmware. Pick options to patch, or leave all off to get the original.';
+  if (st) st.textContent = 'R5.4.19 always builds the core BLE speed lock; tick the optional fixes you want. ALI is converted unchanged.';
   ptOnFirmwareChange();
   document.getElementById('patcher-page').classList.add('open');
 }
 function closePatcherPage() {
   document.getElementById('patcher-page').classList.remove('open');
 }
-// Show only the options that apply to the selected firmware (ALI is open -> no options).
+// Show only the options that apply to the selected firmware (ALI is open -> no patch, no options).
 function ptOnFirmwareChange() {
   const fw = document.getElementById('pt-firmware').value;
   const isR5 = fw === 'r5', isAli = fw === 'ali';
   const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
-  show('pt-speed-group', isR5);
-  show('pt-r5-options', isR5);     // Blinker/Wheel + the unlock note are R5-only
+  show('pt-speed-group', isR5);    // "speed lock always included" note - R5 only
+  show('pt-r5-options', isR5);     // Blinker / Wheel-diameter fixes - R5 only
   show('pt-ali-note', isAli);
-  // Default speed = "Keep ~22 km/h" (= no change / the original firmware). Clear the two add-on options.
-  document.querySelectorAll('input[name="pt-speed"]').forEach(r => { r.checked = (r.value === 'capped'); });
+  // Clear the two optional add-ons (the core BLE speed lock is always applied on R5).
   ['pt-blinker', 'pt-wheel'].forEach(id => { const e = document.getElementById(id); if (e) e.checked = false; });
-  ptUpdateUnlockNote();
-}
-// Kickstart + Cruise are consequences of the unlock (clamp flag = 0), not separate patches - so they are
-// just a hint per speed mode. Blinker is available in every mode; WheelDiameter is NOT offered on Keep 22
-// (the legal eKFV state must keep the stock wheel so the speed reading stays honest). (See matrix.)
-function ptUpdateUnlockNote() {
-  const sel = document.querySelector('input[name="pt-speed"]:checked');
-  const mode = sel ? sel.value : 'capped';
-  const note = document.getElementById('pt-unlock-note');
-  if (note) {
-    note.textContent =
-      mode === 'unlock' ? 'Full speed. Kickstart and Cruise are released too - toggle them in the display menu.' :
-      mode === 'live'   ? 'With an open FIN you get full speed + Kickstart + Cruise; a locked FIN (TDE) keeps you at 22 km/h.' :
-                          'Stock 22 km/h - legal eKFV. Kickstart, Cruise and WheelDiameter need an unlock (Full unlock or an open FIN).';
-  }
-  // Keep 22 is the legal state: WheelDiameter must stay stock (a changed wheel would falsify the speed),
-  // so it is only offered with an unlock. Blinker stays available in every mode.
-  const wdAllowed = (mode === 'unlock' || mode === 'live');
-  const wrap = document.getElementById('pt-wd-wrap'), wd = document.getElementById('pt-wheel');
-  if (wrap) wrap.classList.toggle('disabled', !wdAllowed);
-  if (wd) { wd.disabled = !wdAllowed; if (!wdAllowed) wd.checked = false; }
   ptSyncButton();
 }
-// The button says "Build patch" only when the user actually chose something; otherwise it offers the
-// unmodified original firmware.
+// The button label: R5 always builds a patch (the core BLE speed lock is always included, plus any
+// optional fixes ticked). ALI is converted only, so it stays the plain original firmware.
 function ptSyncButton() {
-  const speedSel = document.querySelector('input[name="pt-speed"]:checked');
-  // "capped" (Keep ~22) is the stock state = no deviation; only Full unlock / Live toggle change speed.
-  const speedDeviates = !!speedSel && (speedSel.value === 'unlock' || speedSel.value === 'live');
-  const anyOpt = ['pt-blinker', 'pt-wheel']
-    .some(id => { const e = document.getElementById(id); return e && e.checked; });
+  const fw = document.getElementById('pt-firmware').value;
   const btn = document.getElementById('btn-pt-run');
-  if (btn) btn.textContent = (speedDeviates || anyOpt) ? 'Build patch & continue' : 'Original Firmware & Continue';
+  if (btn) btn.textContent = (fw === 'r5') ? 'Build patch & continue' : 'Original Firmware & Continue';
 }
 function ptRun() {
   if (typeof LB === 'undefined' || !LB.patchFirmware) { showToast('Only available in the app'); return; }
   const fw = document.getElementById('pt-firmware').value;
-  const speedSel = document.querySelector('input[name="pt-speed"]:checked');
-  const speed = speedSel ? speedSel.value : 'none';   // nothing selected -> original firmware
+  const speed = 'lock';   // R5 always gets the core BLE speed lock; kept for call compatibility
   const bl = !!(document.getElementById('pt-blinker') || {}).checked;
   const wd = !!(document.getElementById('pt-wheel') || {}).checked;
-  const patching = (speed === 'unlock' || speed === 'live') || bl || wd;
+  const patching = (fw === 'r5');   // R5 always patches (core lock); ALI is convert-only
   const status = document.getElementById('pt-status');
   const btn = document.getElementById('btn-pt-run');
   if (btn) btn.disabled = true;
@@ -3962,15 +3937,11 @@ function prefillScooterSettings(live) {
   setV('ss-speed',    'speedLimit',   pick(d, ['speedLimit']));
   setV('ss-gear',     'gear',         pick(d, ['gear']));
   setV('ss-wheel',    'wheel',        pick(d, ['wheel']));
-  // Wheel size is only editable while the FIN is UNLOCKED (no TDE): a locked FIN means the scooter is at
-  // the legal 22 cap, where the wheel must stay stock so the speed reading stays honest (esp. Live toggle).
+  // Wheel size only calibrates the speedometer/tacho (with the "Wheel-diameter fix" firmware); it is
+  // independent of the speed lock and does not touch the display's P-menu wheel, so it stays editable.
   {
     const wheelEl = document.getElementById('ss-wheel');
-    if (wheelEl) {
-      const finLocked = /^T2?DE/i.test(((d.btName || '') + '').trim());
-      wheelEl.disabled = finLocked;
-      wheelEl.title = finLocked ? 'Unlock the FIN (remove TDE) to change the wheel size' : '';
-    }
+    if (wheelEl) { wheelEl.disabled = false; wheelEl.title = ''; }
   }
   setV('ss-packvolt', 'packVolt',     pick(d, ['packVolt']));
 
@@ -4337,7 +4308,6 @@ function wireEvents() {
   });
   document.getElementById('btn-patcher-back').addEventListener('click', closePatcherPage);
   document.getElementById('pt-firmware').addEventListener('change', ptOnFirmwareChange);
-  document.querySelectorAll('input[name="pt-speed"]').forEach(r => r.addEventListener('change', ptUpdateUnlockNote));
   ['pt-blinker', 'pt-wheel'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', ptSyncButton); });
   document.getElementById('btn-pt-run').addEventListener('click', ptRun);
 
