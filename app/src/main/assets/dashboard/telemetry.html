@@ -1759,6 +1759,7 @@ function parseBLE(raw) {
       systemStatus: Array.isArray(d.systemStatus) ? d.systemStatus : [],
       top:      Array.isArray(d.top) ? d.top : [],
       bottom:   Array.isArray(d.bottom) ? d.bottom : [],
+      vcuUnlock: (typeof d.vcuUnlock === 'number' ? d.vcuUnlock : -1),   // 0=LOCKED, 1=UNLOCKED, -1=unknown (drives the km/h-VCU tile colour)
       ts:       d.ts
     };
   } catch(e) { return null; }

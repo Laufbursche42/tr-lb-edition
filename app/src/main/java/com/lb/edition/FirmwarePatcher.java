@@ -6,13 +6,13 @@ import java.util.TreeMap;
 
 /**
  * Builds a flashable Teverun VCU firmware from a bundled stock base HEX and hands the result to
- * {@link OtaEngine} for flashing. The image produced is the R5.4.19 "TESTLOCK10" design: a direct
+ * {@link OtaEngine} for flashing. The image produced is the R5.4.19 "TESTLOCK11" design: a direct
  * BLE speed lock on command 0x1B (the scooter boots LOCKED at 22 km/h and is unlocked / re-locked
  * live over Bluetooth), plus two optional add-ons - a blinker fix and a speedometer wheel-diameter
  * fix.
  *
  * <p>The patches are applied as an exact byte-diff table against the stock base (see the
- * {@code AWIVCU_TESTLOCK10_R5_4_19_VERIFY.txt} reference). Three groups:
+ * {@code AWIVCU_TESTLOCK11_R5_4_19_VERIFY.txt} reference). Three groups:
  * <ul>
  *   <li>CORE  - always applied: the reset boot-lock hook + boot_cave, the power-on/wake force-lock
  *       hook + cave (soft-power always boots LOCKED), the two-value clamp caves and the cmd-0x1B
@@ -133,6 +133,12 @@ final class FirmwarePatcher {
         p(0x08010208, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0x9A,0xFC,0x02,0xE0,0x00,0xBF)),
         p(0x080103B0, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0xC6,0xFB,0x02,0xE0,0x00,0xBF)),
         p(0x080105D0, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0xB6,0xFA,0x02,0xE0,0x00,0xBF)),
+        // factory-default gear table: new default per-gear speeds 20/22/40/65/100 (was 20/40/60/80/100).
+        // Baked into the defaults that are reloaded from EEPROM; the firmware recomputes the table CRC at
+        // runtime on write, so no in-table CRC fixup is needed here.
+        p(0x0801D7A2, b(0x28), b(0x16)),   // gear2 default speed 40 -> 22
+        p(0x0801D7A8, b(0x3C), b(0x28)),   // gear3 default speed 60 -> 40
+        p(0x0801D7AE, b(0x50), b(0x41)),   // gear4 default speed 80 -> 65
         // power-up init entry hook -> force-lock cave. This scooter uses soft-power (the power button
         // does NOT reset the MCU), so the reset-tail boot_cave never runs on a normal power-on. Hooking
         // the once-per-power-ON/WAKE init at 0x0801870C forces the lock on every wake, so the unit always
