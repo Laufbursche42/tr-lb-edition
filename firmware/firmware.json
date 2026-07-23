@@ -1,6 +1,6 @@
 {
-  "version": 12,
-  "file": "AWIVCU_TESTLOCK_R5_4_19.hex",
-  "md5": "5be623d25f6d7af938baff72f71ff3a8",
-  "notes": "TESTLOCK V12 - BLE lock (cmd 0x1B), boots locked, lock-gated wheel display, blinker + wheel fixes. Build with the in-app patcher."
+  "version": 13,
+  "file": "AWIVCU_V13_R5.4.19.hex",
+  "md5": "db9787b107f3c43bf1232da2432ae302",
+  "notes": "V13 - always boots LOCKED on every power-on event (transition-block force-lock), BLE lock cmd 0x1B, lock-gated wheel display, blinker + wheel fixes, version readable over BLE (hwVer=13). Build with the in-app patcher."
 }
