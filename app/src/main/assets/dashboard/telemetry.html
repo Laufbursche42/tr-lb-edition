@@ -1445,12 +1445,10 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       the IVCU stays in update mode and can simply be flashed again - it is not bricked. Only
       flash a .hex that matches your IVCU.
       <br><br>
-      <b>The wheel value in the display's P-menu is not touched.</b> This firmware never changes the
-      wheel size stored in the scooter's own display menu (P-settings) - it keeps whatever it is set to
-      (typically 10) so a roadside check reads the real wheel there. The "Wheel-diameter fix" option only
-      calibrates the speedometer/odometer (tacho) reading from this app's Wheel size setting; it does not
-      change the display value or the controller (ESC). If you want the display to read 10, set it to 10
-      on the scooter itself.
+      <b>Wheel-diameter fix - what it does.</b> The display's speedometer and odometer (tacho) read from
+      this app's Wheel size setting, so the scooter shows the speed you calibrated - not a fixed value.
+      It does not change the motor controller (ESC), so the actual speed is unchanged. The Wheel size can
+      only be changed while the scooter is unlocked, so a locked scooter keeps an honest speedometer.
     </div>
 
     <div id="fw-ver2-note" class="fw-warn" style="display:none;border-color:var(--ble);background:color-mix(in srgb, var(--ble) 12%, transparent)">
@@ -1520,7 +1518,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <div class="settings-group" id="pt-r5-options" style="border-top:1px solid var(--border)">
       <div class="settings-group-title">Optional fixes (R5.4.19)</div>
       <label class="pt-opt" id="pt-bl-wrap"><input type="checkbox" id="pt-blinker"><span><span class="pt-lbl">Blinker fix</span><span class="pt-help">Fixes the 5.4.19 bug where the indicators glow solid instead of blinking. Only needed if the VCU drives the indicators (no separate blinker module).</span></span></label>
-      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">Wheel-diameter fix</span><span class="pt-help">Makes the app's Wheel size setting drive the speedometer (tacho) reading - stock 5.4.19 ignores it, so speed and distance read wrong without this fix. It only calibrates the app/tacho display: it does NOT change the controller (ESC) and does NOT change the wheel value stored in the display's P-menu (that stays whatever the scooter is set to, typically 10).</span></span></label>
+      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">Wheel-diameter fix</span><span class="pt-help">Makes the app's Wheel size setting drive the speedometer (tacho) reading - stock 5.4.19 ignores it, so speed and distance read wrong without this fix. It makes the display's speedometer and odometer read from the app's Wheel size setting, so the scooter shows your calibrated speed. It does NOT change the motor controller (ESC), so the real speed is unchanged. The Wheel size can only be changed while the scooter is unlocked.</span></span></label>
     </div>
 
     <div class="settings-group" id="pt-ali-note" style="border-top:1px solid var(--border);display:none">
@@ -1899,7 +1897,7 @@ const SETTINGS_HELP = {
   "ss-rcur": { title: "Rear current limit", text: "Read-only - shows the REAR motor current limit of the currently active gear. It is a per-gear value: to change it, edit the rear current in the per-gear editor and Save there. On eKFV units it stays 0 (the motor controller reports and enforces 0)." },
   "ss-abs": { title: "ABS", text: "Enables the controller's anti-lock braking behavior: it modulates the electronic brake to reduce wheel lock-up during hard braking. (Different from EABS, which is the recuperation strength.)" },
   "ss-packvolt": { title: "Pack voltage (nominal)", text: "The battery's nominal voltage (e.g. 60 V). The controller uses it in its power/speed calculations - set it to match your actual battery, or the math will be off." },
-  "ss-wheel": { title: "Wheel size", text: "Wheel diameter in inches used for the speedometer and odometer (tacho) reading, so set it to your real tire size or the speed and distance will read wrong.\n\nThis calibrates the tacho ONLY. It does not change the motor controller (ESC) and it does not change the wheel value stored in the display's P-menu - that stays whatever is set on the scooter (typically 10), which is what a roadside check reads.\n\nNOTE: this needs the \"Wheel-diameter fix\" firmware from the patcher. Stock 5.4.19 ignores the app's wheel value, so on unpatched firmware this setting has no effect on the speed reading." },
+  "ss-wheel": { title: "Wheel size", text: "Wheel diameter in inches used for the speedometer and odometer (tacho) reading, so set it to your real tire size or the speed and distance will read wrong.\n\nThe scooter display shows the speed calibrated from this value - not a fixed number. It calibrates the tacho ONLY and does not change the motor controller (ESC), so the real speed is unchanged. It can only be changed while the scooter is unlocked, so a locked scooter keeps an honest speedometer.\n\nNOTE: this needs the \"Wheel-diameter fix\" firmware from the patcher. Stock 5.4.19 ignores the app's wheel value, so on unpatched firmware this setting has no effect on the speed reading." },
   "ss-fstart": { title: "Front start level", text: "Global launch aggressiveness of the FRONT motor from a standstill. Higher = punchier; lower = smoother." },
   "ss-rstart": { title: "Rear start level", text: "Global launch aggressiveness of the REAR motor from a standstill. Higher = punchier; lower = smoother." },
   "ss-eabs": { title: "EABS level", text: "Global strength of the electronic regenerative brake (recuperation): how hard the motor brakes and recharges the battery when you let off the throttle. 0 = coast." },
@@ -2250,7 +2248,7 @@ function startGPSWatch() {
     if (window.plus) {
       state.gpsWatchId = plus.geolocation.watchPosition(
         onGPSSuccess, onGPSError,
-        { enableHighAccuracy: true }
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
       );
     } else {
       // Browser fallback for testing
@@ -2266,7 +2264,7 @@ function startGPSWatch() {
             timestamp: pos.timestamp
           }),
           onGPSError,
-          { enableHighAccuracy: true }
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
       }
     }
@@ -2294,8 +2292,21 @@ function onGPSSuccess(pos) {
   const lat = Math.round(coords.latitude  * 1e6) / 1e6;
   const lon = Math.round(coords.longitude * 1e6) / 1e6;
   const alt = coords.altitude != null ? Math.round(coords.altitude * 10) / 10 : null;
-  const spd = coords.speed   != null ? coords.speed * 3.6 : 0; // m/s → km/h
   const ts  = pos.timestamp || Date.now();
+  // Prefer the GPS Doppler speed (coords.speed) - most accurate source. Some devices/WebViews
+  // never report it; fall back to distance/time from the previous fix so the readout still
+  // tracks reality instead of dropping to 0.
+  let spd;
+  if (coords.speed != null && coords.speed >= 0) {
+    spd = coords.speed * 3.6; // m/s -> km/h
+  } else if (state.gpsPos && state.gpsPos.lat != null) {
+    const dts = (ts - state.gpsPos.ts) / 1000; // seconds since last fix
+    spd = (dts > 0.2 && dts < 5)
+      ? haversine(state.gpsPos.lat, state.gpsPos.lon, lat, lon) / (dts / 3600) // km / h
+      : (state.gpsPos.speed || 0);
+  } else {
+    spd = 0;
+  }
 
   state.gpsPos = { lat, lon, alt, speed: spd, ts };
 
@@ -3259,8 +3270,7 @@ function sendFinChange(newFin) {
         if (c !== 0) setFinCruise(c);
         try { LB.sendSetting(JSON.stringify({ cruise: 0 })); } catch (e) {}
       }
-      const w = liveRaw().wheel;
-      if (w != null && w !== 10) { setFinWheel(w); try { LB.sendSetting(JSON.stringify({ wheel: 10 })); } catch (e) {} }
+      // Do not touch the wheel size on lock - the display keeps the calibrated value set in the app.
     } else {
       // Unlocking: do NOT write now (still eKFV = write-protected). Defer to when the open FIN is live.
       _pendingFinRestore = { cruise: _finCruise, wheel: _finWheel };
@@ -3938,11 +3948,16 @@ function prefillScooterSettings(live) {
   setV('ss-speed',    'speedLimit',   pick(d, ['speedLimit']));
   setV('ss-gear',     'gear',         pick(d, ['gear']));
   setV('ss-wheel',    'wheel',        pick(d, ['wheel']));
-  // Wheel size only calibrates the speedometer/tacho (with the "Wheel-diameter fix" firmware); it is
-  // independent of the speed lock and does not touch the display's P-menu wheel, so it stays editable.
+  // Wheel size calibrates the display's speedometer (with the "Wheel-diameter fix" firmware). On the
+  // Fighter Mini it may only be changed while UNLOCKED, so a locked (roadside-legal) scooter keeps an
+  // honest speedometer. Other models have no speed lock, so the field stays editable there.
   {
     const wheelEl = document.getElementById('ss-wheel');
-    if (wheelEl) { wheelEl.disabled = false; wheelEl.title = ''; }
+    if (wheelEl) {
+      const locked = fighterFeatures() && d.vcuUnlock === 0;
+      wheelEl.disabled = locked;
+      wheelEl.title = locked ? 'Unlock the scooter to change the wheel size' : '';
+    }
   }
   setV('ss-packvolt', 'packVolt',     pick(d, ['packVolt']));
 
