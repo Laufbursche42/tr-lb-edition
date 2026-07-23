@@ -19,8 +19,8 @@ import java.util.TreeMap;
  *       dispatcher hook, the four r7-clamp bl sites, the FLAG==1 immediate and the lock-state
  *       injection into the 55 71 telemetry frame. This is the BLE speed lock.</li>
  *   <li>BLINKER - the R5.4.19 indicator-blink fix at 0x08019610.</li>
- *   <li>WHEEL   - the speedometer wheel-diameter caves (0x0801DAFC region + the two boot NOPs) that
- *       let the app's wheel value feed the tacho calibration.</li>
+ *   <li>WHEEL   - the speedometer wheel-diameter caves (0x0801DAFC region + the boot NOP) that let the
+ *       app's wheel value feed the tacho calibration when unlocked while forcing 10.0" when locked.</li>
  * </ul>
  * Every overwrite is expect-checked against the stock byte first, so the wrong firmware (or an
  * already-patched one) can never be silently corrupted. After the selected groups are applied the
@@ -166,17 +166,20 @@ final class FirmwarePatcher {
         p(0x08019610, b(0xFF,0xF7,0x90,0xFF), b(0x00,0xBF,0x00,0xBF)),
     };
 
-    // WHEEL - speedometer wheel-diameter fix: the app's cmd-0x18 wheel value feeds the tacho WD var.
+    // WHEEL - speedometer wheel-diameter fix: UNLOCKED the app's cmd-0x18 wheel value feeds the tacho
+    // WD var (accurate speed); LOCKED the display is forced to 10.0" so a roadside check reads stock.
     private static final P[] WHEEL = {
         // 0x18 sub-cmd-2 hook -> WD cave (record[4] -> WD var, mirror + native save)
         p(0x0800D3B0, b(0x80,0x79,0xAE,0x49), b(0x10,0xF0,0xA4,0xBB)),
         // boot NOP: stop the boot-load overwriting the persisted wheel with 100 (10.0")
         p(0x0801730E, b(0x08,0x70), b(0x00,0xBF)),
-        // appended WD cave @0x0801DAFC..0x0801DB3F: cave code + literals (incl. the WD-force NOP at
-        // 0x0801DB04) + carried end marker. Sits before the CORE cave block.
-        p(0x0801DAFC, null, b(0x02,0x79,0x0A,0x49,0x09,0x78,0x01,0xB1,0x00,0xBF,0x09,0x49,0x0B,0x78,0x0A,0x70,
+        // appended WD cave @0x0801DAFC..0x0801DB3F: cave code + literals + carried end marker. Sits
+        // before the CORE cave block. The WD-force at 0x0801DB04 (movs r2,#0x64 = 10.0") is gated on the
+        // real lock flag 0x200002A0: LOCKED -> force 10.0" (display reads stock), UNLOCKED -> keep the
+        // app's per-gear wheel value (accurate tacho). cbnz r1 at 0x0801DB02 skips the force when open.
+        p(0x0801DAFC, null, b(0x02,0x79,0x0A,0x49,0x09,0x78,0x01,0xB9,0x64,0x22,0x09,0x49,0x0B,0x78,0x0A,0x70,
                               0x9A,0x42,0x06,0xD0,0x07,0x49,0xCA,0x70,0x01,0xB5,0x01,0x20,0xF9,0xF7,0x78,0xFA,
-                              0x03,0xBC,0x80,0x79,0x04,0x49,0xEF,0xF7,0x47,0xBC,0x00,0xBF,0x0C,0x03,0x00,0x20,
+                              0x03,0xBC,0x80,0x79,0x04,0x49,0xEF,0xF7,0x47,0xBC,0x00,0xBF,0xA0,0x02,0x00,0x20,
                               0x9D,0x02,0x00,0x20,0x28,0x1A,0x00,0x20,0xA5,0x02,0x00,0x20,0xA5,0x01,0x19,0x02,
                               0x57,0x19,0x00,0x00)),
     };

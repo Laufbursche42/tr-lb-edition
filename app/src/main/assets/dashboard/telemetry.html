@@ -1445,10 +1445,11 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       the IVCU stays in update mode and can simply be flashed again - it is not bricked. Only
       flash a .hex that matches your IVCU.
       <br><br>
-      <b>Wheel-diameter fix - what it does.</b> The display's speedometer and odometer (tacho) read from
-      this app's Wheel size setting, so the scooter shows the speed you calibrated - not a fixed value.
-      It does not change the motor controller (ESC), so the actual speed is unchanged. The Wheel size can
-      only be changed while the scooter is unlocked, so a locked scooter keeps an honest speedometer.
+      <b>Wheel-diameter fix - what it does.</b> While UNLOCKED the display's speedometer and odometer
+      (tacho) read from this app's Wheel size setting, so the scooter shows the speed you calibrated.
+      While LOCKED the display shows the stock 10.0" so a roadside check reads stock. It never changes the
+      motor controller (ESC), so the real speed is unchanged. The Wheel size can only be changed while
+      the scooter is unlocked.
     </div>
 
     <div id="fw-ver2-note" class="fw-warn" style="display:none;border-color:var(--ble);background:color-mix(in srgb, var(--ble) 12%, transparent)">
@@ -1518,7 +1519,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <div class="settings-group" id="pt-r5-options" style="border-top:1px solid var(--border)">
       <div class="settings-group-title">Optional fixes (R5.4.19)</div>
       <label class="pt-opt" id="pt-bl-wrap"><input type="checkbox" id="pt-blinker"><span><span class="pt-lbl">Blinker fix</span><span class="pt-help">Fixes the 5.4.19 bug where the indicators glow solid instead of blinking. Only needed if the VCU drives the indicators (no separate blinker module).</span></span></label>
-      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">Wheel-diameter fix</span><span class="pt-help">Makes the app's Wheel size setting drive the speedometer (tacho) reading - stock 5.4.19 ignores it, so speed and distance read wrong without this fix. It makes the display's speedometer and odometer read from the app's Wheel size setting, so the scooter shows your calibrated speed. It does NOT change the motor controller (ESC), so the real speed is unchanged. The Wheel size can only be changed while the scooter is unlocked.</span></span></label>
+      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">Wheel-diameter fix</span><span class="pt-help">Makes the app's Wheel size setting drive the speedometer (tacho) reading - stock 5.4.19 ignores it, so speed and distance read wrong without this fix. While unlocked the display's speedometer and odometer read from the app's Wheel size setting (your calibrated speed); while locked the display shows the stock 10.0". It does NOT change the motor controller (ESC), so the real speed is unchanged. The Wheel size can only be changed while unlocked.</span></span></label>
     </div>
 
     <div class="settings-group" id="pt-ali-note" style="border-top:1px solid var(--border);display:none">
@@ -1897,7 +1898,7 @@ const SETTINGS_HELP = {
   "ss-rcur": { title: "Rear current limit", text: "Read-only - shows the REAR motor current limit of the currently active gear. It is a per-gear value: to change it, edit the rear current in the per-gear editor and Save there. On eKFV units it stays 0 (the motor controller reports and enforces 0)." },
   "ss-abs": { title: "ABS", text: "Enables the controller's anti-lock braking behavior: it modulates the electronic brake to reduce wheel lock-up during hard braking. (Different from EABS, which is the recuperation strength.)" },
   "ss-packvolt": { title: "Pack voltage (nominal)", text: "The battery's nominal voltage (e.g. 60 V). The controller uses it in its power/speed calculations - set it to match your actual battery, or the math will be off." },
-  "ss-wheel": { title: "Wheel size", text: "Wheel diameter in inches used for the speedometer and odometer (tacho) reading, so set it to your real tire size or the speed and distance will read wrong.\n\nThe scooter display shows the speed calibrated from this value - not a fixed number. It calibrates the tacho ONLY and does not change the motor controller (ESC), so the real speed is unchanged. It can only be changed while the scooter is unlocked, so a locked scooter keeps an honest speedometer.\n\nNOTE: this needs the \"Wheel-diameter fix\" firmware from the patcher. Stock 5.4.19 ignores the app's wheel value, so on unpatched firmware this setting has no effect on the speed reading." },
+  "ss-wheel": { title: "Wheel size", text: "Wheel diameter in inches used for the speedometer and odometer (tacho) reading, so set it to your real tire size or the speed and distance will read wrong.\n\nWhile unlocked the scooter display shows the speed calibrated from this value; while locked the display shows the stock 10.0\" so a roadside check reads stock. It calibrates the tacho ONLY and does not change the motor controller (ESC), so the real speed is unchanged. It can only be changed while the scooter is unlocked.\n\nNOTE: this needs the \"Wheel-diameter fix\" firmware from the patcher. Stock 5.4.19 ignores the app's wheel value, so on unpatched firmware this setting has no effect on the speed reading." },
   "ss-fstart": { title: "Front start level", text: "Global launch aggressiveness of the FRONT motor from a standstill. Higher = punchier; lower = smoother." },
   "ss-rstart": { title: "Rear start level", text: "Global launch aggressiveness of the REAR motor from a standstill. Higher = punchier; lower = smoother." },
   "ss-eabs": { title: "EABS level", text: "Global strength of the electronic regenerative brake (recuperation): how hard the motor brakes and recharges the battery when you let off the throttle. 0 = coast." },
