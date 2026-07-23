@@ -1,6 +1,6 @@
 {
   "version": 13,
-  "file": "AWIVCU_V13_R5.4.19.hex",
+  "file": "AWIVCU_APP_R5_4_19_V13.hex",
   "md5": "db9787b107f3c43bf1232da2432ae302",
-  "notes": "V13 - always boots LOCKED on every power-on event (transition-block force-lock), BLE lock cmd 0x1B, lock-gated wheel display, blinker + wheel fixes, version readable over BLE (hwVer=13). Build with the in-app patcher."
+  "notes": "V13 - always boots LOCKED on every power-on event (transition-block force-lock), BLE lock cmd 0x1B, lock-gated wheel display, blinker + wheel fixes, version readable over BLE (hwVer=13). Name follows the original app's AWIVCU_APP_R5_4_19 stem so it will flash. Build with the in-app patcher."
 }
