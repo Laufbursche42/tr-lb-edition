@@ -36,6 +36,11 @@ final class FirmwarePatcher {
     private int startAddr = DEFAULT_START_ADDR;
     private int v0 = 0x05, v1 = 0x04, v2 = 0x0E; // :07AAA555 version marker
 
+    /** Internal firmware build number, stamped into the BLE hwVer MAJOR byte (frame 55 43, t[6]) so the
+     *  app can read over BLE which patched firmware is on the controller and offer an update. BUMP this
+     *  for every new firmware we build and host. */
+    static final int FW_BUILD = 12;
+
     private FirmwarePatcher() {}
 
     // ─────────────────────────── loaders ───────────────────────────
@@ -128,6 +133,10 @@ final class FirmwarePatcher {
         p(0x0800D9DE, b(0x1F,0x28,0x40,0xD1), b(0x10,0xF0,0xB9,0xB8)),
         // FLAG==1 immediate (clamp flag stays engaged; the 0x1B lock is what gates speed now)
         p(0x0800F9D0, b(0x00), b(0x01)),
+        // Version stamp: BLE 55 43 version frame builds hwVer from the fill at 0x0800C5DE (buffer[4] <-
+        // 0x20000019). Replace that copy with movs r7,#FW_BUILD + nop so hwVer MAJOR = our build number.
+        // 0x20000019 itself is untouched (still used by the boot/EEPROM code), only the BLE report changes.
+        p(0x0800C5DE, b(0x61,0x4F,0x3F,0x78), b(FW_BUILD,0x27,0x00,0xBF)),
         // four r7-clamp bl sites -> clampcave (two-value clamp selected by everUnlocked)
         p(0x08010058, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0x72,0xFD,0x02,0xE0,0x00,0xBF)),
         p(0x08010208, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0x9A,0xFC,0x02,0xE0,0x00,0xBF)),

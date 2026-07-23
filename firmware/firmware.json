@@ -1,0 +1,6 @@
+{
+  "version": 12,
+  "file": "AWIVCU_TESTLOCK_R5_4_19.hex",
+  "md5": "5be623d25f6d7af938baff72f71ff3a8",
+  "notes": "TESTLOCK V12 - BLE lock (cmd 0x1B), boots locked, lock-gated wheel display, blinker + wheel fixes. Build with the in-app patcher."
+}

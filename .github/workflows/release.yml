@@ -23,6 +23,7 @@ on:
       - '.gitattributes'
       - '.gitignore'
       - '.github/**'
+      - 'firmware/**'
   workflow_dispatch:
 
 permissions:

@@ -1396,7 +1396,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
         <span id="info-swver" style="color:var(--label);font-size:var(--fs-md)">-</span>
       </div>
       <div class="settings-row">
-        <div class="settings-row-left"><div class="settings-row-label">Hardware version</div></div>
+        <div class="settings-row-left"><div class="settings-row-label">Laufbursche firmware</div></div>
         <span id="info-hwver" style="color:var(--label);font-size:var(--fs-md)">-</span>
       </div>
     </div>
@@ -3208,7 +3208,9 @@ function renderInfoPage() {
   // Frame number (VCU): the number the scooter actually reports.
   setTxt('info-serial',  dash(d.frameNum));
   setTxt('info-swver',   dash(d.swVer));
-  setTxt('info-hwver',   dash(d.hwVer));
+  // hwVer major byte is our internal FW build number, stamped by the patcher (55 43 t[6]). Show it as
+  // "V<n>" so the user sees which Laufbursche firmware is on the controller (read live over BLE).
+  setTxt('info-hwver',   (d.hwVer && String(d.hwVer).split('.')[0] > 0) ? ('V' + String(d.hwVer).split('.')[0]) : '-');
   syncBtNameEditor();
 }
 

@@ -14,6 +14,7 @@ on:
       - '.gitattributes'
       - '.gitignore'
       - '.github/**'
+      - 'firmware/**'
   pull_request:
     branches: [ main ]
     paths-ignore:
@@ -23,6 +24,7 @@ on:
       - '.gitattributes'
       - '.gitignore'
       - '.github/**'
+      - 'firmware/**'
 
 permissions:
   contents: read
