@@ -345,9 +345,11 @@ public class MainActivity extends Activity {
 
     /** Enqueue the APK download into the public Downloads folder via DownloadManager (visible file +
      *  progress notification) then opens the installer once it completes. Runs on the UI thread. */
+    private static final String APK_UPDATE_NAME = "laufbursche-edition-update.apk";
+
     private void startApkDownload(String url) {
         try {
-            android.app.DownloadManager dm =
+            final android.app.DownloadManager dm =
                     (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             if (dm == null) { toast("Download service unavailable"); return; }
             android.app.DownloadManager.Request req =
@@ -358,47 +360,52 @@ public class MainActivity extends Activity {
             req.setNotificationVisibility(
                     android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             req.setDestinationInExternalPublicDir(
-                    android.os.Environment.DIRECTORY_DOWNLOADS, "laufbursche-edition-update.apk");
+                    android.os.Environment.DIRECTORY_DOWNLOADS, APK_UPDATE_NAME);
             final long id = dm.enqueue(req);
             toast("Downloading update to your Downloads folder...");
-            registerApkInstallOnComplete(id);
+            pollApkDownload(dm, id, 0);
         } catch (Throwable t) {
             Log.e(TAG, "startApkDownload failed", t);
             toast("Download failed: " + t.getMessage());
         }
     }
 
-    /** When the DownloadManager download {@code id} finishes, launch the package installer for it. */
-    private void registerApkInstallOnComplete(final long id) {
-        final android.content.BroadcastReceiver rec = new android.content.BroadcastReceiver() {
-            @Override public void onReceive(android.content.Context ctx, Intent intent) {
-                long got = intent.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-                if (got != id) return;
-                try { ctx.unregisterReceiver(this); } catch (Throwable ignored) {}
-                try {
-                    android.app.DownloadManager dm =
-                            (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                    Uri apkUri = dm != null ? dm.getUriForDownloadedFile(id) : null;
-                    if (apkUri == null) {
-                        toast("Downloaded to your Downloads folder - open it there to install");
-                        return;
-                    }
-                    Intent i = new Intent(Intent.ACTION_VIEW);
-                    i.setDataAndType(apkUri, "application/vnd.android.package-archive");
-                    i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(i);
-                } catch (Throwable t) {
-                    Log.e(TAG, "install after download failed", t);
-                    toast("Downloaded to your Downloads folder - open it there to install");
-                }
+    /** Poll the download until it finishes, then open the installer. Polling is more reliable than the
+     *  ACTION_DOWNLOAD_COMPLETE broadcast, which some ROMs (e.g. MIUI) do not deliver to app receivers. */
+    private void pollApkDownload(final android.app.DownloadManager dm, final long id, final int tries) {
+        if (tries > 900) return;   // ~7.5 min ceiling
+        int status = -1;
+        try (android.database.Cursor c =
+                     dm.query(new android.app.DownloadManager.Query().setFilterById(id))) {
+            if (c != null && c.moveToFirst()) {
+                int col = c.getColumnIndex(android.app.DownloadManager.COLUMN_STATUS);
+                if (col >= 0) status = c.getInt(col);
             }
-        };
-        android.content.IntentFilter filter =
-                new android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE);
-        // ContextCompat picks the right RECEIVER_EXPORTED handling for every API level (the system
-        // ACTION_DOWNLOAD_COMPLETE broadcast requires an exported receiver on Android 13+).
-        androidx.core.content.ContextCompat.registerReceiver(
-                this, rec, filter, androidx.core.content.ContextCompat.RECEIVER_EXPORTED);
+        } catch (Throwable ignored) {}
+        if (status == android.app.DownloadManager.STATUS_SUCCESSFUL) { installDownloadedApk(dm, id); return; }
+        if (status == android.app.DownloadManager.STATUS_FAILED) { toast("Download failed"); return; }
+        new android.os.Handler(getMainLooper()).postDelayed(
+                () -> pollApkDownload(dm, id, tries + 1), 500);
+    }
+
+    /** Launch the package installer for the finished download (with a FileProvider fallback URI). */
+    private void installDownloadedApk(android.app.DownloadManager dm, long id) {
+        try {
+            Uri uri = dm.getUriForDownloadedFile(id);
+            if (uri == null) {
+                File f = new File(android.os.Environment.getExternalStoragePublicDirectory(
+                        android.os.Environment.DIRECTORY_DOWNLOADS), APK_UPDATE_NAME);
+                if (f.exists()) uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", f);
+            }
+            if (uri == null) { toast("Downloaded to your Downloads folder - open it there to install"); return; }
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            i.setDataAndType(uri, "application/vnd.android.package-archive");
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Throwable t) {
+            Log.e(TAG, "install after download failed", t);
+            toast("Downloaded to your Downloads folder - open it there to install");
+        }
     }
 
     private void toast(String msg) {
