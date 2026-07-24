@@ -304,6 +304,13 @@ html, body {
   padding: 14px 16px; border-bottom: 1px solid var(--border);
 }
 .settings-topbar h2 { font-size: var(--fs-xl); font-weight: var(--fw-bold); }
+#update-banners { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 0; }
+#update-banners:empty { display: none; }
+.update-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--ble);
+  background: color-mix(in srgb, var(--ble) 14%, transparent); color: var(--text);
+  font-size: var(--fs-md); line-height: 1.35; cursor: pointer; }
+.update-banner .ub-go { color: var(--ble); font-weight: var(--fw-semibold); white-space: nowrap; }
 .settings-group { padding: 12px 16px; }
 .settings-group-title {
   font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--label);
@@ -1017,6 +1024,17 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <button class="icon-btn" id="btn-close-settings">&#10005;</button>
   </div>
 
+  <div id="update-banners">
+    <button type="button" id="upd-fw" class="update-banner" style="display:none">
+      <span class="ub-text">New firmware available <b id="upd-fw-ver"></b></span>
+      <span class="ub-go">Open Patcher &#8594;</span>
+    </button>
+    <button type="button" id="upd-app" class="update-banner" style="display:none">
+      <span class="ub-text">New app version available <b id="upd-app-ver"></b></span>
+      <span class="ub-go">Open Patcher &#8594;</span>
+    </button>
+  </div>
+
   <div id="model-banner">
     <div class="model-line">Model: <span id="model-name">-</span><span id="model-unsupported"> - the Tetra is not supported by this app yet; settings and firmware are disabled for it.</span></div>
     <div id="model-pick-row">
@@ -1554,6 +1572,14 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       Only flash firmware that matches your exact scooter.
     </div>
 
+    <div class="settings-group" id="pt-updates" style="padding-top:6px;display:none">
+      <div class="settings-group-title">Updates</div>
+      <button id="pt-dl-fw" style="display:none">&#11015; Download <span id="pt-dl-fw-name">firmware</span></button>
+      <div class="settings-row-sublabel" id="pt-dl-fw-note" style="display:none;margin:4px 0 8px">A newer firmware is available. Download it - it is then saved to your Downloads folder, appears in the firmware list below and opens ready to flash.</div>
+      <button id="pt-dl-app" style="display:none">&#11015; Download <span id="pt-dl-app-name">app update</span></button>
+      <div class="settings-row-sublabel" id="pt-dl-app-note" style="display:none;margin:4px 0 0">A newer app version is available. Download saves the APK to your Downloads folder and opens the installer.</div>
+    </div>
+
     <div class="settings-group" style="padding-top:6px">
       <div class="settings-group-title">Firmware</div>
       <select id="pt-firmware" class="pt-select">
@@ -2078,6 +2104,7 @@ function updateBLEUI(data) {
   state.ble = data;
 
   if (connected !== wasConnected) onBLEConnectionChange(connected);
+  try { refreshUpdateUi(); } catch (e) {}   // firmware-available depends on connection + scooter build
 
   bleDot.classList.toggle('connected', connected);
   const connBtn = document.getElementById('btn-connect');
@@ -3747,11 +3774,18 @@ function ptOnFirmwareChange() {
 function ptSyncButton() {
   const fw = document.getElementById('pt-firmware').value;
   const btn = document.getElementById('btn-pt-run');
-  if (btn) btn.textContent = (fw === 'r5') ? 'Build patch & continue' : 'Original Firmware & Continue';
+  if (btn) btn.textContent = (fw === 'r5') ? 'Build patch & continue'
+    : (fw === 'dl') ? 'Continue to update page' : 'Original Firmware & Continue';
 }
 function ptRun() {
   if (typeof LB === 'undefined' || !LB.patchFirmware) { showToast('Only available in the app'); return; }
   const fw = document.getElementById('pt-firmware').value;
+  if (fw === 'dl') {   // a downloaded, already-patched image: no re-patch, just reopen the update page
+    closePatcherPage();
+    openFirmwarePage();
+    if (_lastFwMeta && window.__onOtaFile) { try { window.__onOtaFile(_lastFwMeta); } catch (e) {} }
+    return;
+  }
   const speed = 'lock';   // R5 always gets the core BLE speed lock; kept for call compatibility
   const bl = !!(document.getElementById('pt-blinker') || {}).checked;
   const wd = (fw === 'r5');   // wheel-diameter fix is always included on R5 (no longer optional)
@@ -3775,6 +3809,82 @@ function ptRun() {
     openFirmwarePage();
     try { if (window.__onOtaFile) window.__onOtaFile(res); } catch (e) {}
   }, 30);
+}
+
+/* ── Update notifications (firmware via the Patcher, app via the GitHub release) ── */
+const updState = { app: { available: false }, fwLatest: null };
+let _pendingFwDl = null;   // firmware download in flight, so __onOtaFile routes it to the patcher picker
+let _lastFwMeta = null;    // meta of the last downloaded firmware, for re-selecting it in the picker
+
+function updInit() {
+  if (typeof LB === 'undefined') return;
+  try { if (LB.firmwareLatest) updState.fwLatest = JSON.parse(LB.firmwareLatest()); } catch (e) {}
+  try { if (LB.checkUpdates) LB.checkUpdates(); } catch (e) {}
+  refreshUpdateUi();
+}
+
+window.__onAppUpdate = function(info) {
+  try { updState.app = (typeof info === 'string') ? JSON.parse(info) : (info || { available: false }); }
+  catch (e) { updState.app = { available: false }; }
+  refreshUpdateUi();
+};
+
+// A new firmware is offered when connected to a scooter whose Laufbursche build is older than the app's
+// (includes an unknown / foreign firmware, which reads as build 0 while connected).
+function firmwareUpdateAvailable() {
+  const fw = updState.fwLatest;
+  if (!fw || !(fw.build > 0) || !state.bleConnected) return false;
+  const installed = parseInt(String(liveRaw().hwVer || '').split('.')[0], 10) || 0;
+  return installed < fw.build;
+}
+
+function refreshUpdateUi() {
+  const fwAvail = firmwareUpdateAvailable();
+  const appAvail = !!(updState.app && updState.app.available);
+  const fw = updState.fwLatest || {};
+  const setShow = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
+  // Settings-sheet banners (pointers into the Patcher).
+  setShow('update-banners', fwAvail || appAvail);
+  setShow('upd-fw', fwAvail);
+  setShow('upd-app', appAvail);
+  const fwVer = document.getElementById('upd-fw-ver'); if (fwVer) fwVer.textContent = fw.build ? ('V' + fw.build) : '';
+  const appVer = document.getElementById('upd-app-ver'); if (appVer) appVer.textContent = updState.app.version ? ('(' + updState.app.version + ')') : '';
+  // Patcher download buttons.
+  setShow('pt-updates', fwAvail || appAvail);
+  setShow('pt-dl-fw', fwAvail);
+  setShow('pt-dl-fw-note', fwAvail);
+  setShow('pt-dl-app', appAvail);
+  setShow('pt-dl-app-note', appAvail);
+  const fwName = document.getElementById('pt-dl-fw-name'); if (fwName && fw.file) fwName.textContent = fw.file;
+  const appName = document.getElementById('pt-dl-app-name'); if (appName) appName.textContent = 'Laufbursche Edition ' + (updState.app.version || '');
+}
+
+function ptDownloadFirmware() {
+  const fw = updState.fwLatest;
+  if (!fw || !fw.url) { showToast('No firmware to download'); return; }
+  if (typeof LB === 'undefined' || !LB.downloadFirmware) { showToast('Only available in the app'); return; }
+  _pendingFwDl = fw.file;
+  showToast('Downloading ' + fw.file + ' ...');
+  try { LB.downloadFirmware(fw.url, fw.file); } catch (e) { _pendingFwDl = null; showToast('Download failed'); }
+}
+
+function ptDownloadApp() {
+  const a = updState.app;
+  if (!a || !a.url) { showToast('No app update to download'); return; }
+  if (typeof LB === 'undefined' || !LB.downloadAndInstallApk) { showToast('Only available in the app'); return; }
+  showToast('Downloading app update ...');
+  try { LB.downloadAndInstallApk(a.url); } catch (e) { showToast('Download failed'); }
+}
+
+// Add the downloaded firmware to the patcher picker (so our name is visible there) and select it.
+function ptAddDownloadedFirmware(fileName) {
+  const sel = document.getElementById('pt-firmware');
+  if (!sel) return;
+  let opt = sel.querySelector('option[value="dl"]');
+  if (!opt) { opt = document.createElement('option'); opt.value = 'dl'; sel.appendChild(opt); }
+  opt.textContent = fileName + ' (downloaded)';
+  sel.value = 'dl';
+  ptOnFirmwareChange();
 }
 
 function fwResetUi() {
@@ -3874,6 +3984,16 @@ window.__onOtaFile = function(metaArg) {
   let m = metaArg;
   try { if (typeof metaArg === 'string') m = JSON.parse(metaArg); } catch (e) { m = null; }
   if (!m || m.cancelled) return;   // picker cancelled: keep whatever was there
+  if (_pendingFwDl) {   // this metadata is a firmware we just downloaded via the patcher
+    const dlName = _pendingFwDl; _pendingFwDl = null;
+    if (m.ok) {
+      _lastFwMeta = m;
+      ptAddDownloadedFirmware(m.name || dlName);
+      openFirmwarePage();   // navigate to the update page (same order the patch flow uses)
+    } else {
+      showToast('Downloaded firmware is not readable');
+    }
+  }
   const info = document.getElementById('fw-fileinfo');
   if (!m.ok) {
     fwState.meta = null;
@@ -4503,6 +4623,14 @@ function wireEvents() {
   ['pt-blinker'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', ptSyncButton); });
   document.getElementById('btn-pt-run').addEventListener('click', ptRun);
 
+  // Update banners (pointers into the Patcher) + the patcher download buttons.
+  const goPatcher = () => { try { closeSettings(); } catch (e) {} openPatcherPage(); };
+  const wireUpd = (id, fn) => { const e = document.getElementById(id); if (e) e.addEventListener('click', fn); };
+  wireUpd('upd-fw', goPatcher);
+  wireUpd('upd-app', goPatcher);
+  wireUpd('pt-dl-fw', ptDownloadFirmware);
+  wireUpd('pt-dl-app', ptDownloadApp);
+
   // Ride log opt-in toggle: mirror the change straight to the native recorder.
   document.getElementById('toggle-ridelog').addEventListener('change', e => {
     if (typeof LB !== 'undefined' && LB.setRideLogging) {
@@ -4675,6 +4803,9 @@ function init() {
   // Start BLE polling
   tickBLE();
   setInterval(tickBLE, 500);
+
+  // Check for a newer app version (GitHub release) and read the latest firmware build.
+  try { updInit(); } catch (e) {}
 
   // Poll the native stream status while the streaming page is open
   setInterval(() => {

@@ -341,6 +341,99 @@ public class MainActivity extends Activity {
         runJs("(function(){try{if(window.__onOtaFile)window.__onOtaFile(" + json + ");}catch(e){}})();");
     }
 
+    // ── Update helpers (used by the LB.checkUpdates / downloadFirmware / downloadAndInstallApk bridge) ──
+
+    private void toast(String msg) {
+        try {
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private String installedVersionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Throwable t) {
+            return "0";
+        }
+    }
+
+    /** true when dotted version {@code latest} is strictly greater than {@code installed} (e.g. 1.0.60 > 1.0.59). */
+    private static boolean isNewerVersion(String latest, String installed) {
+        try {
+            String[] la = latest.split("\\.");
+            String[] ia = installed.split("\\.");
+            int n = Math.max(la.length, ia.length);
+            for (int i = 0; i < n; i++) {
+                int lv = i < la.length ? parseIntSafe(la[i]) : 0;
+                int iv = i < ia.length ? parseIntSafe(ia[i]) : 0;
+                if (lv != iv) return lv > iv;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    private static int parseIntSafe(String s) {
+        try {
+            return Integer.parseInt(s.replaceAll("[^0-9]", ""));
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
+    private String httpGetText(String url) throws Exception {
+        return new String(httpGetBytes(url), StandardCharsets.UTF_8);
+    }
+
+    /** Simple HTTP(S) GET into memory (used for the small release JSON and the firmware/APK files). */
+    private byte[] httpGetBytes(String urlStr) throws Exception {
+        java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(urlStr).openConnection();
+        try {
+            c.setRequestProperty("User-Agent", "lb-edition");
+            c.setRequestProperty("Accept", "application/vnd.github+json, */*");
+            c.setConnectTimeout(15000);
+            c.setReadTimeout(60000);
+            c.setInstanceFollowRedirects(true);
+            try (InputStream in = c.getInputStream(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = in.read(buf)) > 0) bos.write(buf, 0, n);
+                return bos.toByteArray();
+            }
+        } finally {
+            c.disconnect();
+        }
+    }
+
+    /** Write bytes to the public Downloads folder and return a content URI usable for ACTION_VIEW. */
+    private Uri saveToDownloads(byte[] data, String fileName, String mime) throws Exception {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            android.content.ContentResolver cr = getContentResolver();
+            android.content.ContentValues cv = new android.content.ContentValues();
+            cv.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName);
+            cv.put(android.provider.MediaStore.Downloads.MIME_TYPE, mime);
+            cv.put(android.provider.MediaStore.Downloads.IS_PENDING, 1);
+            Uri uri = cr.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+            if (uri == null) throw new Exception("MediaStore insert failed");
+            try (java.io.OutputStream os = cr.openOutputStream(uri)) {
+                if (os == null) throw new Exception("openOutputStream failed");
+                os.write(data);
+            }
+            cv.clear();
+            cv.put(android.provider.MediaStore.Downloads.IS_PENDING, 0);
+            cr.update(uri, cv, null, null);
+            return uri;
+        }
+        File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+        if (dir != null && !dir.exists()) dir.mkdirs();
+        File f = new File(dir, fileName);
+        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(f)) {
+            fos.write(data);
+        }
+        return FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", f);
+    }
+
     private String queryDisplayName(Uri uri) {
         try (android.database.Cursor c = getContentResolver().query(uri, null, null, null, null)) {
             if (c != null && c.moveToFirst()) {
@@ -840,6 +933,119 @@ public class MainActivity extends Activity {
             } catch (Throwable t) {
                 return "";
             }
+        }
+
+        // ── Updates (firmware + app) ──
+
+        /** The latest firmware the app can provide (its own patcher build) and where to download it. */
+        @JavascriptInterface
+        public String firmwareLatest() {
+            try {
+                int b = FirmwarePatcher.FW_BUILD;
+                String file = "AWIVCU_APP_R5_4_19_V" + b + ".hex";
+                JSONObject o = new JSONObject();
+                o.put("build", b);
+                o.put("file", file);
+                o.put("url", "https://laufbursche42.github.io/trfm-unlock/firmware/" + file);
+                return o.toString();
+            } catch (Throwable t) {
+                Log.e(TAG, "firmwareLatest failed", t);
+                return "{\"build\":0}";
+            }
+        }
+
+        /** Ask GitHub for the newest app release; push the result to window.__onAppUpdate. Never throws. */
+        @JavascriptInterface
+        public void checkUpdates() {
+            new Thread(() -> {
+                String result = "{\"available\":false}";
+                try {
+                    String json = httpGetText("https://api.github.com/repos/Laufbursche42/tr-lb-edition/releases/latest");
+                    JSONObject rel = new JSONObject(json);
+                    String tag = rel.optString("tag_name", "");
+                    String latest = tag.startsWith("v") ? tag.substring(1) : tag;
+                    String apkUrl = "";
+                    org.json.JSONArray assets = rel.optJSONArray("assets");
+                    if (assets != null) {
+                        for (int i = 0; i < assets.length(); i++) {
+                            JSONObject a = assets.optJSONObject(i);
+                            if (a == null) continue;
+                            if (a.optString("name", "").toLowerCase().endsWith(".apk")) {
+                                apkUrl = a.optString("browser_download_url", "");
+                                break;
+                            }
+                        }
+                    }
+                    boolean newer = !apkUrl.isEmpty() && isNewerVersion(latest, installedVersionName());
+                    JSONObject o = new JSONObject();
+                    o.put("available", newer);
+                    o.put("version", latest);
+                    o.put("url", apkUrl);
+                    result = o.toString();
+                } catch (Throwable t) {
+                    Log.e(TAG, "checkUpdates failed", t);
+                }
+                final String r = result;
+                runJs("(function(){try{if(window.__onAppUpdate)window.__onAppUpdate(" + r + ");}catch(e){}})();");
+            }).start();
+        }
+
+        /** Download the app APK to the Downloads folder, then open the system installer for it. */
+        @JavascriptInterface
+        public void downloadAndInstallApk(final String url) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
+                runOnUiThread(() -> {
+                    try {
+                        Intent i = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                Uri.parse("package:" + getPackageName()));
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                        toast("Allow installs for this app, then tap download again");
+                    } catch (Throwable t) {
+                        Log.e(TAG, "unknown-sources prompt failed", t);
+                    }
+                });
+                return;
+            }
+            new Thread(() -> {
+                try {
+                    byte[] data = httpGetBytes(url);
+                    final Uri uri = saveToDownloads(data, "laufbursche-edition-update.apk",
+                            "application/vnd.android.package-archive");
+                    runOnUiThread(() -> {
+                        try {
+                            Intent i = new Intent(Intent.ACTION_VIEW);
+                            i.setDataAndType(uri, "application/vnd.android.package-archive");
+                            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(i);
+                        } catch (Throwable t) {
+                            Log.e(TAG, "install intent failed", t);
+                            toast("Saved to Downloads, but could not open the installer");
+                        }
+                    });
+                } catch (Throwable t) {
+                    Log.e(TAG, "apk download failed", t);
+                    runOnUiThread(() -> toast("App download failed"));
+                }
+            }).start();
+        }
+
+        /** Download a pre-built firmware .hex to Downloads and hand it to the firmware update page. */
+        @JavascriptInterface
+        public void downloadFirmware(final String url, final String fileName) {
+            new Thread(() -> {
+                try {
+                    byte[] data = httpGetBytes(url);
+                    String text = new String(data, StandardCharsets.ISO_8859_1);
+                    saveToDownloads(data, fileName, "application/octet-stream");
+                    otaHexText = text;
+                    otaFileName = fileName;
+                    pushOtaFile(OtaEngine.inspect(text, fileName));
+                } catch (Throwable t) {
+                    Log.e(TAG, "firmware download failed", t);
+                    runOnUiThread(() -> toast("Firmware download failed"));
+                }
+            }).start();
         }
 
         /** Toggle immersive full-screen (persisted; survives restarts). Persist the pref, then let
