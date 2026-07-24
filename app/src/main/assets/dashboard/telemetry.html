@@ -564,30 +564,54 @@ html, body {
 #streaming-scroller > * { flex-shrink: 0; }
 #btn-connect.connected { color: var(--good); }
 #ble-dot { pointer-events: none; }
-#btn-scooter-settings, #btn-connect-scooter, #btn-export-logs, #btn-error-reports, #btn-navigation, #btn-info, #btn-firmware, #btn-firmware-patcher, #btn-version-info {
+#btn-scooter-settings, #btn-connect-scooter, #btn-export-logs, #btn-error-reports, #btn-navigation, #btn-info, #btn-battery, #btn-firmware, #btn-firmware-patcher, #btn-version-info {
   width: 100%; padding: 12px; border: 1px solid var(--border);
   background: var(--bg); color: var(--text); font-size: var(--fs-base); font-weight: var(--fw-semibold);
   border-radius: 9px; cursor: pointer; text-align: center;
   -webkit-tap-highlight-color: transparent;
 }
-#btn-scooter-settings:active, #btn-connect-scooter:active, #btn-export-logs:active, #btn-error-reports:active, #btn-navigation:active, #btn-info:active, #btn-firmware:active, #btn-firmware-patcher:active, #btn-version-info:active { background: var(--border); }
+#btn-scooter-settings:active, #btn-connect-scooter:active, #btn-export-logs:active, #btn-error-reports:active, #btn-navigation:active, #btn-info:active, #btn-battery:active, #btn-firmware:active, #btn-firmware-patcher:active, #btn-version-info:active { background: var(--border); }
 /* #btn-stream-start (good fill) + #btn-stream-stop (neutral) are styled by the shared action-button base. */
 #stream-url { color: var(--text); background: var(--bg); border: 1px solid var(--border);
   border-radius: 8px; padding: 8px; font-family: monospace; }
 
 /* ── Connect / Scooter-settings subpages (reuse the streaming-page pattern) ── */
-#connect-page, #scooter-page, #error-reports-page, #info-page, #firmware-page, #patcher-page {
+#connect-page, #scooter-page, #error-reports-page, #info-page, #battery-page, #firmware-page, #patcher-page {
   position: fixed; inset: 0; z-index: 120; background: var(--bg);
   display: flex; flex-direction: column;
   transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
 }
-#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #firmware-page.open, #patcher-page.open { transform: translateX(0); }
-#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #firmware-scroller, #patcher-scroller {
+#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #battery-page.open, #firmware-page.open, #patcher-page.open { transform: translateX(0); }
+#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #battery-scroller, #firmware-scroller, #patcher-scroller {
   flex: 1; min-height: 0; overflow-y: auto; padding: var(--gap);
   display: flex; flex-direction: column; gap: 4px;
   padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px) + 12px);
 }
-#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > *, #firmware-scroller > *, #patcher-scroller > * { flex-shrink: 0; }
+#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > *, #battery-scroller > *, #firmware-scroller > *, #patcher-scroller > * { flex-shrink: 0; }
+
+/* ── Battery Info page ── */
+.bat-health {
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 4px;
+  font-size: var(--fs-sm); line-height: 1.5;
+}
+.bat-health.ok { border-color: var(--good); background: color-mix(in srgb, var(--good) 12%, transparent); }
+.bat-health.bad { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.bat-health .bat-health-title { font-weight: var(--fw-semibold); margin-bottom: 4px; }
+.bat-health.ok .bat-health-title { color: var(--good); }
+.bat-health.bad .bat-health-title { color: var(--danger); }
+.bat-health ul { margin: 4px 0 0; padding-left: 18px; }
+.cell-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+.cell-tile {
+  border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; background: var(--card);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.cell-tile .cell-name { font-size: var(--fs-sm); color: var(--label); }
+.cell-tile .cell-volt { font-size: var(--fs-md); font-weight: var(--fw-semibold); font-family: monospace; }
+.cell-tile.cell-full .cell-volt { color: var(--good); }
+.cell-tile.cell-mid  .cell-volt { color: var(--warn); }
+.cell-tile.cell-low  .cell-volt { color: var(--danger); }
+.cell-tile.cell-bal { border-color: var(--ble); }
+.cell-tile .cell-bal-tag { font-size: var(--fs-sm); color: var(--ble); }
 
 /* Firmware update page */
 .fw-warn {
@@ -658,6 +682,9 @@ html, body {
 .pt-opt.disabled { opacity: .4; }
 .pt-lbl { font-weight: var(--fw-bold); }
 .pt-help { display: block; color: var(--label); font-size: var(--fs-sm); margin-top: 2px; }
+.pt-included { margin: 8px 0 0; padding-left: 18px; color: var(--label); font-size: var(--fs-sm); line-height: 1.5; }
+.pt-included li { margin: 5px 0; }
+.pt-included b { color: var(--text); }
 #pt-status { font-size: var(--fs-sm); line-height: 1.5; }
 .fw-bar { height: 12px; border-radius: 999px; background: var(--border); overflow: hidden; }
 #fw-bar-fill { height: 100%; width: 0; background: var(--ble); transition: width .25s ease; }
@@ -1010,6 +1037,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <div class="settings-row-sublabel note-gap">Active scooter faults and battery warnings (scooter must be connected)</div>
     <button id="btn-info">&#8505; Scooter info</button>
     <div class="settings-row-sublabel note-gap">Serial number, firmware and app versions</div>
+    <button id="btn-battery">&#128267; Battery info</button>
+    <div class="settings-row-sublabel note-gap">Pack, health and per-cell voltages (scooter must be connected)</div>
     <button id="btn-navigation">&#129517; Navigation</button>
     <div class="settings-row-sublabel note-gap">Open the navigation screen</div>
     <button id="btn-open-routes">&#128506; Saved routes<span id="routes-count-badge"></span></button>
@@ -1375,7 +1404,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       <div class="settings-row fighter-only" style="flex-direction:column;align-items:stretch;gap:8px">
         <div class="settings-row-left">
           <div class="settings-row-label">Change identity / BLE name</div>
-          <div class="settings-row-sublabel">Prefilled with the full current FIN - edit the whole name and press Set. Changes the region code in the identity / Bluetooth name. On the patched firmware this does NOT lock or unlock the speed (that is the live Bluetooth speed lock, read from the scooter); it only affects unpatched firmware where the "TDE" prefix still gates the clamp.</div>
+          <div class="settings-row-sublabel">Prefilled with the full current FIN - edit the whole name and press Set (Reset restores the original). Changes the region code in the identity / Bluetooth name. On this patched firmware it does NOT lock or unlock the speed - that is the live Bluetooth speed lock, read from the scooter. This app writes the identity only locally over Bluetooth and never sends it anywhere. Note: if you afterwards use the official Teverun app, that app uploads the identity / FIN to the Teverun servers - this app does not.</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <input id="info-btname-input" type="text" maxlength="16" autocomplete="off"
@@ -1428,6 +1457,34 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
   </div>
 </div>
 
+<!-- ── Battery Info page (pack, health and per-cell voltages from live BLE data) ── -->
+<div id="battery-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-battery-back" aria-label="Back">&#8592;</button>
+    </div>
+    <span class="tb-title">Battery info</span>
+    <div class="tb-right"><span class="tb-spacer"></span></div>
+  </div>
+  <div id="battery-scroller">
+    <div class="settings-row-sublabel" style="margin-bottom:10px">
+      Pack health, summary and per-cell voltages read live from the scooter (BLE). No command is sent - the BMS streams this automatically.
+    </div>
+    <div class="settings-group" style="padding-top:4px">
+      <div class="settings-group-title">Battery health</div>
+      <div id="bat-health"></div>
+    </div>
+    <div class="settings-group" style="border-top:1px solid var(--border)">
+      <div class="settings-group-title">Pack summary</div>
+      <div id="bat-pack"></div>
+    </div>
+    <div class="settings-group" style="border-top:1px solid var(--border)">
+      <div class="settings-group-title">Cells</div>
+      <div id="bat-cells" class="cell-grid"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Firmware update page ───────────────────────── -->
 <div id="firmware-page">
   <div id="topbar">
@@ -1442,14 +1499,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       <b>Read this first.</b> Flashing IVCU firmware over Bluetooth takes about 13 minutes.
       During the update: keep the scooter switched on and within range, keep this app in the
       foreground (the screen stays on), and do not turn the scooter off. If the flash is interrupted
-      the IVCU stays in update mode and can simply be flashed again - it is not bricked. Only
-      flash a .hex that matches your IVCU.
-      <br><br>
-      <b>Wheel-diameter fix - what it does.</b> While UNLOCKED the display's speedometer and odometer
-      (tacho) read from this app's Wheel size setting, so the scooter shows the speed you calibrated.
-      While LOCKED the display shows the stock 10.0" so a roadside check reads stock. It never changes the
-      motor controller (ESC), so the real speed is unchanged. The Wheel size can only be changed while
-      the scooter is unlocked.
+      the IVCU stays in update mode and can simply be flashed again - it is not bricked. This page
+      flashes whatever .hex you pick, so only flash a file that matches your IVCU.
     </div>
 
     <div id="fw-ver2-note" class="fw-warn" style="display:none;border-color:var(--ble);background:color-mix(in srgb, var(--ble) 12%, transparent)">
@@ -1512,14 +1563,19 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     </div>
 
     <div class="settings-group" id="pt-speed-group" style="border-top:1px solid var(--border)">
-      <div class="settings-group-title">Speed lock (always included)</div>
-      <div class="settings-row-sublabel">The core direct BLE speed lock is always built in. The firmware boots LOCKED at 22 km/h and you unlock or re-lock it live over Bluetooth (command 0x1B); the current lock state is read straight from the scooter. There is no FIN rename and no display step - lock and unlock are a live Bluetooth command.</div>
+      <div class="settings-group-title">Always included</div>
+      <div class="settings-row-sublabel">Every R5.4.19 build always contains the full Laufbursche feature set - these cannot be switched off:</div>
+      <ul class="pt-included">
+        <li><b>Direct BLE speed lock (cmd 0x1B)</b> - boots LOCKED at 22 km/h; unlock or re-lock live over Bluetooth. No FIN rename, no display step; the lock state is read straight from the scooter.</li>
+        <li><b>Always boots LOCKED</b> - the firmware detects power-on from the display cold-boot, so every restart comes up locked at 22 km/h. The unlock holds while the scooter stays on; the next restart locks it again.</li>
+        <li><b>Wheel-diameter calibration</b> - while unlocked the app's Wheel size setting drives the speedometer and odometer (tacho); while locked the display shows the stock 10.0". It never changes the motor controller (ESC), so the real speed is unchanged. The Wheel size can only be changed while unlocked.</li>
+        <li><b>Cruise control</b> - re-enabled while unlocked (stock 5.4.19 kills it). The mode you set is stored on the VCU; locking turns cruise off, unlocking brings your stored mode back.</li>
+      </ul>
     </div>
 
     <div class="settings-group" id="pt-r5-options" style="border-top:1px solid var(--border)">
-      <div class="settings-group-title">Optional fixes (R5.4.19)</div>
-      <label class="pt-opt" id="pt-bl-wrap"><input type="checkbox" id="pt-blinker"><span><span class="pt-lbl">Blinker fix</span><span class="pt-help">Fixes the 5.4.19 bug where the indicators glow solid instead of blinking. Only needed if the VCU drives the indicators (no separate blinker module).</span></span></label>
-      <label class="pt-opt" id="pt-wd-wrap"><input type="checkbox" id="pt-wheel"><span><span class="pt-lbl">Wheel-diameter fix</span><span class="pt-help">Makes the app's Wheel size setting drive the speedometer (tacho) reading - stock 5.4.19 ignores it, so speed and distance read wrong without this fix. While unlocked the display's speedometer and odometer read from the app's Wheel size setting (your calibrated speed); while locked the display shows the stock 10.0". It does NOT change the motor controller (ESC), so the real speed is unchanged. The Wheel size can only be changed while unlocked.</span></span></label>
+      <div class="settings-group-title">Optional fix (R5.4.19)</div>
+      <label class="pt-opt" id="pt-bl-wrap"><input type="checkbox" id="pt-blinker"><span><span class="pt-lbl">Blinker fix</span><span class="pt-help">Fixes the 5.4.19 bug where the indicators glow solid instead of blinking. Only needed if the VCU drives the indicators directly - leave it off if your scooter has a separate blinker module.</span></span></label>
     </div>
 
     <div class="settings-group" id="pt-ali-note" style="border-top:1px solid var(--border);display:none">
@@ -1528,7 +1584,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 
     <div class="settings-group" style="border-top:1px solid var(--border)">
       <button id="btn-pt-run">Build patch &amp; Continue</button>
-      <div class="settings-row-sublabel" id="pt-status" style="margin:8px 0 0">R5.4.19 always builds the core BLE speed lock; tick the optional fixes you want. ALI is converted unchanged.</div>
+      <div class="settings-row-sublabel" id="pt-status" style="margin:8px 0 0">R5.4.19 always builds the full feature set (speed lock, boot-lock, wheel calibration, cruise); tick the blinker fix only if you need it. ALI is converted unchanged.</div>
     </div>
   </div>
 </div>
@@ -3208,9 +3264,13 @@ function renderInfoPage() {
   // Frame number (VCU): the number the scooter actually reports.
   setTxt('info-serial',  dash(d.frameNum));
   setTxt('info-swver',   dash(d.swVer));
-  // hwVer major byte is our internal FW build number, stamped by the patcher (55 43 t[6]). Show it as
-  // "V<n>" so the user sees which Laufbursche firmware is on the controller (read live over BLE).
-  setTxt('info-hwver',   (d.hwVer && String(d.hwVer).split('.')[0] > 0) ? ('V' + String(d.hwVer).split('.')[0]) : '-');
+  // Laufbursche firmware version: our patcher stamps the build number into the hwVer MAJOR byte
+  // (55 43 t[6]); the app reads it back over BLE. Only our firmware reports a build number here, so show
+  // "V<build>" when it is readable, otherwise NONE (not our firmware / version not readable).
+  {
+    const major = d.hwVer ? parseInt(String(d.hwVer).split('.')[0], 10) : 0;
+    setTxt('info-hwver', major > 0 ? ('V' + major) : 'NONE');
+  }
   syncBtNameEditor();
 }
 
@@ -3522,6 +3582,111 @@ function closeInfoPage() {
   _infoTimer = null;
 }
 
+/* ── Battery Info page (pack, health and per-cell voltages from live BLE data) ── */
+
+// Battery warning labels for the 55 54 fault array (index = error code). Index 15 is the
+// charge-status byte, not a warning, so the health summary skips it.
+const BATTERY_ERROR_TEXT = {
+  0: 'DHG Over Temp', 1: 'DHG Under Temp', 2: 'CHG High Temp', 3: 'CHG Under Temp',
+  4: 'Cell Over Voltage', 5: 'Cell Under Voltage', 6: 'Pack Over Voltage', 7: 'Pack Under Voltage',
+  8: 'DHG Over Current', 9: 'CHG Over Current', 10: 'Del Voltage', 11: 'Del Temp',
+  12: 'SOC Under', 13: 'MOS1 Over Temp', 14: 'MOS2 Over Temp', 16: 'Pack CL1'
+};
+
+// Render the battery health summary, pack summary and per-cell grid from lb_live_data. No command
+// is sent - the BMS streams the 55 51/54/55/56/52/53 frames automatically once connected.
+function renderBatteryPage() {
+  const d = liveRaw();
+  const dash = v => (v === undefined || v === null || v === '') ? '-' : ('' + v);
+
+  // Health summary: reproduces the original app's "Battery Health Check" - it reads the live 55 54
+  // fault array (same source as the error reports view) and never sends anything.
+  const warnings = [];
+  const errs = Array.isArray(d.errors) ? d.errors : [];
+  errs.forEach(e => {
+    const code = (e && e.code != null) ? Number(e.code) : -1;
+    const sev = (e && e.severity != null) ? Number(e.severity) : 0;
+    if (code < 0 || code === 15 || sev <= 0) return;   // 15 = charge status, not a warning
+    warnings.push(BATTERY_ERROR_TEXT[code] || ('Warning code ' + code));
+  });
+  const health = document.getElementById('bat-health');
+  if (health) {
+    if (!warnings.length) {
+      health.className = 'bat-health ok';
+      health.innerHTML = '<div class="bat-health-title">Healthy - no active battery faults</div>';
+    } else {
+      health.className = 'bat-health bad';
+      const items = warnings.map(w => '<li>' + w + '</li>').join('');
+      health.innerHTML = '<div class="bat-health-title">' + warnings.length +
+        ' active battery warning' + (warnings.length > 1 ? 's' : '') + '</div><ul>' + items + '</ul>';
+    }
+  }
+
+  // Pack summary rows.
+  const mv2v = mv => (typeof mv === 'number' && isFinite(mv)) ? (mv / 1000).toFixed(3) : null;
+  const rows = [];
+  const push = (label, val) => rows.push({ label: label, val: val });
+  push('System voltage',    d.VolPack != null ? dash(d.VolPack) + ' V' : '-');
+  push('Current',           d.current != null ? dash(d.current) + ' A' : '-');
+  push('SOC',               d.SOC != null ? dash(d.SOC) + ' %' : '-');
+  push('SOH',               d.soh != null ? dash(d.soh) + ' %' : '-');
+  push('Rated capacity',    d.capacity != null ? dash(d.capacity) + ' Ah' : '-');
+  push('Charge cycles',     dash(d.chargeCounter));
+  push('Max cell voltage',  mv2v(d.maxCellV) != null ? mv2v(d.maxCellV) + ' V' : '-');
+  push('Min cell voltage',  mv2v(d.minCellV) != null ? mv2v(d.minCellV) + ' V' : '-');
+  push('Max cell temp',     d.maxCellTemp != null ? dash(d.maxCellTemp) + ' °C' : '-');
+  push('Min cell temp',     d.minCellTemp != null ? dash(d.minCellTemp) + ' °C' : '-');
+  const delta = (typeof d.maxCellV === 'number' && typeof d.minCellV === 'number') ? (d.maxCellV - d.minCellV) : null;
+  push('Cell delta',        delta != null ? delta + ' mV' : '-');
+  const pack = document.getElementById('bat-pack');
+  if (pack) {
+    pack.innerHTML = rows.map(r =>
+      '<div class="settings-row"><div class="settings-row-left"><div class="settings-row-label">' + r.label +
+      '</div></div><span style="color:var(--label);font-size:var(--fs-md)">' + r.val + '</span></div>'
+    ).join('');
+  }
+
+  // Per-cell grid: colour-code by voltage and mark balancing cells (balState0 covers cells 0-7).
+  const cells = Array.isArray(d.cellMv) ? d.cellMv : [];
+  const count = (typeof d.cellCount === 'number' && d.cellCount > 0) ? d.cellCount : cells.length;
+  const bal = Array.isArray(d.balState0) ? d.balState0 : [];
+  const grid = document.getElementById('bat-cells');
+  if (grid) {
+    const anyCells = count > 0 && cells.some(mv => mv > 0);
+    if (!anyCells) {
+      grid.innerHTML = '<div class="settings-row-sublabel" style="grid-column:1/-1">Waiting for battery data...</div>';
+    } else {
+      let html = '';
+      for (let k = 0; k < count; k++) {
+        const mv = cells[k] || 0;
+        let cls = 'cell-mid';
+        if (mv > 3400) cls = 'cell-full';
+        else if (mv < 2650) cls = 'cell-low';
+        const balancing = (k < 8) && (bal[k] === 1 || bal[k] === '1');
+        html += '<div class="cell-tile ' + cls + (balancing ? ' cell-bal' : '') + '">' +
+          '<span class="cell-name">Cell ' + (k + 1) + '</span>' +
+          '<span class="cell-volt">' + (mv / 1000).toFixed(3) + ' V</span>' +
+          (balancing ? '<span class="cell-bal-tag">balancing</span>' : '') +
+          '</div>';
+      }
+      grid.innerHTML = html;
+    }
+  }
+}
+
+let _batteryTimer = null;
+function openBatteryPage() {
+  renderBatteryPage();
+  document.getElementById('battery-page').classList.add('open');
+  clearInterval(_batteryTimer);
+  _batteryTimer = setInterval(renderBatteryPage, 1000);   // keep values live while the page is open
+}
+function closeBatteryPage() {
+  document.getElementById('battery-page').classList.remove('open');
+  clearInterval(_batteryTimer);
+  _batteryTimer = null;
+}
+
 /* ── Firmware update (OTA) ────────────────────────────────── */
 /* Native OtaEngine drives the flash; this only picks a file, shows the pre-flight check and renders
    progress/log/state pushed back via window.__onOta*. The flash keeps running natively even if this
@@ -3558,7 +3723,7 @@ function closeFirmwarePage() {
 function openPatcherPage() {
   if (!fighterFeatures()) { showToast('The firmware patcher is only for the Fighter Mini', 3000, 'err'); return; }
   const st = document.getElementById('pt-status');
-  if (st) st.textContent = 'R5.4.19 always builds the core BLE speed lock; tick the optional fixes you want. ALI is converted unchanged.';
+  if (st) st.textContent = 'R5.4.19 always builds the full feature set (speed lock, boot-lock, wheel calibration, cruise); tick the blinker fix only if you need it. ALI is converted unchanged.';
   ptOnFirmwareChange();
   document.getElementById('patcher-page').classList.add('open');
 }
@@ -3570,11 +3735,11 @@ function ptOnFirmwareChange() {
   const fw = document.getElementById('pt-firmware').value;
   const isR5 = fw === 'r5', isAli = fw === 'ali';
   const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
-  show('pt-speed-group', isR5);    // "speed lock always included" note - R5 only
-  show('pt-r5-options', isR5);     // Blinker / Wheel-diameter fixes - R5 only
+  show('pt-speed-group', isR5);    // "always included" feature list - R5 only
+  show('pt-r5-options', isR5);     // Blinker fix (the only optional add-on) - R5 only
   show('pt-ali-note', isAli);
-  // Clear the two optional add-ons (the core BLE speed lock is always applied on R5).
-  ['pt-blinker', 'pt-wheel'].forEach(id => { const e = document.getElementById(id); if (e) e.checked = false; });
+  // Clear the one optional add-on (the full feature set is always applied on R5).
+  ['pt-blinker'].forEach(id => { const e = document.getElementById(id); if (e) e.checked = false; });
   ptSyncButton();
 }
 // The button label: R5 always builds a patch (the core BLE speed lock is always included, plus any
@@ -3589,7 +3754,7 @@ function ptRun() {
   const fw = document.getElementById('pt-firmware').value;
   const speed = 'lock';   // R5 always gets the core BLE speed lock; kept for call compatibility
   const bl = !!(document.getElementById('pt-blinker') || {}).checked;
-  const wd = !!(document.getElementById('pt-wheel') || {}).checked;
+  const wd = (fw === 'r5');   // wheel-diameter fix is always included on R5 (no longer optional)
   const patching = (fw === 'r5');   // R5 always patches (core lock); ALI is convert-only
   const status = document.getElementById('pt-status');
   const btn = document.getElementById('btn-pt-run');
@@ -4302,6 +4467,14 @@ function wireEvents() {
     openInfoPage();
   });
   document.getElementById('btn-info-back').addEventListener('click', closeInfoPage);
+
+  // Battery info: pack, health and per-cell voltages read from live BLE data.
+  document.getElementById('btn-battery').addEventListener('click', () => {
+    closeSettings();
+    openBatteryPage();
+  });
+  document.getElementById('btn-battery-back').addEventListener('click', closeBatteryPage);
+
   document.getElementById('btn-copy-btname').addEventListener('click', copyBtName);
   document.getElementById('btn-copy-serial').addEventListener('click', copySerial);
   // Change identity (cmd 0x1f): Set writes the full edited FIN. Prefilled with the current FIN.
@@ -4327,7 +4500,7 @@ function wireEvents() {
   });
   document.getElementById('btn-patcher-back').addEventListener('click', closePatcherPage);
   document.getElementById('pt-firmware').addEventListener('change', ptOnFirmwareChange);
-  ['pt-blinker', 'pt-wheel'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', ptSyncButton); });
+  ['pt-blinker'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', ptSyncButton); });
   document.getElementById('btn-pt-run').addEventListener('click', ptRun);
 
   // Ride log opt-in toggle: mirror the change straight to the native recorder.

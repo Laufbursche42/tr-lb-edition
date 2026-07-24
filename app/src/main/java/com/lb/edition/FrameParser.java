@@ -60,6 +60,10 @@ final class FrameParser {
     private int maxCellV, minCellV, capacity;
     private boolean have52 = false, have53 = false;
 
+    // Per-cell voltages (mV) from the BMS cell-voltage frames 55 51 / 55 55 / 55 56 (8 cells each,
+    // big-endian u16 in millivolts, no scaling). Index = absolute cell number 0..23.
+    private final int[] cellMv = new int[24];
+
     // 55 53 BMS relays / MOS control / balance / cell count
     private int relay1, relay2, relay3;               // t[2]/t[3]/t[4] (relay3 == relay M / charMode)
     private int chrMosState, dischrMosState;          // t[5]/t[6]
@@ -126,6 +130,9 @@ final class FrameParser {
             android.util.Log.i("lbble", "first frame seen: 55 " + Integer.toHexString(id));
         }
         switch (t[1]) {
+            case 0x51: parseCells(t, 0); break;    // cells 0-7
+            case 0x55: parseCells(t, 8); break;    // cells 8-15
+            case 0x56: parseCells(t, 16); break;   // cells 16-23
             case 0x52: parse52(t); break;
             case 0x53: parse53(t); break;
             case 0x54: parse54(t); break;
@@ -207,6 +214,17 @@ final class FrameParser {
         for (int i = 0; i < errors.length; i++) errors[i] = u8(t, i + 2);
         chargeStatus = u8(t, 17);                  // charge-image index (error index 15)
         have54 = true;
+    }
+
+    /**
+     * 55 51 / 55 55 / 55 56 - per-cell voltages. Each frame carries 8 cells; each cell is a
+     * big-endian u16 in millivolts (no scaling): cell k = u16(t, 2 + 2*k). base is the absolute
+     * index of the first cell in this frame (0 / 8 / 16).
+     */
+    private synchronized void parseCells(int[] t, int base) {
+        for (int k = 0; k < 8 && base + k < cellMv.length; k++) {
+            cellMv[base + k] = u16(t, 2 + 2 * k);
+        }
     }
 
     private synchronized void parse71(int[] t) {
@@ -328,6 +346,20 @@ final class FrameParser {
             o.put("systemStatus3", intArr(systemStatus3));
             o.put("balState0", intArr(balState0));
             o.put("batteryStatus", intArr(batteryStatus));
+
+            // Per-cell voltages (mV) + pack cell metrics for the Battery Info page. cellMv holds the
+            // first volListLength cells (all 24 when the count is not known yet). maxCellV/minCellV in mV,
+            // capacity in Ah (raw), max/min cell temp in degC.
+            int cellN = (volListLength > 0 && volListLength <= cellMv.length) ? volListLength : cellMv.length;
+            JSONArray cellsJson = new JSONArray();
+            for (int i = 0; i < cellN; i++) cellsJson.put(cellMv[i]);
+            o.put("cellMv", cellsJson);
+            o.put("cellCount", volListLength);
+            o.put("maxCellV", maxCellV);
+            o.put("minCellV", minCellV);
+            o.put("capacity", capacity);
+            o.put("maxCellTemp", maxCellTemp);
+            o.put("minCellTemp", minCellTemp);
 
             // Has the scooter reported its real config yet (a 55 71 frame arrived)? The R5.4.19 VCU
             // streams 55 71 periodically, so this is normally true within ~1-2 s of connecting. The UI

@@ -634,15 +634,15 @@ public class MainActivity extends Activity {
                 // Keep the AWIVCU_<mode>_<model>_<ver> file-name shape: the mode token goes in the
                 // "APP" slot and the model stays R5_4_19, so split("_")[2] == "R5" - the exact spot the
                 // original app's isComplyRules reads the model + major version (R5/R3). Mode LOCK = the
-                // TESTLOCK9 direct BLE speed lock (always applied). Optional add-on suffixes: WHEEL (wheel
-                // diameter fix) then TURN (blinker fix), in that order. No timestamp is appended.
+                // direct BLE speed lock (always applied), WHEEL (wheel-diameter fix, always applied now);
+                // the only optional suffix is TURN (blinker fix). No timestamp is appended.
                 String name;
                 if ("r5".equals(fwId)) {
                     fp.applyCore();                 // direct BLE speed lock (cmd 0x1B) - always
-                    if (wheel) fp.applyWheel();      // optional: speedometer wheel-diameter fix
+                    fp.applyWheel();                 // speedometer wheel-diameter fix - always included now
                     if (blinker) fp.applyBlinker();  // optional: indicator-blink fix
-                    name = "AWIVCU_LOCK_R5_4_19"
-                            + (wheel ? "_WHEEL" : "") + (blinker ? "_TURN" : "")
+                    name = "AWIVCU_LOCK_R5_4_19_WHEEL"
+                            + (blinker ? "_TURN" : "")
                             + ".hex";
                 } else {
                     // ALI is convert-only (already open); keep its canonical model token.

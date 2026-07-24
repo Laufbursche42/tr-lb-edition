@@ -171,18 +171,20 @@ Open **Settings -> Firmware Patcher** and choose the base firmware:
 - **R5.4.19** - the stock eKFV firmware. Pick this on a normal (locked) eKFV box.
 - **ALI D3.4.12** - already fully open. Pick this if you want the open firmware as-is.
 
-### Step 2 - pick your R5.4.19 options
+### Step 2 - the R5.4.19 feature set
 
-For R5.4.19 you tick what you want (leave everything off to build the unmodified original):
+R5.4.19 always builds the full feature set - there is no speed choice to make. Every R5.4.19 build boots LOCKED at 22 km/h and always includes the following, none of which can be turned off:
 
-- **Speed** - choose one:
-  - **Keep ~22 km/h** (default) - the stock legal cap stays.
-  - **Full unlock** - removes the cap for full speed. Kickstart and Cruise come with it - they are not separate switches, they are simply what the unlock releases; you turn them on in the display menu.
-  - **Live toggle (FIN)** - removes only the display's cap, so the scooter's **FIN identity** becomes your live lock/unlock switch: a FIN starting with "TDE" stays at 22, an open FIN gives full speed (with Kickstart and Cruise). The app can flip this live (see the FIN lock below).
-- **Blinker fix** (any speed mode) - restores the turn-signal blink that 5.4.19 broke.
-- **WheelDiameter persists** (any speed mode) - makes the display's wheel-diameter setting survive a restart.
+- **Direct BLE speed lock (cmd 0x1B)** - the firmware boots LOCKED at 22 km/h and you unlock or re-lock it live over Bluetooth. No FIN rename and no display step; the lock state is read straight from the scooter (see [the live speed lock](#the-live-speed-lock) below).
+- **Always boots LOCKED** - the firmware detects power-on from the display cold-boot, so every restart comes up locked at 22 km/h. The unlock holds while the scooter stays on; the next restart locks it again.
+- **Wheel-diameter calibration** - while unlocked the app's Wheel size setting drives the speedometer and odometer (the tacho); while locked the display shows the stock 10.0". It never changes the motor controller (ESC), so the real speed is unchanged. The wheel value is a single global VCU setting (not per gear) and the Wheel size can only be changed while unlocked.
+- **Cruise control** - re-enabled while unlocked (stock 5.4.19 kills it). The mode you set (Off / Auto / Manual) is stored on the VCU; locking turns cruise off, unlocking brings your stored mode back.
 
-Then press the button. It reads **"Build patch & continue"** when you picked something or **"Original Firmware & Continue"** when nothing is selected, builds the file on the phone and opens **Firmware update** with it ready.
+The only tickable option is:
+
+- **Blinker fix** - restores the turn-signal blink that 5.4.19 broke. It is optional because it is only needed if the VCU drives the indicators directly; leave it off if your scooter has a separate blinker module.
+
+Then press **"Build patch & Continue"**. It builds the file on the phone and opens **Firmware update** with it ready. (The **ALI D3.4.12** firmware has no options - it is already open, so the patcher only converts it into a flashable image.)
 
 ### Step 3 - check and flash (Firmware update)
 
@@ -195,13 +197,11 @@ The update page runs a content check and shows a pass/fail checklist:
 
 If every check passes, **Start** is enabled. If a check fails, Start is disabled and the checklist shows which one; for informed users a "flash anyway" override is offered on every check except the CRC one. Press **Start**, confirm the ~13-minute warning and let it run to the end.
 
-### The live FIN lock (Live toggle only)
+### The live speed lock
 
-On the **Live toggle** firmware the scooter's **FIN identity** is the speed switch, so the app can lock or unlock the speed live over Bluetooth with no re-flash - triple-tap the speed tile on the main screen or edit the identity in Scooter info. A FIN starting with "TDE" caps you at 22; take the "DE" out and you get full speed (with Kickstart and Cruise). Locking back to a "TDE" FIN also switches Cruise off and resets the wheel size to stock for a correct legal speed reading; unlocking restores exactly what you had. Every step is reversible.
+Every R5.4.19 build boots LOCKED at 22 km/h. To unlock or re-lock the speed live over Bluetooth - with no re-flash - triple-tap the VCU speed tile on the main screen. This sends the direct lock command (cmd 0x1B); it is not a FIN rename and needs no display step. The tile colour shows the current state, read straight from the scooter's telemetry (`55 71`). Unlocking lifts the 22 km/h cap, brings your stored cruise mode back and lets the app's Wheel size drive the speedometer; locking caps you back at 22, turns cruise off and forces the stock 10.0" wheel on the display for a correct legal speed reading. The unlock holds while the scooter stays on and every restart comes up locked again. Every step is reversible.
 
-<p align="center"><img src="screenshots/livetoogle.png" width="260" alt="Live toggle - triple-tap the speed tile to lock or unlock the FIN"></p>
-
-**Full unlock works differently** - it pins the speed cap off for good by removing BOTH gates (the display clamp and the FIN clamp), so the speed is always open and editing the FIN does NOT re-lock it. On a Full-unlock scooter the triple-tap still renames the FIN (and runs the Cruise / wheel housekeeping) but the top speed stays open. Pick Full unlock for a permanently open scooter or Live toggle to keep the FIN as the live switch between the legal 22 and full speed.
+<p align="center"><img src="screenshots/livetoogle.png" width="260" alt="Live speed lock - triple-tap the speed tile to lock or unlock over Bluetooth"></p>
 
 ## Screenshots
 
@@ -240,8 +240,8 @@ All screenshots are from the app running on a real scooter; any scooter-identify
   </tr>
   <tr>
     <td align="center"><img src="screenshots/POIs.jpg" width="240" alt="Camping and charging POI overlay on the offline map"></td>
-    <td align="center"><img src="screenshots/FirmwarePatcher1.jpg" width="240" alt="Firmware patcher: speed options (Full unlock / Live toggle / stock)"></td>
-    <td align="center"><img src="screenshots/FirmwarePatcher2.jpg" width="240" alt="Firmware patcher: R5.4.19 patch options"></td>
+    <td align="center"><img src="screenshots/FirmwarePatcher1.jpg" width="240" alt="Firmware patcher: R5.4.19 always-included feature set"></td>
+    <td align="center"><img src="screenshots/FirmwarePatcher2.jpg" width="240" alt="Firmware patcher: base firmware and the optional blinker fix"></td>
   </tr>
   <tr>
     <td align="center"><img src="screenshots/FirmwareUpdater.jpg" width="240" alt="Firmware update: choose a .hex to flash"></td>
@@ -962,7 +962,7 @@ There is NO no-flash unlock for Gate 2 on this firmware. A magic word (`0xAA55AA
 
 Patching the display is one option; the other is to patch the VCU application firmware, which defeats both gates at once. Each of the four motor-command frame builders clamps the speed byte to 22 with a `movs r7, #0x16` that runs after a compare. Replacing those four instructions with NOPs removes the clamp entirely, after which the natural per-gear speed passes through.
 
-This NOP-the-clamp route is the both-gates case: it drops the cap unconditionally. The app's Firmware Patcher reaches the same result more surgically by patching the clamp *flag* instead of the clamp instructions - **Full unlock** patches GATE_FLAG + GATE2 so the flag is always 0 (both gates off), while **Live toggle** clears only GATE2 (the display gate) and leaves the FIN identity as the live lock/unlock switch (one gate). The per-mode mechanics are in [Firmware patcher and updater](#firmware-patcher-and-updater-app-implementation).
+This NOP-the-clamp route drops the cap unconditionally. The app's Firmware Patcher instead redirects the four clamp sites to a small appended routine that clamps the speed to 22 only while a RAM lock flag (`0x200002A0`) is 0 and lets the natural per-gear speed pass when it is 1. That flag is toggled live over Bluetooth with the direct lock command (cmd 0x1B), so one and the same firmware boots locked at 22 and unlocks or re-locks on demand with no re-flash and no FIN rename. The full mechanics are in [Firmware patcher and updater](#firmware-patcher-and-updater-app-implementation).
 
 The clamp is unique to the R5 line: the four `movs r7, #0x16` caps appear in R5.4.19 but are absent from the R3, R2 and D-series VCU images, which ship unrestricted. Because the R3 and R5 images share the same Box C flash base (`0x08007000`) and the same MCU and peripheral map, flashing an unpatched open R3-line image onto an R5 VCU de-restricts it with no byte patch at all - the version number is only a client-side software lock (the original app's name gate just wants a version segment ending in "5"), not a hardware difference. The stock R5.4.19 stays the recovery image to return to.
 
@@ -1004,7 +1004,7 @@ Critical constraint on this unit: the stock VCU application firmware has NO disp
 This is the app-side detail behind the two user-facing features; the byte-level clamp mechanics live in [Removing the clamp in VCU firmware](#removing-the-clamp-in-vcu-firmware). The two bundled firmwares and every offset here are specific to the Teverun Fighter Mini Pro eKFV - no other model was examined.
 
 - **Content-based compatibility (vs `isComplyRules`)** - the original app gates a local flash on the **file name** (`isComplyRules`: the name starts with `AWIVCU` / `AWVCU` and on an eKFV / TDE unit the version segment ends in "5"), which is why a shortened or renamed-but-valid file throws "Error loading upgrade file". Laufbursche Edition instead validates the image itself and treats the name rule as an advisory line only. Four checks: a **CRC16** over the image (integrity, never overridable), the target is the **VCU application region** (not the bootloader), the image is a **VCU** target (not a BMS image) and the **trailer version** against the version currently on the scooter. Every check has an explicit "flash anyway" override for informed users except the CRC check.
-- **Patcher pipeline** - the bundled Intel-HEX is parsed, the exact byte edits for the ticked options are applied, the firmware CRC is recomputed and a new flashable image is produced. R5.4.19 edits: **Full unlock** pins the clamp flag off (GATE_FLAG + GATE2), **Live toggle** clears only the display-clamp gate (GATE2) and **Keep 22** leaves the stock cap; **Blinker fix** and **WheelDiameter** are independent add-ons (WheelDiameter hooks the 0x18 command handler so the app's wheel byte reaches the wheel-diameter variable and its EEPROM mirror, plus a boot-clobber NOP so it survives a reboot). ALI D3.4.12 is only wrapped into a flashable image - it is already open.
+- **Patcher pipeline** - the bundled Intel-HEX is parsed, the exact byte edits are applied, the firmware CRC is recomputed and a new flashable image is produced. R5.4.19 always gets the CORE group - the direct BLE speed lock (cmd 0x1B): the four speed clamps redirect to a cave gated on a RAM lock flag, a 0x1B dispatcher hook writes that flag, the `55 71` telemetry carries the lock state back to the app, a display-cold-boot hook re-locks on every power-on, the display wheel byte is masked to 10.0" while locked and the cruise write is un-gated while unlocked. The wheel-diameter (tacho) fix - which lets the app's 0x18 wheel byte feed the speedometer calibration while unlocked, with a boot NOP so the persisted value survives a reboot - is also always included. The only optional add-on is the **Blinker fix**. ALI D3.4.12 is only wrapped into a flashable image - it is already open.
 - **Built in memory, never on disk** - the patched or picked image lives only in two in-RAM `String` fields (`otaHexText` / `otaFileName`); nothing firmware-related is ever written to the filesystem. Only one image exists at a time and each new build overwrites it. After a flash completes or fails the app drops it (`otaClear()`) so no stale image lingers; a cancel keeps it so you can restart immediately.
 - **Auto-off cannot be raised over BLE** - a short auto-off (sleep) timer can power the scooter off mid-flash, but the app cannot prevent this. The VCU settings handler copies only `a[2..17]` and drops `a[18]`, where sleepTime lives (verified on `fw_r5419`; the original app puts it in the same `a[18]` and hits the same wall - see [Sleep and power-off timer quirk](#sleep-and-power-off-timer-quirk)). The flash confirm dialog therefore warns the user in red to raise the auto-off timer in the scooter's own display menu first.
 - **Cross-compatibility (Box C)** - R5.4.19 and ALI D3.4.12 share the Box C flash layout, so either can replace the other - flash R5.4.19 onto an open box to make it eKFV-compliant or ALI onto an eKFV box to open it. Every Box C VCU image (R3 / R5 / D10_4 and the ALI D3 dump) uses flash base `0x08007000`; the older R2 / D2 hardware uses `0x08008000` instead, so an image flashed across that base boundary will not boot - that is the real reason this is Box C only. The in-app patcher does not advertise the cross-flash to avoid mis-flashes, but it is technically supported on Box C.
@@ -1012,33 +1012,26 @@ This is the app-side detail behind the two user-facing features; the byte-level 
 **File-name scheme.** The patcher labels its output so the original app's name gate still accepts it; the name is only a label plus a VCU-vs-BMS routing hint - the content check, not the name, decides compatibility. The fields are `_`-separated:
 
 ```
-AWIVCU _ FULL _ R5 _ 4 _ 19 _ WHEEL _ TURN .hex
-  0      1     2    3   4    (opt)  (opt)
+AWIVCU _ LOCK _ R5 _ 4 _ 19 _ WHEEL _ TURN .hex
+  0      1     2    3   4    5       (opt)
 ```
 
 - **Field 0 `AWIVCU`** - fixed prefix; the original app requires the name to start with `AWIVCU` (or `AWVCU`).
-- **Field 1 - mode** - `FULL` (Full unlock) / `LIVE` (Live toggle) / `EKFV` (Keep 22) or `ALI` for the ALI firmware.
+- **Field 1 - mode** - `LOCK` for the R5.4.19 build (the direct BLE speed lock, always applied) or `ALI` for the ALI firmware.
 - **Field 2 - model** - `R5` (or `D3`). The decisive field: the original app reads it with `split("_")[2]` in its `isComplyRules` check and wants `R5` (ends in "5") on an eKFV / TDE unit. Putting the mode here would break that check, so the mode stays in field 1 and the model stays in field 2.
 - **Fields 3 + 4 - version** - `4` and `19`, i.e. R5.4.19.
-- **Fields 5 / 6 - optional add-ons** - `WHEEL` (WheelDiameter) and/or `TURN` (Blinker fix), always in that order.
+- **Field 5 `WHEEL`** - the wheel-diameter (tacho) fix, always present on an R5 build.
+- **Field 6 - optional add-on** - `TURN` (Blinker fix), appended only when the option is ticked.
 
 Every file name the patcher can emit:
 
 | Mode | File name |
 |------|-----------|
-| Full unlock | `AWIVCU_FULL_R5_4_19.hex` |
-| | `AWIVCU_FULL_R5_4_19_WHEEL.hex` |
-| | `AWIVCU_FULL_R5_4_19_TURN.hex` |
-| | `AWIVCU_FULL_R5_4_19_WHEEL_TURN.hex` |
-| Live toggle | `AWIVCU_LIVE_R5_4_19.hex` |
-| | `AWIVCU_LIVE_R5_4_19_WHEEL.hex` |
-| | `AWIVCU_LIVE_R5_4_19_TURN.hex` |
-| | `AWIVCU_LIVE_R5_4_19_WHEEL_TURN.hex` |
-| Keep ~22 (stock) | `AWIVCU_EKFV_R5_4_19.hex` |
-| | `AWIVCU_EKFV_R5_4_19_TURN.hex` |
+| R5.4.19 (speed lock) | `AWIVCU_LOCK_R5_4_19_WHEEL.hex` |
+| | `AWIVCU_LOCK_R5_4_19_WHEEL_TURN.hex` |
 | ALI (convert-only) | `AWIVCU_ALI_D3_4_12.hex` |
 
-`WHEEL` appears only in Full / Live - on Keep 22 the WheelDiameter option is disabled, because the legal 22 mode must keep the stock wheel size. `TURN` is available in every mode.
+`WHEEL` is always present on an R5 build because the wheel-diameter calibration is always included; `TURN` is appended only when the Blinker fix is ticked.
 
 ### Region write-protection - locked vs free settings
 
