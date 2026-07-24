@@ -726,17 +726,23 @@ public class MainActivity extends Activity {
 
                 // Keep the AWIVCU_<mode>_<model>_<ver> file-name shape: the mode token goes in the
                 // "APP" slot and the model stays R5_4_19, so split("_")[2] == "R5" - the exact spot the
-                // original app's isComplyRules reads the model + major version (R5/R3). Mode LOCK = the
-                // direct BLE speed lock (always applied), WHEEL (wheel-diameter fix, always applied now);
-                // the only optional suffix is TURN (blinker fix). No timestamp is appended.
+                // original app's isComplyRules reads the model + major version (R5/R3). speedMode picks
+                // the R5 build: "orig" = stock, still locked, only the optional blinker fix (token EKFV);
+                // otherwise "live" = the Live-Toggle unlock: direct BLE speed lock + boot-lock + wheel +
+                // cruise (tokens LOCK + WHEEL). TURN is the only optional suffix (blinker). No timestamp.
                 String name;
                 if ("r5".equals(fwId)) {
-                    fp.applyCore();                 // direct BLE speed lock (cmd 0x1B) - always
-                    fp.applyWheel();                 // speedometer wheel-diameter fix - always included now
-                    if (blinker) fp.applyBlinker();  // optional: indicator-blink fix
-                    name = "AWIVCU_LOCK_R5_4_19_WHEEL"
-                            + (blinker ? "_TURN" : "")
-                            + ".hex";
+                    if ("orig".equals(speedMode)) {
+                        // Original: stays stock and locked; only the optional blinker fix may be applied.
+                        if (blinker) fp.applyBlinker();
+                        name = "AWIVCU_EKFV_R5_4_19" + (blinker ? "_TURN" : "") + ".hex";
+                    } else {
+                        // Live-Toggle unlock: full feature set (BLE lock + boot-lock + wheel + cruise).
+                        fp.applyCore();
+                        fp.applyWheel();
+                        if (blinker) fp.applyBlinker();  // optional: indicator-blink fix
+                        name = "AWIVCU_LOCK_R5_4_19_WHEEL" + (blinker ? "_TURN" : "") + ".hex";
+                    }
                 } else {
                     // ALI is convert-only (already open); keep its canonical model token.
                     name = "AWIVCU_ALI_D3_4_12.hex";
@@ -780,15 +786,19 @@ public class MainActivity extends Activity {
             otaFileName = null;
         }
 
-        /** Abort a running flash. The controller stays in bootloader receive-mode (re-flashable). */
+        /** Abort a running flash. The controller stays in bootloader receive-mode (re-flashable).
+         *  Runs on the UI/main thread so the engine's cancel + finish (which touch the main-looper
+         *  timers and push the 'cancelled' state) run on the same thread as the flash itself. */
         @JavascriptInterface
         public void otaCancel() {
             Log.i(TAG, "LB.otaCancel()");
-            try {
-                if (ble != null) ble.cancelOta();
-            } catch (Throwable t) {
-                Log.e(TAG, "otaCancel failed", t);
-            }
+            runOnUiThread(() -> {
+                try {
+                    if (ble != null) ble.cancelOta();
+                } catch (Throwable t) {
+                    Log.e(TAG, "otaCancel failed", t);
+                }
+            });
         }
 
         /** @return true while a firmware flash is in progress. */
@@ -937,31 +947,39 @@ public class MainActivity extends Activity {
 
         // ── Updates (firmware + app) ──
 
-        /** The latest firmware the app can provide (its own patcher build) and where to download it. */
-        @JavascriptInterface
-        public String firmwareLatest() {
-            try {
-                int b = FirmwarePatcher.FW_BUILD;
-                String file = "AWIVCU_APP_R5_4_19_V" + b + ".hex";
-                JSONObject o = new JSONObject();
-                o.put("build", b);
-                o.put("file", file);
-                o.put("url", "https://laufbursche42.github.io/trfm-unlock/firmware/" + file);
-                return o.toString();
-            } catch (Throwable t) {
-                Log.e(TAG, "firmwareLatest failed", t);
-                return "{\"build\":0}";
-            }
-        }
-
-        /** Ask GitHub for the newest app release; push the result to window.__onAppUpdate. Never throws. */
+        /** Fetch the latest firmware (from the website manifest) and the latest app release (from GitHub),
+         *  and push both to window.__onFirmwareUpdate / window.__onAppUpdate. Network runs off the main
+         *  thread. The firmware version comes from a REMOTE manifest, so new firmware can be published to
+         *  the website (a new .hex + latest.json) WITHOUT rebuilding the app. Never throws. */
         @JavascriptInterface
         public void checkUpdates() {
             new Thread(() -> {
+                // 1) Latest firmware - from the website manifest, decoupled from this app build.
+                String fwResult = "{\"build\":0}";
+                try {
+                    JSONObject fw = new JSONObject(httpGetText(
+                            "https://laufbursche42.github.io/trfm-unlock/firmware/latest.json"));
+                    int b = fw.optInt("build", 0);
+                    String file = fw.optString("file", "");
+                    String url = fw.optString("url", "");
+                    if (url.isEmpty() && !file.isEmpty())
+                        url = "https://laufbursche42.github.io/trfm-unlock/firmware/" + file;
+                    JSONObject o = new JSONObject();
+                    o.put("build", b);
+                    o.put("file", file);
+                    o.put("url", url);
+                    fwResult = o.toString();
+                } catch (Throwable t) {
+                    Log.e(TAG, "firmware manifest fetch failed", t);
+                }
+                final String fwr = fwResult;
+                runJs("(function(){try{if(window.__onFirmwareUpdate)window.__onFirmwareUpdate(" + fwr + ");}catch(e){}})();");
+
+                // 2) Latest app release - from GitHub.
                 String result = "{\"available\":false}";
                 try {
-                    String json = httpGetText("https://api.github.com/repos/Laufbursche42/tr-lb-edition/releases/latest");
-                    JSONObject rel = new JSONObject(json);
+                    JSONObject rel = new JSONObject(httpGetText(
+                            "https://api.github.com/repos/Laufbursche42/tr-lb-edition/releases/latest"));
                     String tag = rel.optString("tag_name", "");
                     String latest = tag.startsWith("v") ? tag.substring(1) : tag;
                     String apkUrl = "";
@@ -988,6 +1006,12 @@ public class MainActivity extends Activity {
                 final String r = result;
                 runJs("(function(){try{if(window.__onAppUpdate)window.__onAppUpdate(" + r + ");}catch(e){}})();");
             }).start();
+        }
+
+        /** The Laufbursche firmware build the in-app patcher stamps into an R5 build (for the picker label). */
+        @JavascriptInterface
+        public int localFirmwareBuild() {
+            return FirmwarePatcher.FW_BUILD;
         }
 
         /** Download the app APK to the Downloads folder, then open the system installer for it. */

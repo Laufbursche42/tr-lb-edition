@@ -372,6 +372,20 @@ public final class RideLogger {
         });
         cols.addAll(rest);
 
+        // Per-cell voltages (mV) arrive as a JSONArray (cellMv), which the scalar scan above skips.
+        // Flatten them into cell1_mV..cellN_mV columns so the CSV carries every battery cell too.
+        int maxCells = 0;
+        for (JSONObject o : samples) {
+            JSONArray cm = o.optJSONArray("cellMv");
+            if (cm != null) maxCells = Math.max(maxCells, cm.length());
+        }
+        Map<String, Integer> cellIdx = new HashMap<>();
+        for (int c = 1; c <= maxCells; c++) {
+            String cn = "cell" + c + "_mV";
+            cols.add(cn);
+            cellIdx.put(cn, c - 1);
+        }
+
         // try-with-resources guarantees the writer (and its underlying stream) is always closed.
         // The UTF-8 BOM is written as the U+FEFF character (it encodes to EF BB BF) so spreadsheets
         // render the degree sign and other units correctly.
@@ -401,6 +415,11 @@ public final class RideLogger {
                     if ("ts".equals(col)) cell = ts > 0 ? Long.toString(ts) : "";
                     else if ("tsISO".equals(col)) cell = ts > 0 ? isoOf(ts) : "";
                     else if (nameColSet.contains(col)) cell = nvals.containsKey(col) ? nvals.get(col) : "";
+                    else if (cellIdx.containsKey(col)) {
+                        JSONArray cm = o.optJSONArray("cellMv");
+                        int idx = cellIdx.get(col);
+                        cell = (cm != null && idx < cm.length()) ? String.valueOf(cm.optInt(idx, 0)) : "";
+                    }
                     else cell = scalarCell(o, col);
                     sb.append(csvCell(cell));
                 }

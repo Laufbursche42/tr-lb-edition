@@ -881,8 +881,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
         <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label dg-label-wide">Recuperation</span><button type="button" class="set-help" data-set-help="dg-recup" aria-label="What is this?">?</button></span><span class="dg-value" id="dg-fb">-</span></div>
       </div>
       <div class="dg-row">
-        <div class="dg-cell"><span class="dg-label">Total km</span><span class="dg-value" id="dg-total">-</span></div>
-        <div class="dg-cell"><span class="dg-label">Trip km</span><span class="dg-value" id="dg-single">-</span></div>
+        <div class="dg-cell"><span class="dg-label">Total</span><span class="dg-value" id="dg-total">-</span></div>
+        <div class="dg-cell"><span class="dg-label">Trip</span><span class="dg-value" id="dg-single">-</span></div>
       </div>
       <div class="dg-row">
         <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label">RSSI</span><button type="button" class="set-help" data-set-help="dg-rssi" aria-label="What is this?">?</button></span><span class="dg-value" id="dg-rssi">-</span></div>
@@ -1588,9 +1588,22 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
       </select>
     </div>
 
+    <div class="settings-group" id="pt-mode-group" style="border-top:1px solid var(--border)">
+      <div class="settings-group-title">Mode</div>
+      <select id="pt-mode" class="pt-select">
+        <option value="live">Live-Toggle unlock</option>
+        <option value="orig">Original (stays locked)</option>
+      </select>
+    </div>
+
+    <div class="settings-group" id="pt-orig-note" style="border-top:1px solid var(--border);display:none">
+      <div class="settings-group-title">Original</div>
+      <div class="settings-row-sublabel">Keeps the firmware stock and locked (eKFV, 22 km/h) - no BLE speed lock, no boot-lock, no wheel calibration and no cruise. Only the optional blinker fix below is applied. Use this to return a scooter to the legal stock state.</div>
+    </div>
+
     <div class="settings-group" id="pt-speed-group" style="border-top:1px solid var(--border)">
-      <div class="settings-group-title">Always included</div>
-      <div class="settings-row-sublabel">Every R5.4.19 build always contains the full Laufbursche feature set - these cannot be switched off:</div>
+      <div class="settings-group-title">Live-Toggle unlock - always included</div>
+      <div class="settings-row-sublabel">The Live-Toggle build always contains the full Laufbursche feature set - these cannot be switched off:</div>
       <ul class="pt-included">
         <li><b>Direct BLE speed lock (cmd 0x1B)</b> - boots LOCKED at 22 km/h; unlock or re-lock live over Bluetooth. No FIN rename, no display step; the lock state is read straight from the scooter.</li>
         <li><b>Always boots LOCKED</b> - the firmware detects power-on from the display cold-boot, so every restart comes up locked at 22 km/h. The unlock holds while the scooter stays on; the next restart locks it again.</li>
@@ -1610,7 +1623,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 
     <div class="settings-group" style="border-top:1px solid var(--border)">
       <button id="btn-pt-run">Build patch &amp; Continue</button>
-      <div class="settings-row-sublabel" id="pt-status" style="margin:8px 0 0">R5.4.19 always builds the full feature set (speed lock, boot-lock, wheel calibration, cruise); tick the blinker fix only if you need it. ALI is converted unchanged.</div>
+      <div class="settings-row-sublabel" id="pt-status" style="margin:8px 0 0">R5.4.19: choose Live-Toggle unlock or Original (stock, locked); the blinker fix is optional in both. ALI is converted unchanged.</div>
     </div>
   </div>
 </div>
@@ -2018,6 +2031,14 @@ function ensureSettingsHelpDelegation() {
   settingsHelpDelegated = true;
 }
 
+// Battery / BMS values that now live on their own Battery Info page - hidden from the main "All values"
+// list. They are NOT removed from the telemetry snapshot, so the ride recorder still logs them all.
+const BATTERY_AV_NAMES = new Set([
+  'System Voltage', 'Pole Voltage', 'Current', 'SOC', 'SOH', 'CELL MAX TEMP', 'CELL MIN TEMP',
+  'Cell Count', 'Max Voltage', 'Min Voltage', 'Rated Capacity', 'Charge Counter',
+  'Charge MOS', 'Discharge MOS', 'Relay 1', 'Relay 2', 'Relay M', 'Balance', 'Charge Status',
+  'Cell TEMP0', 'Cell TEMP1', 'Cell TEMP2', 'MOS TEMP0', 'MOS TEMP1', 'BMS PCB TEMP0', 'BMS PCB TEMP1'
+]);
 function renderAllValues(data) {
   data = data || {};
   const box = document.getElementById('all-values');
@@ -2031,8 +2052,8 @@ function renderAllValues(data) {
     avHelpDelegated = true;
   }
   const rows = [];
-  (data.top || []).forEach(x => { if (x && x.name != null) rows.push([x.name, x.value]); });
-  (data.bottom || []).forEach(x => { if (x && x.name != null) rows.push([x.name, x.value]); });
+  (data.top || []).forEach(x => { if (x && x.name != null && !BATTERY_AV_NAMES.has(x.name)) rows.push([x.name, x.value]); });
+  (data.bottom || []).forEach(x => { if (x && x.name != null && !BATTERY_AV_NAMES.has(x.name)) rows.push([x.name, x.value]); });
   if (!rows.length) {
     box.innerHTML = '<div class="no-routes" id="all-values-empty">Connect the scooter to see all values</div>';
     return;
@@ -2078,6 +2099,12 @@ function convSpeed(kmh) {
 }
 function speedUnit() { return state.useMph ? 'mph · VCU' : 'km/h · VCU'; }
 function speedUnitGPS() { return state.useMph ? 'mph · GPS' : 'km/h · GPS'; }
+// Distance follows the same app unit toggle as speed: km or miles depending on useMph.
+function convDist(km) {
+  const v = (typeof km === 'number' && isFinite(km)) ? km : 0;
+  return state.useMph ? v * 0.621371 : v;
+}
+function distUnit() { return state.useMph ? 'mi' : 'km'; }
 
 function setTxt(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
 
@@ -2175,8 +2202,8 @@ function updateBLEUI(data) {
   setTxt('dg-pole', `${data.poleVolt.toFixed(1)} V`);
   setTxt('dg-soh', `${Math.round(data.soh)} %`);
   setTxt('dg-fb', data.fb.toFixed(1));
-  setTxt('dg-total', `${Math.round(data.totalMile)} km`);
-  setTxt('dg-single', `${data.singleMile.toFixed(1)} km`);
+  setTxt('dg-total', `${Math.round(convDist(data.totalMile))} ${distUnit()}`);
+  setTxt('dg-single', `${convDist(data.singleMile).toFixed(1)} ${distUnit()}`);
   setTxt('dg-rssi', `${data.rssi} dBm`);
   const rssiEl = document.getElementById('dg-rssi');
   if (rssiEl) rssiEl.style.color = data.rssi < -85 ? 'var(--danger)' : data.rssi < -70 ? 'var(--warn)' : 'var(--good)';
@@ -2452,7 +2479,7 @@ function updateRideUI() {
   if (stopRow) stopRow.style.display = ride ? '' : 'none';
   if (ride) {
     const elapsed = Date.now() - ride.startTime;
-    setTxt('dg-dist', `${ride.dist.toFixed(2)} km`);
+    setTxt('dg-dist', `${convDist(ride.dist).toFixed(2)} ${distUnit()}`);
     setTxt('dg-time', formatDuration(elapsed));
     // Real trip average = GPS distance / elapsed time (the scooter's own avgSpeed resets to 0 when
     // stopped, so we compute our own). Guard divide-by-zero -> 0.
@@ -3500,8 +3527,8 @@ function renderRideList() {
     date.textContent = new Date(r.start).toLocaleString();
     const stats = document.createElement('div');
     stats.className = 'route-stats';
-    const km = (typeof r.distanceKm === 'number' ? r.distanceKm : 0).toFixed(1) + ' km';
-    stats.textContent = fmtRideDuration(r.durationSec) + ' · ' + km;
+    const dist = convDist(typeof r.distanceKm === 'number' ? r.distanceKm : 0).toFixed(1) + ' ' + distUnit();
+    stats.textContent = fmtRideDuration(r.durationSec) + ' · ' + dist;
     info.appendChild(date);
     info.appendChild(stats);
     const btns = document.createElement('div');
@@ -3626,16 +3653,22 @@ function renderBatteryPage() {
   const d = liveRaw();
   const dash = v => (v === undefined || v === null || v === '') ? '-' : ('' + v);
 
-  // Health summary: reproduces the original app's "Battery Health Check" - it reads the live 55 54
-  // fault array (same source as the error reports view) and never sends anything.
-  const warnings = [];
-  const errs = Array.isArray(d.errors) ? d.errors : [];
-  errs.forEach(e => {
-    const code = (e && e.code != null) ? Number(e.code) : -1;
-    const sev = (e && e.severity != null) ? Number(e.severity) : 0;
-    if (code < 0 || code === 15 || sev <= 0) return;   // 15 = charge status, not a warning
-    warnings.push(BATTERY_ERROR_TEXT[code] || ('Warning code ' + code));
-  });
+  // Not connected: prompt to connect instead of showing stale or empty values.
+  if (!state.bleConnected) {
+    const h = document.getElementById('bat-health');
+    if (h) { h.className = 'bat-health'; h.innerHTML = '<div class="bat-health-title">Connect scooter first</div>'; }
+    const p = document.getElementById('bat-pack'); if (p) p.innerHTML = '';
+    const g = document.getElementById('bat-cells');
+    if (g) g.innerHTML = '<div class="settings-row-sublabel" style="grid-column:1/-1">Connect scooter first</div>';
+    return;
+  }
+
+  // Health summary: reuse the error-reports filter (which applies the correct 55 54 severity
+  // thresholds - index 0/2 need severity > 1, others > 2) restricted to the battery / BMS faults, so
+  // it matches "Read error reports" and never shows a non-active level (e.g. a resting "SOC Under").
+  const warnings = (typeof collectErrors === 'function' ? collectErrors() : [])
+    .filter(it => it && typeof it.sub === 'string' && it.sub.indexOf('Battery / BMS') === 0)
+    .map(it => it.title);
   const health = document.getElementById('bat-health');
   if (health) {
     if (!warnings.length) {
@@ -3750,7 +3783,13 @@ function closeFirmwarePage() {
 function openPatcherPage() {
   if (!fighterFeatures()) { showToast('The firmware patcher is only for the Fighter Mini', 3000, 'err'); return; }
   const st = document.getElementById('pt-status');
-  if (st) st.textContent = 'R5.4.19 always builds the full feature set (speed lock, boot-lock, wheel calibration, cruise); tick the blinker fix only if you need it. ALI is converted unchanged.';
+  if (st) st.textContent = 'R5.4.19: choose Live-Toggle unlock or Original (stock, locked); the blinker fix is optional in both. ALI is converted unchanged.';
+  // Show the Laufbursche firmware version the R5 build will stamp, so the picker is not just "R5.4.19".
+  try {
+    const b = (typeof LB !== 'undefined' && LB.localFirmwareBuild) ? LB.localFirmwareBuild() : 0;
+    const r5opt = document.querySelector('#pt-firmware option[value="r5"]');
+    if (r5opt) r5opt.textContent = b > 0 ? ('R5.4.19 - Laufbursche V' + b + ' (eKFV - Box C)') : 'R5.4.19 (eKFV - Box C)';
+  } catch (e) {}
   ptOnFirmwareChange();
   document.getElementById('patcher-page').classList.add('open');
 }
@@ -3762,11 +3801,20 @@ function ptOnFirmwareChange() {
   const fw = document.getElementById('pt-firmware').value;
   const isR5 = fw === 'r5', isAli = fw === 'ali';
   const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
-  show('pt-speed-group', isR5);    // "always included" feature list - R5 only
-  show('pt-r5-options', isR5);     // Blinker fix (the only optional add-on) - R5 only
+  show('pt-mode-group', isR5);     // Live-Toggle vs Original - R5 only
+  show('pt-r5-options', isR5);     // Blinker fix - both R5 modes
   show('pt-ali-note', isAli);
-  // Clear the one optional add-on (the full feature set is always applied on R5).
+  // Clear the optional add-on when switching firmware.
   ['pt-blinker'].forEach(id => { const e = document.getElementById(id); if (e) e.checked = false; });
+  ptApplyMode();                   // shows the Live-Toggle feature list or the Original note
+}
+// Show the right explanation for the selected R5 mode (Live-Toggle feature list vs Original note).
+function ptApplyMode() {
+  const isR5 = document.getElementById('pt-firmware').value === 'r5';
+  const mode = (document.getElementById('pt-mode') || {}).value || 'live';
+  const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
+  show('pt-speed-group', isR5 && mode === 'live');
+  show('pt-orig-note', isR5 && mode === 'orig');
   ptSyncButton();
 }
 // The button label: R5 always builds a patch (the core BLE speed lock is always included, plus any
@@ -3774,8 +3822,16 @@ function ptOnFirmwareChange() {
 function ptSyncButton() {
   const fw = document.getElementById('pt-firmware').value;
   const btn = document.getElementById('btn-pt-run');
-  if (btn) btn.textContent = (fw === 'r5') ? 'Build patch & continue'
-    : (fw === 'dl') ? 'Continue to update page' : 'Original Firmware & Continue';
+  if (!btn) return;
+  if (fw === 'dl') { btn.textContent = 'Continue to update page'; return; }
+  if (fw === 'r5') {
+    const mode = (document.getElementById('pt-mode') || {}).value || 'live';
+    const bl = !!(document.getElementById('pt-blinker') || {}).checked;
+    // Original mode with no blinker fix produces the plain stock firmware; everything else patches.
+    btn.textContent = (mode === 'orig' && !bl) ? 'Original Firmware & Continue' : 'Build patch & continue';
+    return;
+  }
+  btn.textContent = 'Original Firmware & Continue';   // ALI convert-only
 }
 function ptRun() {
   if (typeof LB === 'undefined' || !LB.patchFirmware) { showToast('Only available in the app'); return; }
@@ -3786,10 +3842,10 @@ function ptRun() {
     if (_lastFwMeta && window.__onOtaFile) { try { window.__onOtaFile(_lastFwMeta); } catch (e) {} }
     return;
   }
-  const speed = 'lock';   // R5 always gets the core BLE speed lock; kept for call compatibility
+  // R5 mode: "live" = Live-Toggle unlock (core + wheel + cruise), "orig" = stock/locked. ALI: convert only.
+  const mode = (fw === 'r5') ? ((document.getElementById('pt-mode') || {}).value || 'live') : 'lock';
   const bl = !!(document.getElementById('pt-blinker') || {}).checked;
-  const wd = (fw === 'r5');   // wheel-diameter fix is always included on R5 (no longer optional)
-  const patching = (fw === 'r5');   // R5 always patches (core lock); ALI is convert-only
+  const patching = (fw === 'r5') && (mode === 'live' || bl);   // Original with no blinker = the plain stock file
   const status = document.getElementById('pt-status');
   const btn = document.getElementById('btn-pt-run');
   if (btn) btn.disabled = true;
@@ -3797,7 +3853,7 @@ function ptRun() {
   // Defer one tick so the disabled button + status paint before the synchronous native patch runs.
   setTimeout(() => {
     let res = null;
-    try { res = JSON.parse(LB.patchFirmware(fw, speed, bl, wd)); }
+    try { res = JSON.parse(LB.patchFirmware(fw, mode, bl, false)); }
     catch (e) { res = { ok: false, error: '' + e }; }
     if (btn) btn.disabled = false;
     if (!res || res.ok === false) {
@@ -3818,7 +3874,8 @@ let _lastFwMeta = null;    // meta of the last downloaded firmware, for re-selec
 
 function updInit() {
   if (typeof LB === 'undefined') return;
-  try { if (LB.firmwareLatest) updState.fwLatest = JSON.parse(LB.firmwareLatest()); } catch (e) {}
+  // checkUpdates fetches BOTH the latest firmware (website manifest) and the latest app release
+  // (GitHub) remotely, then pushes them via __onFirmwareUpdate / __onAppUpdate.
   try { if (LB.checkUpdates) LB.checkUpdates(); } catch (e) {}
   refreshUpdateUi();
 }
@@ -3826,6 +3883,13 @@ function updInit() {
 window.__onAppUpdate = function(info) {
   try { updState.app = (typeof info === 'string') ? JSON.parse(info) : (info || { available: false }); }
   catch (e) { updState.app = { available: false }; }
+  refreshUpdateUi();
+};
+
+// Latest firmware from the website manifest (build / file / url) - NOT tied to this app build.
+window.__onFirmwareUpdate = function(info) {
+  try { updState.fwLatest = (typeof info === 'string') ? JSON.parse(info) : (info || null); }
+  catch (e) { updState.fwLatest = null; }
   refreshUpdateUi();
 };
 
@@ -4190,6 +4254,9 @@ window.__onOtaState = function(sArg) {
     fwState.running = false;
     if (st === 'success') {
       showToast(s.message || 'Firmware updated');
+      // Re-check after a successful update so a newer manifest (published while the app ran) is
+      // picked up without an app restart and the banner re-evaluates against the new scooter build.
+      try { if (typeof LB !== 'undefined' && LB.checkUpdates) LB.checkUpdates(); } catch (e) {}
     }
     else if (st === 'failed') showToast(s.message || 'Update failed', 5000, 'err');
     else if (st === 'cancelled') showToast(s.message || 'Update cancelled', 4000, 'err');
@@ -4620,6 +4687,7 @@ function wireEvents() {
   });
   document.getElementById('btn-patcher-back').addEventListener('click', closePatcherPage);
   document.getElementById('pt-firmware').addEventListener('change', ptOnFirmwareChange);
+  { const m = document.getElementById('pt-mode'); if (m) m.addEventListener('change', ptApplyMode); }
   ['pt-blinker'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', ptSyncButton); });
   document.getElementById('btn-pt-run').addEventListener('click', ptRun);
 
@@ -4679,6 +4747,7 @@ function wireEvents() {
   document.getElementById('toggle-mph').addEventListener('change', e => {
     state.useMph = e.target.checked;
     storage.set('lb_units', state.useMph ? 'mph' : 'kmh');
+    try { renderRoutes(); } catch (err) {}   // flip the saved-route distances now; live tiles flip on the next tick
   });
 
   // GPS auto
