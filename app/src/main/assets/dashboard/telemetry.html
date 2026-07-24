@@ -3821,7 +3821,6 @@ function ptSyncButton() {
   const fw = document.getElementById('pt-firmware').value;
   const btn = document.getElementById('btn-pt-run');
   if (!btn) return;
-  if (fw === 'dl') { btn.textContent = 'Continue to update page'; return; }
   if (fw === 'r5') {
     const mode = (document.getElementById('pt-mode') || {}).value || 'live';
     const bl = !!(document.getElementById('pt-blinker') || {}).checked;
@@ -3834,12 +3833,6 @@ function ptSyncButton() {
 function ptRun() {
   if (typeof LB === 'undefined' || !LB.patchFirmware) { showToast('Only available in the app'); return; }
   const fw = document.getElementById('pt-firmware').value;
-  if (fw === 'dl') {   // a downloaded, already-patched image: no re-patch, just reopen the update page
-    closePatcherPage();
-    openFirmwarePage();
-    if (_lastFwMeta && window.__onOtaFile) { try { window.__onOtaFile(_lastFwMeta); } catch (e) {} }
-    return;
-  }
   // R5 mode: "live" = Live-Toggle unlock (core + wheel + cruise), "orig" = stock/locked. ALI: convert only.
   const mode = (fw === 'r5') ? ((document.getElementById('pt-mode') || {}).value || 'live') : 'lock';
   const bl = !!(document.getElementById('pt-blinker') || {}).checked;
@@ -3867,8 +3860,7 @@ function ptRun() {
 
 /* ── Update notifications (firmware via the Patcher, app via the GitHub release) ── */
 const updState = { app: { available: false }, fwLatest: null };
-let _pendingFwDl = null;   // firmware download in flight, so __onOtaFile routes it to the patcher picker
-let _lastFwMeta = null;    // meta of the last downloaded firmware, for re-selecting it in the picker
+let _pendingFwDl = null;   // firmware download in flight, so __onOtaFile routes it to the flash page
 
 function updInit() {
   if (typeof LB === 'undefined') return;
@@ -3942,16 +3934,6 @@ function ptDownloadApp() {
   try { LB.downloadAndInstallApk(a.url); } catch (e) { showToast('Download failed'); }
 }
 
-// Add the downloaded firmware to the patcher picker (so our name is visible there) and select it.
-function ptAddDownloadedFirmware(fileName) {
-  const sel = document.getElementById('pt-firmware');
-  if (!sel) return;
-  let opt = sel.querySelector('option[value="dl"]');
-  if (!opt) { opt = document.createElement('option'); opt.value = 'dl'; sel.appendChild(opt); }
-  opt.textContent = fileName + ' (downloaded)';
-  sel.value = 'dl';
-  ptOnFirmwareChange();
-}
 
 function fwResetUi() {
   const info = document.getElementById('fw-fileinfo'); if (info) info.textContent = 'No file selected.';
@@ -4050,14 +4032,13 @@ window.__onOtaFile = function(metaArg) {
   let m = metaArg;
   try { if (typeof metaArg === 'string') m = JSON.parse(metaArg); } catch (e) { m = null; }
   if (!m || m.cancelled) return;   // picker cancelled: keep whatever was there
-  if (_pendingFwDl) {   // this metadata is a firmware we just downloaded via the patcher
-    const dlName = _pendingFwDl; _pendingFwDl = null;
+  if (_pendingFwDl) {   // a firmware we just downloaded via the patcher: it is a ready-to-flash image
+    _pendingFwDl = null;
     if (m.ok) {
-      _lastFwMeta = m;
       updState.fwIsLocal = true;   // it is now a local file -> the update banner clears
       try { refreshUpdateUi(); } catch (e) {}
-      ptAddDownloadedFirmware(m.name || dlName);
-      openFirmwarePage();   // navigate to the update page (same order the patch flow uses)
+      closePatcherPage();   // leave the patcher and open the flash page with the downloaded image
+      openFirmwarePage();   // the rest of this handler fills in the file/checks on that page
     } else {
       showToast('Downloaded firmware is not readable');
     }
