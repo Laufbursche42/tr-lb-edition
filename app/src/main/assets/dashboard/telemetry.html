@@ -1031,7 +1031,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     </button>
     <button type="button" id="upd-app" class="update-banner" style="display:none">
       <span class="ub-text">New app version available <b id="upd-app-ver"></b></span>
-      <span class="ub-go">Open Patcher &#8594;</span>
+      <span class="ub-go">Download &amp; install &#8594;</span>
     </button>
   </div>
 
@@ -1573,11 +1573,9 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     </div>
 
     <div class="settings-group" id="pt-updates" style="padding-top:6px;display:none">
-      <div class="settings-group-title">Updates</div>
+      <div class="settings-group-title">Firmware update</div>
       <button id="pt-dl-fw" style="display:none">&#11015; Download <span id="pt-dl-fw-name">firmware</span></button>
-      <div class="settings-row-sublabel" id="pt-dl-fw-note" style="display:none;margin:4px 0 8px">A newer firmware is available. Download it - it is then saved to your Downloads folder, appears in the firmware list below and opens ready to flash.</div>
-      <button id="pt-dl-app" style="display:none">&#11015; Download <span id="pt-dl-app-name">app update</span></button>
-      <div class="settings-row-sublabel" id="pt-dl-app-note" style="display:none;margin:4px 0 0">A newer app version is available. Download saves the APK to your Downloads folder and opens the installer.</div>
+      <div class="settings-row-sublabel" id="pt-dl-fw-note" style="display:none;margin:4px 0 0">A newer firmware is available. Download it - it is then saved to your Downloads folder, appears in the firmware list below and opens ready to flash.</div>
     </div>
 
     <div class="settings-group" style="padding-top:6px">
@@ -3907,20 +3905,17 @@ function refreshUpdateUi() {
   const appAvail = !!(updState.app && updState.app.available);
   const fw = updState.fwLatest || {};
   const setShow = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
-  // Settings-sheet banners (pointers into the Patcher).
+  // Settings-sheet banners: firmware opens the Patcher; the app update downloads + installs directly.
   setShow('update-banners', fwAvail || appAvail);
   setShow('upd-fw', fwAvail);
   setShow('upd-app', appAvail);
   const fwVer = document.getElementById('upd-fw-ver'); if (fwVer) fwVer.textContent = fw.build ? ('V' + fw.build) : '';
   const appVer = document.getElementById('upd-app-ver'); if (appVer) appVer.textContent = updState.app.version ? ('(' + updState.app.version + ')') : '';
-  // Patcher download buttons.
-  setShow('pt-updates', fwAvail || appAvail);
+  // Patcher firmware download button (the app update does not go through the patcher).
+  setShow('pt-updates', fwAvail);
   setShow('pt-dl-fw', fwAvail);
   setShow('pt-dl-fw-note', fwAvail);
-  setShow('pt-dl-app', appAvail);
-  setShow('pt-dl-app-note', appAvail);
   const fwName = document.getElementById('pt-dl-fw-name'); if (fwName && fw.file) fwName.textContent = fw.file;
-  const appName = document.getElementById('pt-dl-app-name'); if (appName) appName.textContent = 'Laufbursche Edition ' + (updState.app.version || '');
 }
 
 function ptDownloadFirmware() {
@@ -4694,10 +4689,9 @@ function wireEvents() {
   // Update banners (pointers into the Patcher) + the patcher download buttons.
   const goPatcher = () => { try { closeSettings(); } catch (e) {} openPatcherPage(); };
   const wireUpd = (id, fn) => { const e = document.getElementById(id); if (e) e.addEventListener('click', fn); };
-  wireUpd('upd-fw', goPatcher);
-  wireUpd('upd-app', goPatcher);
+  wireUpd('upd-fw', goPatcher);                 // firmware update -> open the Patcher (flash there)
+  wireUpd('upd-app', () => { try { closeSettings(); } catch (e) {} ptDownloadApp(); });  // app update -> download the APK + open the installer
   wireUpd('pt-dl-fw', ptDownloadFirmware);
-  wireUpd('pt-dl-app', ptDownloadApp);
 
   // Ride log opt-in toggle: mirror the change straight to the native recorder.
   document.getElementById('toggle-ridelog').addEventListener('change', e => {

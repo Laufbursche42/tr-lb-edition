@@ -116,9 +116,9 @@ Step-by-step in [Firmware: patch, update and flash](#firmware-patch-update-and-f
 
 ### In-app updates
 
-- **Update banners in the Settings menu** - one appears when a newer app version is available and one when a newer scooter firmware is available. Both open the **Firmware Patcher**, where the actual Download buttons live.
-- **Firmware updates** come from this repo's own `firmware/` folder - a new `.hex` plus an auto-generated `firmware/latest.json`, read over raw GitHub. Publishing a new firmware is just dropping the `.hex` in the repo, so no app rebuild is needed. Downloading it saves the file to your Downloads folder and hands it to the firmware updater ready to flash.
-- **App updates** come from the project's GitHub Releases. The download saves the APK to your Downloads folder and opens the Android installer.
+- **Update banners in the Settings menu** - one appears when a newer app version is available and one when a newer scooter firmware is available. The **firmware** banner opens the **Firmware Patcher**, where its Download button lives. The **app** banner downloads the APK straight away and opens the installer (it does not go through the patcher).
+- **Firmware updates** come from this repo's own `firmware/` folder - a new `.hex` plus an auto-generated `firmware/latest.json`, read over raw GitHub. Publishing a new firmware is just dropping the `.hex` in the repo, so no app rebuild is needed. Downloading it in the patcher saves the file to your Downloads folder and hands it to the firmware updater ready to flash.
+- **App updates** come from the project's GitHub Releases. Tapping the banner saves the APK to your Downloads folder and opens the Android installer, so you confirm the install yourself like any downloaded APK.
 - The check runs at app start and again after a successful flash. It only reaches the network for these checks - see [PRIVACY.md](PRIVACY.md).
 
 ### Info & diagnostics
