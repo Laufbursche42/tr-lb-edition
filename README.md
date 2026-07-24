@@ -116,10 +116,9 @@ Step-by-step in [Firmware: patch, update and flash](#firmware-patch-update-and-f
 
 ### In-app updates
 
-- **Update banners in the Settings menu** - one appears when a newer app version is available and one when a newer scooter firmware is available. The **firmware** banner opens the **Firmware Patcher**, where its Download button lives. The **app** banner downloads the APK straight away and opens the installer (it does not go through the patcher).
-- **Firmware updates** come from this repo's own `firmware/` folder - a new `.hex` plus an auto-generated `firmware/latest.json`, read over raw GitHub. Publishing a new firmware is just dropping the `.hex` in the repo, so no app rebuild is needed. Downloading it in the patcher saves the file to your Downloads folder and hands it to the firmware updater ready to flash.
-- **App updates** come from the project's GitHub Releases. Tapping the banner saves the APK to your Downloads folder and opens the Android installer, so you confirm the install yourself like any downloaded APK.
-- The check runs at app start and again after a successful flash. It only reaches the network for these checks - see [PRIVACY.md](PRIVACY.md).
+- **Update banner in the Settings menu** - a banner appears when a newer version of the app is available. Tapping it downloads the APK to your Downloads folder and opens the Android installer, so you confirm the install yourself like any downloaded APK.
+- **App updates** come from the project's GitHub Releases; the check runs at app start. It only reaches the network for that check and the download you tap - see [PRIVACY.md](PRIVACY.md).
+- **Firmware is not downloaded** - the app ships the stock firmware and the Firmware Patcher builds the Laufbursche firmware locally, so there is nothing to fetch. The build number the patcher stamps (for example V32) tells you the patch level; the app and the website both produce the same build.
 
 ### Info & diagnostics
 
@@ -325,7 +324,7 @@ You can also install from a computer over ADB (Android platform-tools). This is 
 
 ## Privacy & data protection
 
-The app collects **nothing** - no accounts, no analytics, no telemetry, no tracking and no ads. Everything stays on your device. It uses the network only on your explicit action, reaching only: your scooter over **Bluetooth LE**; the **Hochschule Esslingen** OpenStreetMap mirror (`ftp-stud.hs-esslingen.de`) for offline **maps**; the **BRouter** server (`brouter.de`) for **routing** data; this project's **GitHub** repo (`github.com/Laufbursche42/tr-lb-edition`) for **POI** data (camping + EV charging) and for the in-app **app / firmware update** check and downloads; and the **SRT** server URL you configure yourself for screen streaming. Nothing is ever sent to the developer or to any manufacturer backend.
+The app collects **nothing** - no accounts, no analytics, no telemetry, no tracking and no ads. Everything stays on your device. It uses the network only on your explicit action, reaching only: your scooter over **Bluetooth LE**; the **Hochschule Esslingen** OpenStreetMap mirror (`ftp-stud.hs-esslingen.de`) for offline **maps**; the **BRouter** server (`brouter.de`) for **routing** data; this project's **GitHub** repo (`github.com/Laufbursche42/tr-lb-edition`) for **POI** data (camping + EV charging) and for the in-app **app-update** check and download; and the **SRT** server URL you configure yourself for screen streaming. Nothing is ever sent to the developer or to any manufacturer backend.
 
 See [PRIVACY.md](PRIVACY.md) for the full privacy policy.
 

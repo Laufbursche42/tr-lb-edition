@@ -149,8 +149,8 @@ final class SettingsState {
         int eabs = clamp(optI(vals, "eabsLevel",   eabsLevel),        0, 15);   // a[8]/a[9] nibble
         int fs   = clamp(optI(vals, "fStartLevel", fStartLevel),      0, 15);   // a[8] low nibble
         int rs   = clamp(optI(vals, "rStartLevel", rStartLevel),      0, 15);   // a[9] low nibble
-        int fc   = clamp(optI(vals, "fCurrent",    fCurrent),         0, 255);
-        int rc   = clamp(optI(vals, "rCurrent",    rCurrent),         0, 255);
+        int fc   = clamp(optI(vals, "fCurrent",    fCurrent),         0, 100);
+        int rc   = clamp(optI(vals, "rCurrent",    rCurrent),         0, 100);
         return CommandBuilder.sendGearSetting(this, gear & 0xFF, sl, eabs, fs, rs, fc, rc);
     }
 

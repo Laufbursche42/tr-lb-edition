@@ -40,15 +40,14 @@ These are public OpenStreetMap-based sources. This happens only on your explicit
 
 Screen streaming goes only to the server URL you configure yourself - typically your own local or LAN server. The stored URL is encrypted on the device using the Android Keystore (AES-256-GCM). SRT is its own transport, not HTTP; it can additionally be AES-encrypted by adding a passphrase to your SRT URL.
 
-### 4. In-app update check and downloads (HTTPS, GitHub only)
+### 4. In-app app-update check and download (HTTPS, GitHub only)
 
-The app can tell you when a newer app version or a newer scooter firmware is available and download it. For this it contacts GitHub and nothing else:
+The app can tell you when a newer version of the app itself is available and download it. For this it contacts GitHub and nothing else:
 
-- the latest app release from this project's GitHub API - https://api.github.com/repos/Laufbursche42/tr-lb-edition/releases/latest - checked once when the app starts and once after a firmware flash finishes.
-- the firmware manifest and the firmware image from this project's own `firmware/` folder over raw GitHub - base URL https://raw.githubusercontent.com/Laufbursche42/tr-lb-edition/main/firmware/ with `latest.json` or a firmware file appended.
+- the latest app release from this project's GitHub API - https://api.github.com/repos/Laufbursche42/tr-lb-edition/releases/latest - checked once when the app starts.
 - the app-update APK from this project's GitHub Releases, only when you tap Download.
 
-These are plain HTTPS GET requests. GitHub can see your IP address and the requested file path (which release or firmware file you fetch), the same as any download - nothing else. No scooter data, no telemetry, no settings, no identity and no personal data are ever sent. The version check sends only the request itself; a firmware or an APK download happens only when you tap it. The app uses a neutral fixed User-Agent, no cookies, no account and no tracking parameters. Installing a downloaded app update is handled by the Android package installer and the "install unknown apps" permission (see [PERMISSIONS.md](PERMISSIONS.md)).
+These are plain HTTPS GET requests. GitHub can see your IP address and the requested file path (which release you fetch), the same as any download - nothing else. No scooter data, no telemetry, no settings, no identity and no personal data are ever sent. The version check sends only the request itself; the APK download happens only when you tap it. The app uses a neutral fixed User-Agent, no cookies, no account and no tracking parameters. Installing a downloaded app update is handled by the Android package installer and the "install unknown apps" permission (see [PERMISSIONS.md](PERMISSIONS.md)). Scooter firmware is NOT downloaded - the app ships the stock firmware and the in-app patcher builds the Laufbursche firmware locally.
 
 ## No developer or manufacturer backend
 

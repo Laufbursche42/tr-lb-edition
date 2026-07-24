@@ -341,7 +341,7 @@ public class MainActivity extends Activity {
         runJs("(function(){try{if(window.__onOtaFile)window.__onOtaFile(" + json + ");}catch(e){}})();");
     }
 
-    // ── Update helpers (used by the LB.checkUpdates / downloadFirmware / downloadAndInstallApk bridge) ──
+    // ── Update helpers (used by the LB.checkUpdates / downloadAndInstallApk bridge) ──
 
     /** Enqueue the APK download into the public Downloads folder via DownloadManager (visible file +
      *  progress notification) then opens the installer once it completes. Runs on the UI thread. */
@@ -469,35 +469,6 @@ public class MainActivity extends Activity {
         } finally {
             c.disconnect();
         }
-    }
-
-    /** Write bytes to the public Downloads folder and return a content URI usable for ACTION_VIEW. */
-    private Uri saveToDownloads(byte[] data, String fileName, String mime) throws Exception {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            android.content.ContentResolver cr = getContentResolver();
-            android.content.ContentValues cv = new android.content.ContentValues();
-            cv.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName);
-            cv.put(android.provider.MediaStore.Downloads.MIME_TYPE, mime);
-            cv.put(android.provider.MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
-            cv.put(android.provider.MediaStore.Downloads.IS_PENDING, 1);
-            Uri uri = cr.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
-            if (uri == null) throw new Exception("MediaStore insert failed");
-            try (java.io.OutputStream os = cr.openOutputStream(uri)) {
-                if (os == null) throw new Exception("openOutputStream failed");
-                os.write(data);
-            }
-            cv.clear();
-            cv.put(android.provider.MediaStore.Downloads.IS_PENDING, 0);
-            cr.update(uri, cv, null, null);
-            return uri;
-        }
-        File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
-        if (dir != null && !dir.exists()) dir.mkdirs();
-        File f = new File(dir, fileName);
-        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(f)) {
-            fos.write(data);
-        }
-        return FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", f);
     }
 
     private String queryDisplayName(Uri uri) {
@@ -1011,38 +982,15 @@ public class MainActivity extends Activity {
             }
         }
 
-        // ── Updates (firmware + app) ──
+        // ── App update ──
 
-        /** Fetch the latest firmware (from this repo's firmware/ manifest) and the latest app release
-         *  (from GitHub) and push both to window.__onFirmwareUpdate / window.__onAppUpdate. Network runs
-         *  off the main thread. The firmware version comes from a REMOTE manifest, so new firmware can be
-         *  published by adding a .hex + latest.json to the repo's firmware/ folder WITHOUT rebuilding the
-         *  app. Never throws. */
+        /** Fetch the latest app release from GitHub and push it to window.__onAppUpdate. Network runs off
+         *  the main thread. Never throws. Firmware is NOT distributed here: the app ships the stock base
+         *  firmware and the in-app patcher builds the Laufbursche firmware locally. */
         @JavascriptInterface
         public void checkUpdates() {
             new Thread(() -> {
-                // 1) Latest firmware - from this repo's firmware/ folder (public, raw GitHub), decoupled
-                //    from the app build: publish a new .hex + firmware.json next to the others, no rebuild.
-                String fwResult = "{\"build\":0}";
-                try {
-                    String base = "https://raw.githubusercontent.com/Laufbursche42/tr-lb-edition/main/firmware/";
-                    JSONObject fw = new JSONObject(httpGetText(base + "latest.json"));
-                    int b = fw.optInt("version", fw.optInt("build", 0));   // repo manifest key is "version"
-                    String file = fw.optString("file", "");
-                    String url = fw.optString("url", "");
-                    if (url.isEmpty() && !file.isEmpty()) url = base + file;
-                    JSONObject o = new JSONObject();
-                    o.put("build", b);
-                    o.put("file", file);
-                    o.put("url", url);
-                    fwResult = o.toString();
-                } catch (Throwable t) {
-                    Log.e(TAG, "firmware manifest fetch failed", t);
-                }
-                final String fwr = fwResult;
-                runJs("(function(){try{if(window.__onFirmwareUpdate)window.__onFirmwareUpdate(" + fwr + ");}catch(e){}})();");
-
-                // 2) Latest app release - from GitHub.
+                // Latest app release - from GitHub.
                 String result = "{\"available\":false}";
                 try {
                     JSONObject rel = new JSONObject(httpGetText(
@@ -1081,31 +1029,6 @@ public class MainActivity extends Activity {
             return FirmwarePatcher.FW_BUILD;
         }
 
-        /** Whether a firmware file with this exact name was already downloaded to the Downloads folder.
-         *  Used to decide the firmware-update banner: if the latest firmware from the manifest is not yet
-         *  a local file, offer it; once downloaded it is local, so the banner clears - no scooter needed. */
-        @JavascriptInterface
-        public boolean firmwareIsLocal(String fileName) {
-            try {
-                if (fileName == null || fileName.isEmpty()) return false;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    String[] proj = { android.provider.MediaStore.Downloads._ID };
-                    String sel = android.provider.MediaStore.Downloads.DISPLAY_NAME + "=?";
-                    try (android.database.Cursor c = getContentResolver().query(
-                            android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, proj, sel,
-                            new String[]{ fileName }, null)) {
-                        return c != null && c.getCount() > 0;
-                    }
-                }
-                File dir = android.os.Environment.getExternalStoragePublicDirectory(
-                        android.os.Environment.DIRECTORY_DOWNLOADS);
-                return dir != null && new File(dir, fileName).exists();
-            } catch (Throwable t) {
-                Log.e(TAG, "firmwareIsLocal failed", t);
-                return false;
-            }
-        }
-
         /** Download the app APK into the public Downloads folder via the system DownloadManager (which
          *  shows a download notification), then open the installer when it finishes. Using DownloadManager
          *  guarantees the file is a real, visible file in Downloads and yields an installable content URI. */
@@ -1126,24 +1049,6 @@ public class MainActivity extends Activity {
                 return;
             }
             runOnUiThread(() -> startApkDownload(url));
-        }
-
-        /** Download a pre-built firmware .hex to Downloads and hand it to the firmware update page. */
-        @JavascriptInterface
-        public void downloadFirmware(final String url, final String fileName) {
-            new Thread(() -> {
-                try {
-                    byte[] data = httpGetBytes(url);
-                    String text = new String(data, StandardCharsets.ISO_8859_1);
-                    saveToDownloads(data, fileName, "application/octet-stream");
-                    otaHexText = text;
-                    otaFileName = fileName;
-                    pushOtaFile(OtaEngine.inspect(text, fileName));
-                } catch (Throwable t) {
-                    Log.e(TAG, "firmware download failed", t);
-                    runOnUiThread(() -> toast("Firmware download failed"));
-                }
-            }).start();
         }
 
         /** Toggle immersive full-screen (persisted; survives restarts). Persist the pref, then let
