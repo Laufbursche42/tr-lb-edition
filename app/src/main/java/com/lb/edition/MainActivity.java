@@ -343,6 +343,64 @@ public class MainActivity extends Activity {
 
     // ── Update helpers (used by the LB.checkUpdates / downloadFirmware / downloadAndInstallApk bridge) ──
 
+    /** Enqueue the APK download into the public Downloads folder via DownloadManager (visible file +
+     *  progress notification) then opens the installer once it completes. Runs on the UI thread. */
+    private void startApkDownload(String url) {
+        try {
+            android.app.DownloadManager dm =
+                    (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            if (dm == null) { toast("Download service unavailable"); return; }
+            android.app.DownloadManager.Request req =
+                    new android.app.DownloadManager.Request(Uri.parse(url));
+            req.setTitle("Laufbursche Edition update");
+            req.setDescription("Downloading the app update");
+            req.setMimeType("application/vnd.android.package-archive");
+            req.setNotificationVisibility(
+                    android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            req.setDestinationInExternalPublicDir(
+                    android.os.Environment.DIRECTORY_DOWNLOADS, "laufbursche-edition-update.apk");
+            final long id = dm.enqueue(req);
+            toast("Downloading update to your Downloads folder...");
+            registerApkInstallOnComplete(id);
+        } catch (Throwable t) {
+            Log.e(TAG, "startApkDownload failed", t);
+            toast("Download failed: " + t.getMessage());
+        }
+    }
+
+    /** When the DownloadManager download {@code id} finishes, launch the package installer for it. */
+    private void registerApkInstallOnComplete(final long id) {
+        final android.content.BroadcastReceiver rec = new android.content.BroadcastReceiver() {
+            @Override public void onReceive(android.content.Context ctx, Intent intent) {
+                long got = intent.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                if (got != id) return;
+                try { ctx.unregisterReceiver(this); } catch (Throwable ignored) {}
+                try {
+                    android.app.DownloadManager dm =
+                            (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                    Uri apkUri = dm != null ? dm.getUriForDownloadedFile(id) : null;
+                    if (apkUri == null) {
+                        toast("Downloaded to your Downloads folder - open it there to install");
+                        return;
+                    }
+                    Intent i = new Intent(Intent.ACTION_VIEW);
+                    i.setDataAndType(apkUri, "application/vnd.android.package-archive");
+                    i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(i);
+                } catch (Throwable t) {
+                    Log.e(TAG, "install after download failed", t);
+                    toast("Downloaded to your Downloads folder - open it there to install");
+                }
+            }
+        };
+        android.content.IntentFilter filter =
+                new android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        // ContextCompat picks the right RECEIVER_EXPORTED handling for every API level (the system
+        // ACTION_DOWNLOAD_COMPLETE broadcast requires an exported receiver on Android 13+).
+        androidx.core.content.ContextCompat.registerReceiver(
+                this, rec, filter, androidx.core.content.ContextCompat.RECEIVER_EXPORTED);
+    }
+
     private void toast(String msg) {
         try {
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
@@ -413,6 +471,7 @@ public class MainActivity extends Activity {
             android.content.ContentValues cv = new android.content.ContentValues();
             cv.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName);
             cv.put(android.provider.MediaStore.Downloads.MIME_TYPE, mime);
+            cv.put(android.provider.MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
             cv.put(android.provider.MediaStore.Downloads.IS_PENDING, 1);
             Uri uri = cr.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
             if (uri == null) throw new Exception("MediaStore insert failed");
@@ -1040,7 +1099,9 @@ public class MainActivity extends Activity {
             }
         }
 
-        /** Download the app APK to the Downloads folder, then open the system installer for it. */
+        /** Download the app APK into the public Downloads folder via the system DownloadManager (which
+         *  shows a download notification), then open the installer when it finishes. Using DownloadManager
+         *  guarantees the file is a real, visible file in Downloads and yields an installable content URI. */
         @JavascriptInterface
         public void downloadAndInstallApk(final String url) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
@@ -1057,27 +1118,7 @@ public class MainActivity extends Activity {
                 });
                 return;
             }
-            new Thread(() -> {
-                try {
-                    byte[] data = httpGetBytes(url);
-                    final Uri uri = saveToDownloads(data, "laufbursche-edition-update.apk",
-                            "application/vnd.android.package-archive");
-                    runOnUiThread(() -> {
-                        try {
-                            Intent i = new Intent(Intent.ACTION_VIEW);
-                            i.setDataAndType(uri, "application/vnd.android.package-archive");
-                            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-                            startActivity(i);
-                        } catch (Throwable t) {
-                            Log.e(TAG, "install intent failed", t);
-                            toast("Saved to Downloads, but could not open the installer");
-                        }
-                    });
-                } catch (Throwable t) {
-                    Log.e(TAG, "apk download failed", t);
-                    runOnUiThread(() -> toast("App download failed"));
-                }
-            }).start();
+            runOnUiThread(() -> startApkDownload(url));
         }
 
         /** Download a pre-built firmware .hex to Downloads and hand it to the firmware update page. */
