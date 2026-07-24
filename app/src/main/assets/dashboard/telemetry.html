@@ -647,7 +647,7 @@ html, body {
    shared look (12px pad, 9px radius, hairline border, base/bold type, transparent tap highlight);
    the thin variants below add only the colour + width differences (neutral / primary-fill /
    good-fill / danger-outline). Rendered result is identical to the old per-button blocks. */
-#btn-fw-pick, #btn-fw-start, #btn-fw-cancel, #btn-pt-run,
+#btn-fw-pick, #btn-fw-start, #btn-fw-cancel, #btn-pt-run, #pt-dl-fw,
 #btn-scan, #btn-disconnect,
 #btn-stream-start, #btn-stream-stop,
 .gs-save-btn {
@@ -657,10 +657,10 @@ html, body {
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 /* Full-width action buttons (firmware / patcher / save); scan + stream sit in a flex row. */
-#btn-fw-pick, #btn-fw-start, #btn-fw-cancel, #btn-pt-run, .gs-save-btn { width: 100%; }
-#btn-fw-pick, #btn-fw-start, #btn-fw-cancel, #btn-pt-run { text-align: center; }
+#btn-fw-pick, #btn-fw-start, #btn-fw-cancel, #btn-pt-run, #pt-dl-fw, .gs-save-btn { width: 100%; }
+#btn-fw-pick, #btn-fw-start, #btn-fw-cancel, #btn-pt-run, #pt-dl-fw { text-align: center; }
 /* Variant: primary fill */
-#btn-fw-start, #btn-pt-run, #btn-scan, .gs-save-btn {
+#btn-fw-start, #btn-pt-run, #pt-dl-fw, #btn-scan, .gs-save-btn {
   background: var(--btnfill); color: #0A0C10; border-color: var(--btnfill);
 }
 /* Variant: good fill (start streaming) */
@@ -672,7 +672,7 @@ html, body {
 /* Disabled (firmware start / patcher run) */
 #btn-fw-start:disabled, #btn-pt-run:disabled { background: var(--border); color: var(--label); border-color: var(--border); cursor: default; }
 /* Pressed (streaming fades a touch lighter, matching the original) */
-#btn-fw-pick:active, #btn-fw-start:active, #btn-fw-cancel:active, #btn-pt-run:active,
+#btn-fw-pick:active, #btn-fw-start:active, #btn-fw-cancel:active, #btn-pt-run:active, #pt-dl-fw:active,
 #btn-scan:active, #btn-disconnect:active, .gs-save-btn:active { opacity: .75; }
 #btn-stream-start:active, #btn-stream-stop:active { opacity: .7; }
 .pt-select {
