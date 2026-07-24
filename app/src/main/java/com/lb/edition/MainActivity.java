@@ -1015,6 +1015,31 @@ public class MainActivity extends Activity {
             return FirmwarePatcher.FW_BUILD;
         }
 
+        /** Whether a firmware file with this exact name was already downloaded to the Downloads folder.
+         *  Used to decide the firmware-update banner: if the latest firmware from the manifest is not yet
+         *  a local file, offer it; once downloaded it is local, so the banner clears - no scooter needed. */
+        @JavascriptInterface
+        public boolean firmwareIsLocal(String fileName) {
+            try {
+                if (fileName == null || fileName.isEmpty()) return false;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    String[] proj = { android.provider.MediaStore.Downloads._ID };
+                    String sel = android.provider.MediaStore.Downloads.DISPLAY_NAME + "=?";
+                    try (android.database.Cursor c = getContentResolver().query(
+                            android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, proj, sel,
+                            new String[]{ fileName }, null)) {
+                        return c != null && c.getCount() > 0;
+                    }
+                }
+                File dir = android.os.Environment.getExternalStoragePublicDirectory(
+                        android.os.Environment.DIRECTORY_DOWNLOADS);
+                return dir != null && new File(dir, fileName).exists();
+            } catch (Throwable t) {
+                Log.e(TAG, "firmwareIsLocal failed", t);
+                return false;
+            }
+        }
+
         /** Download the app APK to the Downloads folder, then open the system installer for it. */
         @JavascriptInterface
         public void downloadAndInstallApk(final String url) {

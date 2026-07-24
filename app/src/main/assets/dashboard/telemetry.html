@@ -3872,8 +3872,8 @@ let _lastFwMeta = null;    // meta of the last downloaded firmware, for re-selec
 
 function updInit() {
   if (typeof LB === 'undefined') return;
-  // checkUpdates fetches BOTH the latest firmware (website manifest) and the latest app release
-  // (GitHub) remotely, then pushes them via __onFirmwareUpdate / __onAppUpdate.
+  // checkUpdates fetches the firmware manifest (firmware/latest.json) and the latest app release,
+  // then pushes them via __onFirmwareUpdate / __onAppUpdate.
   try { if (LB.checkUpdates) LB.checkUpdates(); } catch (e) {}
   refreshUpdateUi();
 }
@@ -3888,6 +3888,12 @@ window.__onAppUpdate = function(info) {
 window.__onFirmwareUpdate = function(info) {
   try { updState.fwLatest = (typeof info === 'string') ? JSON.parse(info) : (info || null); }
   catch (e) { updState.fwLatest = null; }
+  // Is the newest firmware file already downloaded to this device? If so, no update to offer.
+  updState.fwIsLocal = false;
+  try {
+    const f = updState.fwLatest && updState.fwLatest.file;
+    if (f && typeof LB !== 'undefined' && LB.firmwareIsLocal) updState.fwIsLocal = !!LB.firmwareIsLocal(f);
+  } catch (e) {}
   refreshUpdateUi();
 };
 
@@ -3895,9 +3901,10 @@ window.__onFirmwareUpdate = function(info) {
 // (includes an unknown / foreign firmware, which reads as build 0 while connected).
 function firmwareUpdateAvailable() {
   const fw = updState.fwLatest;
-  if (!fw || !(fw.build > 0) || !state.bleConnected) return false;
-  const installed = parseInt(String(liveRaw().hwVer || '').split('.')[0], 10) || 0;
-  return installed < fw.build;
+  if (!fw || !fw.file) return false;
+  // Offer the update when the newest firmware file from the manifest is NOT yet downloaded locally
+  // (in Downloads). No scooter needed: once the user downloads it, it is a local file so this clears.
+  return !updState.fwIsLocal;
 }
 
 function refreshUpdateUi() {
@@ -4047,6 +4054,8 @@ window.__onOtaFile = function(metaArg) {
     const dlName = _pendingFwDl; _pendingFwDl = null;
     if (m.ok) {
       _lastFwMeta = m;
+      updState.fwIsLocal = true;   // it is now a local file -> the update banner clears
+      try { refreshUpdateUi(); } catch (e) {}
       ptAddDownloadedFirmware(m.name || dlName);
       openFirmwarePage();   // navigate to the update page (same order the patch flow uses)
     } else {
