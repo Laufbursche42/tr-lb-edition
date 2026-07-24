@@ -1,0 +1,56 @@
+# Firmware manifest - keeps firmware/latest.json in sync with the newest firmware .hex.
+#
+# When a firmware image (firmware/AWIVCU_APP_R5_4_19_V<n>.hex) is pushed, this picks the highest
+# version present and (re)writes firmware/latest.json with {version, file, md5}. The Laufbursche
+# Edition app reads that file (raw GitHub) to offer an in-app firmware update - so publishing a new
+# firmware is just "drop the .hex in firmware/ and push", no app rebuild.
+#
+# It does NOT build the APK: this workflow only touches firmware/ and both release.yml and ci.yml
+# already paths-ignore firmware/**, .github/** and **.md, so firmware/doc/workflow pushes never build
+# the app. The manifest commit lands in firmware/ too, so it also does not trigger a build (and a
+# GITHUB_TOKEN push does not start further workflow runs anyway).
+name: Firmware manifest
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'firmware/**.hex'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Regenerate firmware/latest.json from the newest firmware .hex
+        run: |
+          set -e
+          cd firmware
+          latest="$(ls AWIVCU_APP_R5_4_19_V*.hex 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$latest" ]; then
+            echo "No AWIVCU_APP_R5_4_19_V<n>.hex found - nothing to do."
+            exit 0
+          fi
+          ver="$(echo "$latest" | sed -E 's/^AWIVCU_APP_R5_4_19_V([0-9]+)\.hex$/\1/')"
+          md5="$(md5sum "$latest" | cut -d' ' -f1)"
+          printf '{\n  "version": %s,\n  "file": "%s",\n  "md5": "%s"\n}\n' "$ver" "$latest" "$md5" > latest.json
+          echo "Generated firmware/latest.json:"
+          cat latest.json
+
+      - name: Commit latest.json if it changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add firmware/latest.json
+          if git diff --cached --quiet; then
+            echo "latest.json already up to date - nothing to commit."
+            exit 0
+          fi
+          git commit -m "Auto-update firmware/latest.json [skip ci]"
+          git push

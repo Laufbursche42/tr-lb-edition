@@ -16,7 +16,9 @@ This app requests only the permissions it needs to function. Each one is listed 
 
 ## Network and services
 
-- **INTERNET** - download offline maps and routing data and send the SRT screen stream to your own server.
+- **INTERNET** - download offline maps and routing data, check GitHub for a newer app version or firmware and download it, plus send the SRT screen stream to your own server.
+- **REQUEST_INSTALL_PACKAGES** - open the Android installer for an app update you downloaded in the app (you still confirm the install yourself).
+- **WRITE_EXTERNAL_STORAGE** (maxSdkVersion 28) - save a downloaded firmware or app-update file to the public Downloads folder on Android 9 and older (newer Android needs no permission for this).
 - **FOREGROUND_SERVICE** - run the map download as a foreground service so a large download keeps running with the screen off.
 - **FOREGROUND_SERVICE_DATA_SYNC** - the foreground-service type for that map download, so it keeps running with the screen off.
 - **FOREGROUND_SERVICE_MEDIA_PROJECTION** - the foreground-service type that lets screen streaming run as a foreground service.

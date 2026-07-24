@@ -947,23 +947,24 @@ public class MainActivity extends Activity {
 
         // ── Updates (firmware + app) ──
 
-        /** Fetch the latest firmware (from the website manifest) and the latest app release (from GitHub),
-         *  and push both to window.__onFirmwareUpdate / window.__onAppUpdate. Network runs off the main
-         *  thread. The firmware version comes from a REMOTE manifest, so new firmware can be published to
-         *  the website (a new .hex + latest.json) WITHOUT rebuilding the app. Never throws. */
+        /** Fetch the latest firmware (from this repo's firmware/ manifest) and the latest app release
+         *  (from GitHub) and push both to window.__onFirmwareUpdate / window.__onAppUpdate. Network runs
+         *  off the main thread. The firmware version comes from a REMOTE manifest, so new firmware can be
+         *  published by adding a .hex + latest.json to the repo's firmware/ folder WITHOUT rebuilding the
+         *  app. Never throws. */
         @JavascriptInterface
         public void checkUpdates() {
             new Thread(() -> {
-                // 1) Latest firmware - from the website manifest, decoupled from this app build.
+                // 1) Latest firmware - from this repo's firmware/ folder (public, raw GitHub), decoupled
+                //    from the app build: publish a new .hex + firmware.json next to the others, no rebuild.
                 String fwResult = "{\"build\":0}";
                 try {
-                    JSONObject fw = new JSONObject(httpGetText(
-                            "https://laufbursche42.github.io/trfm-unlock/firmware/latest.json"));
-                    int b = fw.optInt("build", 0);
+                    String base = "https://raw.githubusercontent.com/Laufbursche42/tr-lb-edition/main/firmware/";
+                    JSONObject fw = new JSONObject(httpGetText(base + "latest.json"));
+                    int b = fw.optInt("version", fw.optInt("build", 0));   // repo manifest key is "version"
                     String file = fw.optString("file", "");
                     String url = fw.optString("url", "");
-                    if (url.isEmpty() && !file.isEmpty())
-                        url = "https://laufbursche42.github.io/trfm-unlock/firmware/" + file;
+                    if (url.isEmpty() && !file.isEmpty()) url = base + file;
                     JSONObject o = new JSONObject();
                     o.put("build", b);
                     o.put("file", file);

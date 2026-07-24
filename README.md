@@ -16,7 +16,9 @@ An alternative app for Teverun e-scooters.
     - [Scooter & IVCU settings](#scooter--ivcu-settings)
     - [Firmware update](#firmware-update)
     - [Firmware Patcher](#firmware-patcher)
+    - [In-app updates](#in-app-updates)
     - [Info & diagnostics](#info--diagnostics)
+    - [Battery info](#battery-info)
     - [Screen streaming](#screen-streaming)
     - [Offline bicycle navigation](#offline-bicycle-navigation)
     - [Offline maps](#offline-maps)
@@ -80,7 +82,7 @@ Everything below is implemented and shipping in the app.
 
 ### "All values" telemetry (scroll down on the main screen)
 
-- Shows **every value the scooter reports**: battery relays, charge/discharge switches, per-cell voltages and temperatures, pack / MOS / BMS-board temperatures, capacity, per-motor currents and temperatures, IVCU status flags, recuperation and more.
+- Shows **every value the scooter reports**: pack / MOS / BMS-board temperatures, per-motor currents and temperatures, IVCU status flags, recuperation and more. The battery pack detail (per-cell voltages and temperatures, capacity, cell balance, relays and health) now lives on its own [Battery info](#battery-info) page.
 - **Each row has a "?" help popup** explaining what the value means.
 - **Stale values clear when disconnected** so you never read an old number as live.
 
@@ -108,14 +110,29 @@ Step-by-step in [Firmware: patch, update and flash](#firmware-patch-update-and-f
 
 ### Firmware Patcher
 
-Build an unlocked or bug-fixed IVCU firmware right on the phone and hand it straight to the flasher - entirely offline, nothing is uploaded. Two firmwares are bundled: the stock eKFV **R5.4.19** and the already-open **ALI D3.4.12**. For the **Fighter Mini Pro eKFV** only (Box C / IVCU-V5.X hardware; see the guide). Reached via **Settings -> Firmware Patcher**. Built on the research behind [Spoonkey's Webpatcher](https://spooonky.github.io/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware/).
+Build an unlocked or bug-fixed IVCU firmware right on the phone and hand it straight to the flasher - entirely offline, nothing is uploaded. Two firmwares are bundled: the stock eKFV **R5.4.19** and the already-open **ALI D3.4.12**. For R5.4.19 you pick a mode - **Live-Toggle unlock** (the full Laufbursche feature set with a live speed lock over Bluetooth) or **Original** (kept stock and eKFV-locked) - with an optional **Blinker fix** in either mode; ALI D3.4.12 is convert-only. For the **Fighter Mini Pro eKFV** only (Box C / IVCU-V5.X hardware; see the guide). Reached via **Settings -> Firmware Patcher**. Built on the research behind [Spoonkey's Webpatcher](https://spooonky.github.io/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware/).
 
 Step-by-step in [Firmware: patch, update and flash](#firmware-patch-update-and-flash). Implementation detail is in [Firmware patcher and updater (app implementation)](#firmware-patcher-and-updater-app-implementation).
+
+### In-app updates
+
+- **Update banners in the Settings menu** - one appears when a newer app version is available and one when a newer scooter firmware is available. Both open the **Firmware Patcher**, where the actual Download buttons live.
+- **Firmware updates** come from this repo's own `firmware/` folder - a new `.hex` plus an auto-generated `firmware/latest.json`, read over raw GitHub. Publishing a new firmware is just dropping the `.hex` in the repo, so no app rebuild is needed. Downloading it saves the file to your Downloads folder and hands it to the firmware updater ready to flash.
+- **App updates** come from the project's GitHub Releases. The download saves the APK to your Downloads folder and opens the Android installer.
+- The check runs at app start and again after a successful flash. It only reaches the network for these checks - see [PRIVACY.md](PRIVACY.md).
 
 ### Info & diagnostics
 
 - **Error reports** view - read out the fault codes the scooter reports.
 - **Info page** showing, read-only and read live from the scooter over Bluetooth: **FIN / Bluetooth name** (the scooter's Bluetooth name is its full FIN), the **frame number** and the IVCU **software** and **hardware** versions. (The app version lives in the "Version Info & Disclaimer" entry, not here.)
+
+### Battery info
+
+- **Battery Info page** - a button below Scooter info in the Settings menu that opens a dedicated view of the pack, read live over Bluetooth with nothing sent to the scooter.
+- **Pack summary** - system voltage, current, SOC, SOH, rated capacity, charge cycles, max / min cell voltage, max / min cell temperature and the cell delta.
+- **Per-cell voltage grid** - every battery cell as its own tile, colour-coded by voltage, with the cells the BMS is currently balancing marked.
+- **Battery health check** - reads the live `55 54` fault array and lists any active battery warning (it sends nothing).
+- These battery values were moved off the main screen's "All values" list onto this page, but they are still recorded by the ride log (including every per-cell voltage).
 
 ### Screen streaming
 
@@ -146,9 +163,9 @@ Step-by-step in [Firmware: patch, update and flash](#firmware-patch-update-and-f
 ### Recording, logging & preferences
 
 - **GPS track recording** with a configurable interval (**1 / 2 / 5 / 10 / 30 s**) and **per-route GPX export**.
-- **Ride log** (**off by default**) - when enabled, it records **all main-screen values once per minute** while you ride. Recording only starts once you are actually moving (after the scooter's speed first goes above 0), so parking or connecting without riding produces no ride. It runs as a foreground service so it keeps recording with the screen off, keeps **all rides** (delete them individually or in bulk by period) and lets you export each ride as **CSV or JSON** from the Scooter Info page (via the Android share sheet). The exported CSV/JSON can be visualised as graphs with the companion **[Laufbursche Edition Analysis Tool (leat)](https://github.com/Laufbursche42/leat)**.
+- **Ride log** (**off by default**) - when enabled, it records **all main-screen values once per minute** while you ride, plus the full battery pack detail including every per-cell voltage as its own CSV column (`cell1_mV`..`cellN_mV`) - that battery detail stays in the log even though it now lives on the Battery info page. Recording only starts once you are actually moving (after the scooter's speed first goes above 0), so parking or connecting without riding produces no ride. It runs as a foreground service so it keeps recording with the screen off, keeps **all rides** (delete them individually or in bulk by period) and lets you export each ride as **CSV or JSON** from the Scooter Info page (via the Android share sheet). The exported CSV/JSON can be visualised as graphs with the companion **[Laufbursche Edition Analysis Tool (leat)](https://github.com/Laufbursche42/leat)**.
 - **In-app debug logging** - persistent, with a red banner while active and an **export** button. No PC needed.
-- **Full-screen toggle** (when off, the app sits below the Android status bar), **km / mph** units, **light / dark app theme** and a **"Version Info & Disclaimer"** entry.
+- **Full-screen toggle** (when off, the app sits below the Android status bar), **km / mph** units (mph converts both speed and distance - Trip, Odometer and saved-route distances - to miles), **light / dark app theme** and a **"Version Info & Disclaimer"** entry.
 
 ## Firmware: patch, update and flash
 
@@ -171,16 +188,18 @@ Open **Settings -> Firmware Patcher** and choose the base firmware:
 - **R5.4.19** - the stock eKFV firmware. Pick this on a normal (locked) eKFV box.
 - **ALI D3.4.12** - already fully open. Pick this if you want the open firmware as-is.
 
-### Step 2 - the R5.4.19 feature set
+### Step 2 - pick the R5.4.19 mode
 
-R5.4.19 always builds the full feature set - there is no speed choice to make. Every R5.4.19 build boots LOCKED at 22 km/h and always includes the following, none of which can be turned off:
+R5.4.19 offers two modes plus one optional fix. Pick the mode:
 
-- **Direct BLE speed lock (cmd 0x1B)** - the firmware boots LOCKED at 22 km/h and you unlock or re-lock it live over Bluetooth. No FIN rename and no display step; the lock state is read straight from the scooter (see [the live speed lock](#the-live-speed-lock) below).
-- **Always boots LOCKED** - the firmware detects power-on from the display cold-boot, so every restart comes up locked at 22 km/h. The unlock holds while the scooter stays on; the next restart locks it again.
-- **Wheel-diameter calibration** - while unlocked the app's Wheel size setting drives the speedometer and odometer (the tacho); while locked the display shows the stock 10.0". It never changes the motor controller (ESC), so the real speed is unchanged. The wheel value is a single global VCU setting (not per gear) and the Wheel size can only be changed while unlocked.
-- **Cruise control** - re-enabled while unlocked (stock 5.4.19 kills it). The mode you set (Off / Auto / Manual) is stored on the VCU; locking turns cruise off, unlocking brings your stored mode back.
+- **Live-Toggle unlock** (default) - builds in the full Laufbursche feature set, which cannot be switched off. Every Live-Toggle build boots LOCKED at 22 km/h and always includes all of the following:
+  - **Direct BLE speed lock (cmd 0x1B)** - the firmware boots LOCKED at 22 km/h and you unlock or re-lock it live over Bluetooth. No FIN rename and no display step; the lock state is read straight from the scooter (see [the live speed lock](#the-live-speed-lock) below).
+  - **Always boots LOCKED** - the firmware detects power-on from the display cold-boot, so every restart comes up locked at 22 km/h. The unlock holds while the scooter stays on; the next restart locks it again.
+  - **Wheel-diameter calibration** - while unlocked the app's Wheel size setting drives the speedometer and odometer (the tacho); while locked the display shows the stock 10.0". It never changes the motor controller (ESC), so the real speed is unchanged. The wheel value is a single global VCU setting (not per gear) and the Wheel size can only be changed while unlocked.
+  - **Cruise control** - re-enabled while unlocked (stock 5.4.19 kills it). The mode you set (Off / Auto / Manual) is stored on the VCU; locking turns cruise off, unlocking brings your stored mode back (cruise is also off on every power-on boot-lock).
+- **Original** - keeps the firmware stock and locked (eKFV, 22 km/h): no speed lock, no boot-lock, no wheel calibration and no cruise change. Use it to return a scooter to the legal stock state.
 
-The only tickable option is:
+The optional fix, available in **both** modes:
 
 - **Blinker fix** - restores the turn-signal blink that 5.4.19 broke. It is optional because it is only needed if the VCU drives the indicators directly; leave it off if your scooter has a separate blinker module.
 
@@ -199,7 +218,7 @@ If every check passes, **Start** is enabled. If a check fails, Start is disabled
 
 ### The live speed lock
 
-Every R5.4.19 build boots LOCKED at 22 km/h. To unlock or re-lock the speed live over Bluetooth - with no re-flash - triple-tap the VCU speed tile on the main screen. This sends the direct lock command (cmd 0x1B); it is not a FIN rename and needs no display step. The tile colour shows the current state, read straight from the scooter's telemetry (`55 71`). Unlocking lifts the 22 km/h cap, brings your stored cruise mode back and lets the app's Wheel size drive the speedometer; locking caps you back at 22, turns cruise off and forces the stock 10.0" wheel on the display for a correct legal speed reading. The unlock holds while the scooter stays on and every restart comes up locked again. Every step is reversible.
+Every R5.4.19 Live-Toggle build boots LOCKED at 22 km/h. To unlock or re-lock the speed live over Bluetooth - with no re-flash - triple-tap the VCU speed tile on the main screen. This sends the direct lock command (cmd 0x1B); it is not a FIN rename and needs no display step. The tile colour shows the current state, read straight from the scooter's telemetry (`55 71`). Unlocking lifts the 22 km/h cap, brings your stored cruise mode back and lets the app's Wheel size drive the speedometer; locking caps you back at 22, turns cruise off and forces the stock 10.0" wheel on the display for a correct legal speed reading. The unlock holds while the scooter stays on and every restart comes up locked again. Every step is reversible.
 
 <p align="center"><img src="screenshots/livetoogle.png" width="260" alt="Live speed lock - triple-tap the speed tile to lock or unlock over Bluetooth"></p>
 
@@ -240,7 +259,7 @@ All screenshots are from the app running on a real scooter; any scooter-identify
   </tr>
   <tr>
     <td align="center"><img src="screenshots/POIs.jpg" width="240" alt="Camping and charging POI overlay on the offline map"></td>
-    <td align="center"><img src="screenshots/FirmwarePatcher1.jpg" width="240" alt="Firmware patcher: R5.4.19 always-included feature set"></td>
+    <td align="center"><img src="screenshots/FirmwarePatcher1.jpg" width="240" alt="Firmware patcher: R5.4.19 Live-Toggle vs Original mode select"></td>
     <td align="center"><img src="screenshots/FirmwarePatcher2.jpg" width="240" alt="Firmware patcher: base firmware and the optional blinker fix"></td>
   </tr>
   <tr>
@@ -306,7 +325,7 @@ You can also install from a computer over ADB (Android platform-tools). This is 
 
 ## Privacy & data protection
 
-The app collects **nothing** - no accounts, no analytics, no telemetry, no tracking and no ads. Everything stays on your device. It uses the network only on your explicit action, reaching only: your scooter over **Bluetooth LE**; the **Hochschule Esslingen** OpenStreetMap mirror (`ftp-stud.hs-esslingen.de`) for offline **maps**; the **BRouter** server (`brouter.de`) for **routing** data; this project's **GitHub Releases** (`github.com/Laufbursche42/tr-lb-edition`) for **POI** data (camping + EV charging); and the **SRT** server URL you configure yourself for screen streaming. Nothing is ever sent to the developer or to any manufacturer backend.
+The app collects **nothing** - no accounts, no analytics, no telemetry, no tracking and no ads. Everything stays on your device. It uses the network only on your explicit action, reaching only: your scooter over **Bluetooth LE**; the **Hochschule Esslingen** OpenStreetMap mirror (`ftp-stud.hs-esslingen.de`) for offline **maps**; the **BRouter** server (`brouter.de`) for **routing** data; this project's **GitHub** repo (`github.com/Laufbursche42/tr-lb-edition`) for **POI** data (camping + EV charging) and for the in-app **app / firmware update** check and downloads; and the **SRT** server URL you configure yourself for screen streaming. Nothing is ever sent to the developer or to any manufacturer backend.
 
 See [PRIVACY.md](PRIVACY.md) for the full privacy policy.
 
@@ -1004,7 +1023,7 @@ Critical constraint on this unit: the stock VCU application firmware has NO disp
 This is the app-side detail behind the two user-facing features; the byte-level clamp mechanics live in [Removing the clamp in VCU firmware](#removing-the-clamp-in-vcu-firmware). The two bundled firmwares and every offset here are specific to the Teverun Fighter Mini Pro eKFV - no other model was examined.
 
 - **Content-based compatibility (vs `isComplyRules`)** - the original app gates a local flash on the **file name** (`isComplyRules`: the name starts with `AWIVCU` / `AWVCU` and on an eKFV / TDE unit the version segment ends in "5"), which is why a shortened or renamed-but-valid file throws "Error loading upgrade file". Laufbursche Edition instead validates the image itself and treats the name rule as an advisory line only. Four checks: a **CRC16** over the image (integrity, never overridable), the target is the **VCU application region** (not the bootloader), the image is a **VCU** target (not a BMS image) and the **trailer version** against the version currently on the scooter. Every check has an explicit "flash anyway" override for informed users except the CRC check.
-- **Patcher pipeline** - the bundled Intel-HEX is parsed, the exact byte edits are applied, the firmware CRC is recomputed and a new flashable image is produced. R5.4.19 always gets the CORE group - the direct BLE speed lock (cmd 0x1B): the four speed clamps redirect to a cave gated on a RAM lock flag, a 0x1B dispatcher hook writes that flag, the `55 71` telemetry carries the lock state back to the app, a display-cold-boot hook re-locks on every power-on, the display wheel byte is masked to 10.0" while locked and the cruise write is un-gated while unlocked. The wheel-diameter (tacho) fix - which lets the app's 0x18 wheel byte feed the speedometer calibration while unlocked, with a boot NOP so the persisted value survives a reboot - is also always included. The only optional add-on is the **Blinker fix**. ALI D3.4.12 is only wrapped into a flashable image - it is already open.
+- **Patcher pipeline** - the bundled Intel-HEX is parsed, the exact byte edits are applied, the firmware CRC is recomputed and a new flashable image is produced. R5.4.19 has two modes. In **Live-Toggle** mode it gets the CORE group - the direct BLE speed lock (cmd 0x1B): the four speed clamps redirect to a cave gated on a RAM lock flag, a 0x1B dispatcher hook writes that flag, the `55 71` telemetry carries the lock state back to the app, a display-cold-boot hook re-locks on every power-on, the display wheel byte is masked to 10.0" while locked and the cruise write is un-gated while unlocked - plus the wheel-diameter (tacho) fix, which lets the app's 0x18 wheel byte feed the speedometer calibration while unlocked, with a boot NOP so the persisted value survives a reboot. In **Original** mode none of that is applied - the image stays stock and eKFV-locked. The **Blinker fix** is the only optional add-on and works in either mode. ALI D3.4.12 is only wrapped into a flashable image - it is already open.
 - **Built in memory, never on disk** - the patched or picked image lives only in two in-RAM `String` fields (`otaHexText` / `otaFileName`); nothing firmware-related is ever written to the filesystem. Only one image exists at a time and each new build overwrites it. After a flash completes or fails the app drops it (`otaClear()`) so no stale image lingers; a cancel keeps it so you can restart immediately.
 - **Auto-off cannot be raised over BLE** - a short auto-off (sleep) timer can power the scooter off mid-flash, but the app cannot prevent this. The VCU settings handler copies only `a[2..17]` and drops `a[18]`, where sleepTime lives (verified on `fw_r5419`; the original app puts it in the same `a[18]` and hits the same wall - see [Sleep and power-off timer quirk](#sleep-and-power-off-timer-quirk)). The flash confirm dialog therefore warns the user in red to raise the auto-off timer in the scooter's own display menu first.
 - **Cross-compatibility (Box C)** - R5.4.19 and ALI D3.4.12 share the Box C flash layout, so either can replace the other - flash R5.4.19 onto an open box to make it eKFV-compliant or ALI onto an eKFV box to open it. Every Box C VCU image (R3 / R5 / D10_4 and the ALI D3 dump) uses flash base `0x08007000`; the older R2 / D2 hardware uses `0x08008000` instead, so an image flashed across that base boundary will not boot - that is the real reason this is Box C only. The in-app patcher does not advertise the cross-flash to avoid mis-flashes, but it is technically supported on Box C.
@@ -1017,21 +1036,23 @@ AWIVCU _ LOCK _ R5 _ 4 _ 19 _ WHEEL _ TURN .hex
 ```
 
 - **Field 0 `AWIVCU`** - fixed prefix; the original app requires the name to start with `AWIVCU` (or `AWVCU`).
-- **Field 1 - mode** - `LOCK` for the R5.4.19 build (the direct BLE speed lock, always applied) or `ALI` for the ALI firmware.
+- **Field 1 - mode** - `LOCK` for the R5.4.19 Live-Toggle build (the direct BLE speed lock), `EKFV` for the R5.4.19 Original (stock, still locked) build or `ALI` for the ALI firmware.
 - **Field 2 - model** - `R5` (or `D3`). The decisive field: the original app reads it with `split("_")[2]` in its `isComplyRules` check and wants `R5` (ends in "5") on an eKFV / TDE unit. Putting the mode here would break that check, so the mode stays in field 1 and the model stays in field 2.
 - **Fields 3 + 4 - version** - `4` and `19`, i.e. R5.4.19.
-- **Field 5 `WHEEL`** - the wheel-diameter (tacho) fix, always present on an R5 build.
+- **Field 5 `WHEEL`** - the wheel-diameter (tacho) fix, present on a Live-Toggle R5 build (the Original build omits it).
 - **Field 6 - optional add-on** - `TURN` (Blinker fix), appended only when the option is ticked.
 
 Every file name the patcher can emit:
 
 | Mode | File name |
 |------|-----------|
-| R5.4.19 (speed lock) | `AWIVCU_LOCK_R5_4_19_WHEEL.hex` |
+| R5.4.19 Live-Toggle | `AWIVCU_LOCK_R5_4_19_WHEEL.hex` |
 | | `AWIVCU_LOCK_R5_4_19_WHEEL_TURN.hex` |
+| R5.4.19 Original (stock) | `AWIVCU_EKFV_R5_4_19.hex` |
+| | `AWIVCU_EKFV_R5_4_19_TURN.hex` |
 | ALI (convert-only) | `AWIVCU_ALI_D3_4_12.hex` |
 
-`WHEEL` is always present on an R5 build because the wheel-diameter calibration is always included; `TURN` is appended only when the Blinker fix is ticked.
+`WHEEL` is present on a Live-Toggle R5 build because the wheel-diameter calibration is part of that feature set; the Original build (mode `EKFV`) omits it. `TURN` is appended only when the Blinker fix is ticked.
 
 ### Region write-protection - locked vs free settings
 

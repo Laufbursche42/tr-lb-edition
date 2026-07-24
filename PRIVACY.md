@@ -20,7 +20,7 @@ You can export a GPX track or a debug log yourself through the Android share she
 
 ## The only network connections the app makes
 
-The app makes network connections in exactly three cases and no others.
+The app makes network connections in exactly four cases and no others.
 
 ### 1. Bluetooth LE to your scooter
 
@@ -39,6 +39,16 @@ These are public OpenStreetMap-based sources. This happens only on your explicit
 ### 3. SRT screen streaming (only to your own server)
 
 Screen streaming goes only to the server URL you configure yourself - typically your own local or LAN server. The stored URL is encrypted on the device using the Android Keystore (AES-256-GCM). SRT is its own transport, not HTTP; it can additionally be AES-encrypted by adding a passphrase to your SRT URL.
+
+### 4. In-app update check and downloads (HTTPS, GitHub only)
+
+The app can tell you when a newer app version or a newer scooter firmware is available and download it. For this it contacts GitHub and nothing else:
+
+- the latest app release from this project's GitHub API - https://api.github.com/repos/Laufbursche42/tr-lb-edition/releases/latest - checked once when the app starts and once after a firmware flash finishes.
+- the firmware manifest and the firmware image from this project's own `firmware/` folder over raw GitHub - base URL https://raw.githubusercontent.com/Laufbursche42/tr-lb-edition/main/firmware/ with `latest.json` or a firmware file appended.
+- the app-update APK from this project's GitHub Releases, only when you tap Download.
+
+These are plain HTTPS GET requests. GitHub can see your IP address and the requested file path (which release or firmware file you fetch), the same as any download - nothing else. No scooter data, no telemetry, no settings, no identity and no personal data are ever sent. The version check sends only the request itself; a firmware or an APK download happens only when you tap it. The app uses a neutral fixed User-Agent, no cookies, no account and no tracking parameters. Installing a downloaded app update is handled by the Android package installer and the "install unknown apps" permission (see [PERMISSIONS.md](PERMISSIONS.md)).
 
 ## No developer or manufacturer backend
 
