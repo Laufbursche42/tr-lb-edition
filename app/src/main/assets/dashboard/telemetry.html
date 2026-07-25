@@ -1605,8 +1605,9 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     </div>
 
     <div class="settings-group" id="pt-r5-options" style="border-top:1px solid var(--border)">
-      <div class="settings-group-title">Optional fix (R5.4.19)</div>
+      <div class="settings-group-title">Optional fixes (R5.4.19)</div>
       <label class="pt-opt" id="pt-bl-wrap"><input type="checkbox" id="pt-blinker"><span><span class="pt-lbl">Blinker fix</span><span class="pt-help">Fixes the 5.4.19 bug where the indicators glow solid instead of blinking. Only needed if the VCU drives the indicators directly - leave it off if your scooter has a separate blinker module.</span></span></label>
+      <label class="pt-opt" id="pt-ks-wrap"><input type="checkbox" id="pt-kickstart"><span><span class="pt-lbl">Kickstart off (ZeroStart)</span><span class="pt-help">Only tick this if the normal Start-mode switch does nothing on your scooter - some older motor controllers ignore it, so kickstart cannot be turned off in any app or display menu. This build then forces starting from standstill without kicking whenever the scooter is unlocked. A locked scooter keeps the stock kick requirement, plus you can no longer switch kickstart back on yourself. Leave it off if your Start-mode switch already works.</span></span></label>
     </div>
 
     <div class="settings-group" id="pt-ali-note" style="border-top:1px solid var(--border);display:none">
@@ -3797,7 +3798,7 @@ function ptOnFirmwareChange() {
   show('pt-r5-options', isR5);     // Blinker fix - both R5 modes
   show('pt-ali-note', isAli);
   // Clear the optional add-on when switching firmware.
-  ['pt-blinker'].forEach(id => { const e = document.getElementById(id); if (e) e.checked = false; });
+  ['pt-blinker', 'pt-kickstart'].forEach(id => { const e = document.getElementById(id); if (e) e.checked = false; });
   ptApplyMode();                   // shows the Live-Toggle feature list or the Original note
 }
 // Show the right explanation for the selected R5 mode (Live-Toggle feature list vs Original note).
@@ -3818,8 +3819,9 @@ function ptSyncButton() {
   if (fw === 'r5') {
     const mode = (document.getElementById('pt-mode') || {}).value || 'live';
     const bl = !!(document.getElementById('pt-blinker') || {}).checked;
-    // Original mode with no blinker fix produces the plain stock firmware; everything else patches.
-    btn.textContent = (mode === 'orig' && !bl) ? 'Original Firmware & Continue' : 'Build patch & continue';
+    const ks = !!(document.getElementById('pt-kickstart') || {}).checked;
+    // Original mode with no optional fix produces the plain stock firmware; everything else patches.
+    btn.textContent = (mode === 'orig' && !bl && !ks) ? 'Original Firmware & Continue' : 'Build patch & continue';
     return;
   }
   btn.textContent = 'Original Firmware & Continue';   // ALI convert-only
@@ -3830,7 +3832,8 @@ function ptRun() {
   // R5 mode: "live" = Live-Toggle unlock (core + wheel + cruise), "orig" = stock/locked. ALI: convert only.
   const mode = (fw === 'r5') ? ((document.getElementById('pt-mode') || {}).value || 'live') : 'lock';
   const bl = !!(document.getElementById('pt-blinker') || {}).checked;
-  const patching = (fw === 'r5') && (mode === 'live' || bl);   // Original with no blinker = the plain stock file
+  const ks = !!(document.getElementById('pt-kickstart') || {}).checked;
+  const patching = (fw === 'r5') && (mode === 'live' || bl || ks);   // Original with no optional fix = plain stock
   const status = document.getElementById('pt-status');
   const btn = document.getElementById('btn-pt-run');
   if (btn) btn.disabled = true;
@@ -3838,7 +3841,7 @@ function ptRun() {
   // Defer one tick so the disabled button + status paint before the synchronous native patch runs.
   setTimeout(() => {
     let res = null;
-    try { res = JSON.parse(LB.patchFirmware(fw, mode, bl, false)); }
+    try { res = JSON.parse(LB.patchFirmware(fw, mode, bl, false, ks)); }
     catch (e) { res = { ok: false, error: '' + e }; }
     if (btn) btn.disabled = false;
     if (!res || res.ok === false) {
@@ -4622,7 +4625,7 @@ function wireEvents() {
   document.getElementById('btn-patcher-back').addEventListener('click', closePatcherPage);
   document.getElementById('pt-firmware').addEventListener('change', ptOnFirmwareChange);
   { const m = document.getElementById('pt-mode'); if (m) m.addEventListener('change', ptApplyMode); }
-  ['pt-blinker'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', ptSyncButton); });
+  ['pt-blinker', 'pt-kickstart'].forEach(id => { const e = document.getElementById(id); if (e) e.addEventListener('change', ptSyncButton); });
   document.getElementById('btn-pt-run').addEventListener('click', ptRun);
 
   // App-update banner: download the APK and open the installer.

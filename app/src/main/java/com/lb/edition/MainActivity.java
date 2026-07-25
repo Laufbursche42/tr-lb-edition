@@ -747,8 +747,9 @@ public class MainActivity extends Activity {
          * JSON for the summary.
          */
         @JavascriptInterface
-        public String patchFirmware(String fwId, String speedMode, boolean blinker, boolean wheel) {
-            Log.i(TAG, "LB.patchFirmware(" + fwId + "," + speedMode + ",b=" + blinker + ",w=" + wheel + ")");
+        public String patchFirmware(String fwId, String speedMode, boolean blinker, boolean wheel, boolean kickstart) {
+            Log.i(TAG, "LB.patchFirmware(" + fwId + "," + speedMode + ",b=" + blinker + ",w=" + wheel
+                    + ",k=" + kickstart + ")");
             try {
                 String asset;
                 boolean isHex;
@@ -770,15 +771,19 @@ public class MainActivity extends Activity {
                 String name;
                 if ("r5".equals(fwId)) {
                     if ("orig".equals(speedMode)) {
-                        // Original: stays stock and locked; only the optional blinker fix may be applied.
+                        // Original: stays stock and locked; only the optional fixes may be applied. The
+                        // kickstart group needs the CORE unlock override to gate on, so it is not offered
+                        // here - without CORE there is no unlocked state for it to act in.
                         if (blinker) fp.applyBlinker();
                         name = "AWIVCU_EKFV_R5_4_19" + (blinker ? "_TURN" : "") + ".hex";
                     } else {
                         // Live-Toggle unlock: full feature set (BLE lock + boot-lock + wheel + cruise).
                         fp.applyCore();
                         fp.applyWheel();
-                        if (blinker) fp.applyBlinker();  // optional: indicator-blink fix
-                        name = "AWIVCU_LOCK_R5_4_19_WHEEL" + (blinker ? "_TURN" : "") + ".hex";
+                        if (blinker) fp.applyBlinker();      // optional: indicator-blink fix
+                        if (kickstart) fp.applyKickstart();  // optional: force ZeroStart while unlocked
+                        name = "AWIVCU_LOCK_R5_4_19_WHEEL" + (blinker ? "_TURN" : "")
+                                + (kickstart ? "_ZS" : "") + ".hex";
                     }
                 } else {
                     // ALI is convert-only (already open); keep its canonical model token.

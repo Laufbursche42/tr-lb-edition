@@ -40,7 +40,7 @@ final class FirmwarePatcher {
     /** Internal firmware build number, stamped into the BLE hwVer MAJOR byte (frame 55 43, t[6]) so the
      *  app can read over BLE which patched firmware is on the controller and offer an update. BUMP this
      *  for every new firmware we build and host. */
-    static final int FW_BUILD = 33;
+    static final int FW_BUILD = 36;
 
     private FirmwarePatcher() {}
 
@@ -184,16 +184,32 @@ final class FirmwarePatcher {
         // next power-on or any app write wipes it again) and runs the stock apply block at 0x0800F8B6;
         // locked skips the whole block at 0x0800F8EE.
         p(0x0800F8B0, b(0xA1,0x48,0x00,0x78,0xD8,0xB9), b(0x0E,0xF0,0x10,0xBA,0x00,0xBF)),
-        // four r7-clamp bl sites -> clampcave (two-value clamp selected by everUnlocked)
-        p(0x08010058, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0x72,0xFD,0x02,0xE0,0x00,0xBF)),
-        p(0x08010208, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0x9A,0xFC,0x02,0xE0,0x00,0xBF)),
-        p(0x080103B0, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0xC6,0xFB,0x02,0xE0,0x00,0xBF)),
-        p(0x080105D0, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0xB6,0xFA,0x02,0xE0,0x00,0xBF)),
+        // NOTE - do NOT clear bit5 of the motor-frame flag byte r6 (the `orr r6,r6,#0x20` at 0x08010054
+        // plus its three twins). It looks like a ZeroStart release, but a V34 test build that cleared it
+        // while unlocked made the ESC stutter plus dropped the reachable top speed: the same setpoint
+        // number produced far less speed, so 75 km/h became unreachable even after raising the per-gear
+        // value. On this hardware bit5 selects how the ESC INTERPRETS the setpoint scale, it does not
+        // just gate ZeroStart. That also explains why the spooonky patcher has to halve the speed value
+        // (lsrs r7,#1) whenever it clears the bit. Reverted in V33; find another route for ZeroStart.
+        // four r7-clamp bl sites -> newclampcave. The clamp is TWO-VALUE again, selected by the
+        // everUnlocked latch: 22 while the scooter has not been unlocked since power-on, 20 once it has.
+        // Reason: after a high-speed excursion the ESC speed loop latches roughly 2 km/h high, so a plain
+        // 22 clamp lets a re-locked scooter run ~24 until the next power cycle. Clamping one step lower
+        // after the first unlock pulls it back to about 22. Measured on the device: clamp 22 gave 23.7 km/h
+        // in the app telemetry, clamp 21 gave 22.8, so roughly 0.9 km/h per step - 20 lands just under 22.
+        // The app number is used because the DISPLAY cannot be trusted here: its firmware shows a hard 22.0
+        // for anything between 22.0 and 23.0 (plus briefly above), so it hides exactly this range. A power-on clears the latch (bootclear_cave),
+        // so a scooter that was never unlocked keeps the exact stock 22. This existed up to V13 plus was
+        // dropped by mistake in the V32 cave rewrite, where it was misread as dead code.
+        p(0x08010058, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0x56,0xFE,0x02,0xE0,0x00,0xBF)),
+        p(0x08010208, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0x7E,0xFD,0x02,0xE0,0x00,0xBF)),
+        p(0x080103B0, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0xAA,0xFC,0x02,0xE0,0x00,0xBF)),
+        p(0x080105D0, b(0x16,0x2F,0x03,0xDD,0x16,0x27,0x01,0xE0), b(0x0D,0xF0,0x9A,0xFB,0x02,0xE0,0x00,0xBF)),
         // factory-default gear table: new default per-gear speeds 20/22/40/65/100 (was 20/40/60/80/100).
         // Baked into the defaults that are reloaded from EEPROM; the firmware recomputes the table CRC at
         // runtime on write, so no in-table CRC fixup is needed here.
         p(0x0801D7A2, b(0x28), b(0x16)),   // gear2 default speed 40 -> 22
-        p(0x0801D7A8, b(0x3C), b(0x28)),   // gear3 default speed 60 -> 40
+        p(0x0801D7A8, b(0x3C), b(0x2D)),   // gear3 default speed 60 -> 45
         p(0x0801D7AE, b(0x50), b(0x41)),   // gear4 default speed 80 -> 65
         // appended cave block @0x0801DB40..0x0801DC13 - ONLY the live caves. The dead V21/V22/V23 boot-lock
         // caves (disp_reset/disp counter, esclock, poweron) and the old newclampcave/arm_cave/nfc_cave and
@@ -256,7 +272,7 @@ final class FirmwarePatcher {
                               // flag 0x20000306=0 (so it fires once, not every 0x4c frame), then b.w 0x0800FD00.
                               0x00,0x20,0x09,0x49,0x08,0x70,0x09,0x49,0x08,0x70,0x09,0x49,0x08,0x70,0x09,0x49,
                               0x0A,0x78,0x02,0xF0,0xF8,0x02,0x0A,0x70,0x07,0x49,0x0A,0x78,0x02,0xF0,0xF8,0x02,
-                              0x0A,0x70,0xF2,0xF7,0x45,0xB8,0x00,0xBF,0xA0,0x02,0x00,0x20,0x02,0x03,0x00,0x20,
+                              0x0A,0x70,0x00,0xF0,0x61,0xB8,0x00,0xBF,0xA0,0x02,0x00,0x20,0x02,0x03,0x00,0x20,
                               0x06,0x03,0x00,0x20,0x9B,0x02,0x00,0x20,0x9A,0x02,0x00,0x20,
                               // cruisetail_cave @0x0801DC8C (hook 0x0800D2E2, rejoins 0x0800D31A): reproduces
                               // the ungated cmd-0x18 tail but sanitises the value with 0xF8 while LOCKED, so
@@ -277,6 +293,22 @@ final class FirmwarePatcher {
                               0x07,0x49,0x0A,0x78,0x02,0xF0,0xF9,0x02,0x02,0x43,0x0A,0x70,0x04,0xBC,0xF1,0xF7,
                               0xE0,0xBD,0xF1,0xF7,0xFA,0xBD,0x00,0xBF,0xA0,0x02,0x00,0x20,0x4D,0x13,0x00,0x20,
                               0xD1,0x02,0x00,0x20,
+                              // newclampcave @0x0801DD08 (bl from the four r7-clamp sites). UNLOCKED:
+                              // latch everUnlocked = 1 plus leave r7 alone. LOCKED: clamp to 21 when the
+                              // latch is set, else to 22. r1 is pushed/popped so the builders keep it.
+                              //   ldr r0,=0x200002A0 ; ldrb ; cbz -> locked
+                              //   push {r1} ; movs r0,#1 ; ldr r1,=0x200003D0 ; strb ; pop {r1} ; bx lr
+                              //   locked: ldr r0,=0x200003D0 ; ldrb ; cbz -> use22
+                              //           movs r0,#0x14 ; b apply ; use22: movs r0,#0x16
+                              //           apply: cmp r7,r0 ; ble out ; mov r7,r0 ; out: bx lr
+                              0x09,0x48,0x00,0x78,0x28,0xB1,0x02,0xB4,0x01,0x20,0x08,0x49,0x08,0x70,0x02,0xBC,
+                              0x70,0x47,0x06,0x48,0x00,0x78,0x08,0xB1,0x14,0x20,0x00,0xE0,0x16,0x20,0x87,0x42,
+                              0x00,0xDD,0x07,0x46,0x70,0x47,0x00,0xBF,0xA0,0x02,0x00,0x20,0xD0,0x03,0x00,0x20,
+                              // bootclear_cave @0x0801DD38 (bootcruise_cave now exits through here):
+                              // clears the everUnlocked latch on the power-on edge, then continues to the
+                              // stock 0x0800FD00 return. Without it the latch would survive a soft power
+                              // cycle - the VCU keeps its RAM - plus the scooter would stay on 21 forever.
+                              0x00,0x20,0x02,0x49,0x08,0x70,0xF1,0xF7,0xDF,0xBF,0x00,0xBF,0xD0,0x03,0x00,0x20,
                               // relocated 8-byte end marker (must stay at the image end)
                               0xA5,0x01,0x19,0x02,0x57,0x19,0x00,0x00)),
     };
@@ -284,6 +316,55 @@ final class FirmwarePatcher {
     // BLINKER - the R5.4.19 indicator-blink fix (extra PB5 reset -> NOP).
     private static final P[] BLINKER = {
         p(0x08019610, b(0xFF,0xF7,0x90,0xFF), b(0x00,0xBF,0x00,0xBF)),
+    };
+
+    // KICKSTART - force ZeroStart (no kick needed to start) while UNLOCKED.
+    //
+    // Why this exists: the kick-start requirement travels to the motor controller as bit6 (0x40) of ESC
+    // frame byte[5]. The whole chain app -> 0x200002D1 -> 0x2000029A/0x2000029B -> frame[5] is ungated in
+    // stock R5.4.19 plus our CORE masking preserves bit6, so on most hardware the normal Start-mode
+    // switch simply works and this group is not needed. On some older controllers it does not work at
+    // all, whatever app or display menu is used - for those units this group takes the decision away
+    // from every writer and forces the bit at the wire.
+    //
+    // Polarity: bit6 = 1 means "kick required". Derived from the original app, which defaults an eKFV
+    // device to startMode 1 plus forces startMode 1 in its road-legal bundle - and the eKFV does not
+    // permit starting from standstill under motor power. So clearing bit6 disables the kick requirement.
+    //
+    // Hook: the contiguous pair `strb r5,[base,#4]; strb r4,[base,#5]` in each of the four controller
+    // frame builders - the single point every r4 bit edit has already passed. The rear builders do
+    // `mov r0,r1` immediately before it, so r1 is the frame base in all four; r2 is dead there (each
+    // builder reloads it with movs r2,#0x10/0x14 shortly after). lr is free because the builders save it
+    // on entry, which the CORE clampcave bl already relies on.
+    //
+    // Gated on the unlock override 0x200002A0: LOCKED keeps the stock bit so a road-legal scooter still
+    // requires the kick, UNLOCKED clears it. The user cannot switch it back on - that is the point.
+    private static final P[] KICKSTART = {
+        // Kickstart permanently off - nothing else. For scooters whose Start-mode switch does nothing,
+        // where kickstart cannot be turned off from any app or display menu.
+        //
+        // bit6 of ESC frame byte[5] carries the kick-start requirement (1 = kick needed; the original app
+        // defaults an eKFV device to 1 plus forces 1 in its road-legal bundle). It is cleared on every
+        // frame regardless of the lock state, so no app, display or EEPROM value can put it back.
+        //
+        // The bit is isolated: it touches neither the speed clamp, the wheel masking, the cruise bits nor
+        // the unlock override, so the lock mechanism keeps working exactly as before plus the speed scale
+        // is untouched. Deliberately NOT combined with the bit5 mode flag - clearing that one puts the
+        // controller into its open mode, which was measured to roughly halve the reachable speed.
+        p(0x0801008E, b(0x0D,0x71,0x4C,0x71), b(0x0D,0xF0,0x5B,0xFE)),
+        p(0x0801023E, b(0x0D,0x71,0x4C,0x71), b(0x0D,0xF0,0x83,0xFD)),
+        p(0x08010466, b(0x05,0x71,0x44,0x71), b(0x0D,0xF0,0x6F,0xFC)),
+        p(0x08010608, b(0x05,0x71,0x44,0x71), b(0x0D,0xF0,0x9E,0xFB)),
+        // Version stamp override so this variant is identifiable over BLE. The stamp travels as a single
+        // byte in the 55 43 frame, so the value has to stay within 0..255.
+        p(0x0800C5DE, b(FW_BUILD), b(236)),
+        // kick_perm_cave @0x0801DD48 plus the end marker moved behind it. Without this group the marker
+        // stays where CORE put it, which keeps the plain build byte-identical to the shipped V33.
+        //   bic r4,r4,#0x40 ; strb r5,[r1,#4] ; strb r4,[r1,#5] ; bx lr
+        // lr is free (the builders save it on entry), r1 is the frame base in all four (the rear ones do
+        // `mov r0,r1` immediately before the displaced pair).
+        p(0x0801DD48, null, b(0x24,0xF0,0x40,0x04,0x0D,0x71,0x4C,0x71,0x70,0x47,0x00,0xBF,
+                              0xA5,0x01,0x19,0x02,0x57,0x19,0x00,0x00)),
     };
 
     // WHEEL - speedometer wheel-diameter fix: UNLOCKED the app's cmd-0x18 wheel value feeds the tacho
@@ -294,10 +375,17 @@ final class FirmwarePatcher {
         // boot NOP: stop the boot-load overwriting the persisted wheel with 100 (10.0")
         p(0x0801730E, b(0x08,0x70), b(0x00,0xBF)),
         // appended WD cave @0x0801DAFC..0x0801DB3F: cave code + literals + carried end marker. Sits
-        // before the CORE cave block. The WD-force at 0x0801DB04 (movs r2,#0x64 = 10.0") is gated on the
-        // real lock flag 0x200002A0: LOCKED -> force 10.0" (display reads stock), UNLOCKED -> keep the
-        // app's per-gear wheel value (accurate tacho). cbnz r1 at 0x0801DB02 skips the force when open.
-        p(0x0801DAFC, null, b(0x02,0x79,0x0A,0x49,0x09,0x78,0x01,0xB9,0x64,0x22,0x09,0x49,0x0B,0x78,0x0A,0x70,
+        // before the CORE cave block. It takes the wheel value out of the cmd-0x18 frame, stores it in
+        // the WD variable plus persists it (mirror + native EEPROM save at 0x0801700C).
+        //
+        // The former "force 10.0 while locked" at 0x0801DB04 is NOPed out since V36. It was destructive:
+        // every settings write from the app while the scooter was locked overwrote the owner's calibrated
+        // wheel diameter with 100 (10.0") plus saved that to EEPROM, so the calibration was permanently
+        // lost, not merely hidden. It was also redundant - the CORE patches at 0x0801083C plus 0x08010B64
+        // already show the display a fixed 10.0" while locked WITHOUT touching the stored value, which is
+        // all the roadside-stock appearance needs. The lock-flag read plus cbnz above it are left in place
+        // (harmless, they now branch to the same instruction either way).
+        p(0x0801DAFC, null, b(0x02,0x79,0x0A,0x49,0x09,0x78,0x01,0xB9,0x00,0xBF,0x09,0x49,0x0B,0x78,0x0A,0x70,
                               0x9A,0x42,0x06,0xD0,0x07,0x49,0xCA,0x70,0x01,0xB5,0x01,0x20,0xF9,0xF7,0x78,0xFA,
                               0x03,0xBC,0x80,0x79,0x04,0x49,0xEF,0xF7,0x47,0xBC,0x00,0xBF,0xA0,0x02,0x00,0x20,
                               0x9D,0x02,0x00,0x20,0x28,0x1A,0x00,0x20,0xA5,0x02,0x00,0x20,0xA5,0x01,0x19,0x02,
@@ -329,6 +417,9 @@ final class FirmwarePatcher {
 
     /** WHEEL-diameter (tacho) fix (R5.4.19). */
     void applyWheel() { applyGroup(WHEEL, "wheel"); }
+
+    /** KICKSTART - force ZeroStart while unlocked (only for controllers where the normal switch is dead). */
+    void applyKickstart() { applyGroup(KICKSTART, "kickstart"); }
 
     // ─────────────────────────── HEX output ───────────────────────────
 
