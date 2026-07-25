@@ -762,6 +762,10 @@ html, body {
 }
 .seg button:last-child { border-right: none; }
 .seg button.active { background: var(--btnfill); color: #0A0C10; }
+/* Locked scooter: cruise cannot be set, so grey the control out instead of taking a write the
+   controller would discard. Matches .set-ctrl:disabled. */
+.seg.seg-disabled { opacity: 0.55; }
+.seg.seg-disabled button { cursor: default; }
 
 /* Scooter-settings numeric / select inputs */
 .set-ctrl {
@@ -1976,7 +1980,7 @@ const SETTINGS_HELP = {
   "ss-speed": { title: "Main power limit", text: "The overall power cap for the scooter in percent (0-100), independent of the per-gear limits. At 100 the scooter gives full power; lower values scale it down (50 = 50%). This is NOT a km/h speed cap." },
   "ss-gear": { title: "Gear", text: "Read-only - shows the currently active gear. On eKFV units the internal gears 2/3/4 appear as 1/2/3 on the scooter display. The gear is switched with the physical gear button on the scooter, not from the app." },
   "ss-start": { title: "Start mode", text: "How the scooter begins moving. 'Kick start' needs a push to start assisting (zero-start off); 'Launch' lets it pull away from a standstill on throttle alone (zero-start on)." },
-  "ss-cruise": { title: "Cruise control", text: "Off = no cruise. Manual = you activate cruise yourself (holding a steady speed/button). Auto = the scooter holds speed automatically after a few seconds of constant throttle.\n\nNOTE (eKFV): cruise control cannot be changed on the eKFV version - the controller write-protects it, so this setting has no effect." },
+  "ss-cruise": { title: "Cruise control", text: "Off = no cruise. Manual = you activate cruise yourself (holding a steady speed/button). Auto = the scooter holds speed automatically after a few seconds of constant throttle.\n\nOnly settable while UNLOCKED: stock eKFV firmware write-protects cruise entirely; the Laufbursche firmware re-enables it for the unlocked state only. Locking turns cruise off plus greys the control out; unlocking brings your stored mode back." },
   "ss-fcur": { title: "Front current limit", text: "Read-only - shows the FRONT motor current limit of the currently active gear. It is a per-gear value: to change it, edit the front current in the per-gear editor and Save there. On eKFV units it stays 0 (the motor controller reports and enforces 0)." },
   "ss-rcur": { title: "Rear current limit", text: "Read-only - shows the REAR motor current limit of the currently active gear. It is a per-gear value: to change it, edit the rear current in the per-gear editor and Save there. On eKFV units it stays 0 (the motor controller reports and enforces 0)." },
   "ss-abs": { title: "ABS", text: "Enables the controller's anti-lock braking behavior: it modulates the electronic brake to reduce wheel lock-up during hard braking. (Different from EABS, which is the recuperation strength.)" },
@@ -4223,15 +4227,22 @@ function prefillScooterSettings(live) {
   setV('ss-speed',    'speedLimit',   pick(d, ['speedLimit']));
   setV('ss-gear',     'gear',         pick(d, ['gear']));
   setV('ss-wheel',    'wheel',        pick(d, ['wheel']));
-  // Wheel size calibrates the display's speedometer (with the "Wheel-diameter fix" firmware). On the
-  // Fighter Mini it may only be changed while UNLOCKED, so a locked (roadside-legal) scooter keeps an
-  // honest speedometer. Other models have no speed lock, so the field stays editable there.
+  // Wheel size and cruise control may only be changed while UNLOCKED on the Fighter Mini, so a locked
+  // (roadside-legal) scooter keeps an honest speedometer and no cruise. The firmware enforces both on
+  // its own; disabling the controls here just keeps the UI honest instead of accepting a write that is
+  // silently discarded. Other models have no speed lock, so the controls stay editable there.
   {
+    const locked = fighterFeatures() && d.vcuUnlock === 0;
     const wheelEl = document.getElementById('ss-wheel');
     if (wheelEl) {
-      const locked = fighterFeatures() && d.vcuUnlock === 0;
       wheelEl.disabled = locked;
       wheelEl.title = locked ? 'Unlock the scooter to change the wheel size' : '';
+    }
+    const cruiseSeg = document.getElementById('ss-cruise');
+    if (cruiseSeg) {
+      cruiseSeg.classList.toggle('seg-disabled', locked);
+      cruiseSeg.title = locked ? 'Unlock the scooter to change cruise control' : '';
+      cruiseSeg.querySelectorAll('button').forEach(btn => { btn.disabled = locked; });
     }
   }
   setV('ss-packvolt', 'packVolt',     pick(d, ['packVolt']));
@@ -4333,6 +4344,9 @@ function wireScooterSettings() {
   });
   document.querySelectorAll('#ss-cruise button').forEach(btn => {
     btn.addEventListener('click', () => {
+      // Second guard next to the disabled attribute: cruise is only settable on an unlocked
+      // scooter, so never mark it dirty (and never send it) while the scooter is locked.
+      if (btn.disabled) return;
       const v = parseInt(btn.dataset.val, 10);
       setSegActive('#ss-cruise', v);   // UI only - not sent until Save
       ssDirty.add('cruise');
