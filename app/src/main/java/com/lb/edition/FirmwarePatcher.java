@@ -331,10 +331,11 @@ final class FirmwarePatcher {
     //
     // Why this exists: the kick-start requirement travels to the motor controller as bit6 (0x40) of ESC
     // frame byte[5]. The whole chain app -> 0x200002D1 -> 0x2000029A/0x2000029B -> frame[5] is ungated in
-    // stock R5.4.19 plus our CORE masking preserves bit6, so on most hardware the normal Start-mode
-    // switch simply works and this group is not needed. On some older controllers it does not work at
-    // all, whatever app or display menu is used - for those units this group takes the decision away
-    // from every writer and forces the bit at the wire.
+    // stock R5.4.19 plus our CORE masking preserves bit6, so on most hardware the Start mode setting
+    // simply works and this group is not needed. On some older controllers it does not work at all,
+    // whatever app or display menu is used - for those units this group takes the decision away from
+    // every writer and forces the bit at the wire. Start mode is the Launch / kick start row in the
+    // settings; it is not Smart mode, which is the traction control and unrelated to this.
     //
     // Polarity: bit6 = 1 means "kick required". Derived from the original app, which defaults an eKFV
     // device to startMode 1 plus forces startMode 1 in its road-legal bundle - and the eKFV does not
@@ -349,9 +350,9 @@ final class FirmwarePatcher {
     // Not gated on the lock state: the bit is cleared on every frame in both states, because a controller
     // that ignores the switch would otherwise be back to a kick requirement the owner cannot clear. The
     // user cannot switch it back on either - that is the point. Newer controllers honour the normal
-    // Start-mode switch, so they must be flashed without this group.
+    // Start mode setting, so they must be flashed without this group.
     private static final P[] KICKSTART = {
-        // Kickstart permanently off - nothing else. For scooters whose Start-mode switch does nothing,
+        // Kickstart permanently off - nothing else. For scooters whose Start mode setting does nothing,
         // where kickstart cannot be turned off from any app or display menu.
         //
         // bit6 of ESC frame byte[5] carries the kick-start requirement (1 = kick needed; the original app
