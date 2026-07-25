@@ -772,8 +772,9 @@ public class MainActivity extends Activity {
                 if ("r5".equals(fwId)) {
                     if ("orig".equals(speedMode)) {
                         // Original: stays stock and locked; only the optional fixes may be applied. The
-                        // kickstart group needs the CORE unlock override to gate on, so it is not offered
-                        // here - without CORE there is no unlocked state for it to act in.
+                        // kickstart group patches bytes the CORE group places (its version stamp plus the
+                        // end marker its cave carries), so it cannot run here - the UI hides it in this
+                        // mode.
                         if (blinker) fp.applyBlinker();
                         name = "AWIVCU_EKFV_R5_4_19" + (blinker ? "_TURN" : "") + ".hex";
                     } else {
@@ -781,7 +782,7 @@ public class MainActivity extends Activity {
                         fp.applyCore();
                         fp.applyWheel();
                         if (blinker) fp.applyBlinker();      // optional: indicator-blink fix
-                        if (kickstart) fp.applyKickstart();  // optional: force ZeroStart while unlocked
+                        if (kickstart) fp.applyKickstart();  // optional: force ZeroStart permanently
                         name = "AWIVCU_LOCK_R5_4_19_WHEEL" + (blinker ? "_TURN" : "")
                                 + (kickstart ? "_ZS" : "") + ".hex";
                     }

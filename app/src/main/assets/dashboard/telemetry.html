@@ -1607,7 +1607,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     <div class="settings-group" id="pt-r5-options" style="border-top:1px solid var(--border)">
       <div class="settings-group-title">Optional fixes (R5.4.19)</div>
       <label class="pt-opt" id="pt-bl-wrap"><input type="checkbox" id="pt-blinker"><span><span class="pt-lbl">Blinker fix</span><span class="pt-help">Fixes the 5.4.19 bug where the indicators glow solid instead of blinking. Only needed if the VCU drives the indicators directly - leave it off if your scooter has a separate blinker module.</span></span></label>
-      <label class="pt-opt" id="pt-ks-wrap"><input type="checkbox" id="pt-kickstart"><span><span class="pt-lbl">Kickstart off (ZeroStart)</span><span class="pt-help">Only tick this if the normal Start-mode switch does nothing on your scooter - some older motor controllers ignore it, so kickstart cannot be turned off in any app or display menu. This build then forces starting from standstill without kicking whenever the scooter is unlocked. A locked scooter keeps the stock kick requirement, plus you can no longer switch kickstart back on yourself. Leave it off if your Start-mode switch already works.</span></span></label>
+      <label class="pt-opt" id="pt-ks-wrap"><input type="checkbox" id="pt-kickstart"><span><span class="pt-lbl">Kickstart off (ZeroStart) - older scooters only</span><span class="pt-help">For older scooters that cannot turn kickstart off by themselves. Tick this only if your Start-mode switch does nothing: some older motor controllers ignore it, so kickstart stays on whatever you set in any app or display menu. This build then keeps kickstart off permanently, locked or unlocked, so the scooter starts from standstill without a kick. You can no longer switch it back on either - that is the point of it. Newer models do not need this because their Start-mode switch works, so leave the box unticked there. A build with this option reports version V236 instead of V36, so you can tell the two apart on the scooter.</span></span></label>
     </div>
 
     <div class="settings-group" id="pt-ali-note" style="border-top:1px solid var(--border);display:none">
@@ -3808,6 +3808,11 @@ function ptApplyMode() {
   const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
   show('pt-speed-group', isR5 && mode === 'live');
   show('pt-orig-note', isR5 && mode === 'orig');
+  // Kickstart rides on the Live-Toggle build: its version stamp plus its code cave both sit on bytes the
+  // core patch places, so it cannot be applied to the untouched Original. Hide it there and clear it.
+  const ksLive = isR5 && mode === 'live';
+  show('pt-ks-wrap', ksLive);
+  if (!ksLive) { const e = document.getElementById('pt-kickstart'); if (e) e.checked = false; }
   ptSyncButton();
 }
 // The button label: R5 always builds a patch (the core BLE speed lock is always included, plus any

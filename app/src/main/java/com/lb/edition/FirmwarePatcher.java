@@ -318,7 +318,7 @@ final class FirmwarePatcher {
         p(0x08019610, b(0xFF,0xF7,0x90,0xFF), b(0x00,0xBF,0x00,0xBF)),
     };
 
-    // KICKSTART - force ZeroStart (no kick needed to start) while UNLOCKED.
+    // KICKSTART - force ZeroStart (no kick needed to start) permanently, for older scooters only.
     //
     // Why this exists: the kick-start requirement travels to the motor controller as bit6 (0x40) of ESC
     // frame byte[5]. The whole chain app -> 0x200002D1 -> 0x2000029A/0x2000029B -> frame[5] is ungated in
@@ -337,8 +337,10 @@ final class FirmwarePatcher {
     // builder reloads it with movs r2,#0x10/0x14 shortly after). lr is free because the builders save it
     // on entry, which the CORE clampcave bl already relies on.
     //
-    // Gated on the unlock override 0x200002A0: LOCKED keeps the stock bit so a road-legal scooter still
-    // requires the kick, UNLOCKED clears it. The user cannot switch it back on - that is the point.
+    // Not gated on the lock state: the bit is cleared on every frame in both states, because a controller
+    // that ignores the switch would otherwise be back to a kick requirement the owner cannot clear. The
+    // user cannot switch it back on either - that is the point. Newer controllers honour the normal
+    // Start-mode switch, so they must be flashed without this group.
     private static final P[] KICKSTART = {
         // Kickstart permanently off - nothing else. For scooters whose Start-mode switch does nothing,
         // where kickstart cannot be turned off from any app or display menu.
@@ -418,7 +420,7 @@ final class FirmwarePatcher {
     /** WHEEL-diameter (tacho) fix (R5.4.19). */
     void applyWheel() { applyGroup(WHEEL, "wheel"); }
 
-    /** KICKSTART - force ZeroStart while unlocked (only for controllers where the normal switch is dead). */
+    /** KICKSTART - force ZeroStart permanently (only for controllers where the normal switch is dead). */
     void applyKickstart() { applyGroup(KICKSTART, "kickstart"); }
 
     // ─────────────────────────── HEX output ───────────────────────────
