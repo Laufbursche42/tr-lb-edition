@@ -42,6 +42,15 @@ final class FirmwarePatcher {
      *  for every new firmware we build and host. */
     static final int FW_BUILD = 36;
 
+    /** Added to FW_BUILD for the kickstart variant, so the same build ships as a plain Vxx plus a V2xx
+     *  that is told apart on the scooter (V36 -> V236). Derived, never hand-written: bumping FW_BUILD
+     *  moves both stamps together. The stamp is a single byte in the 55 43 frame, so the sum must fit in
+     *  0..255 - applyKickstart() refuses to build once FW_BUILD outgrows that. */
+    static final int KICK_BUILD_OFFSET = 200;
+
+    /** BLE version stamp of the kickstart variant (V236 for FW_BUILD 36). */
+    static final int FW_BUILD_KICK = FW_BUILD + KICK_BUILD_OFFSET;
+
     private FirmwarePatcher() {}
 
     // ─────────────────────────── loaders ───────────────────────────
@@ -357,9 +366,11 @@ final class FirmwarePatcher {
         p(0x0801023E, b(0x0D,0x71,0x4C,0x71), b(0x0D,0xF0,0x83,0xFD)),
         p(0x08010466, b(0x05,0x71,0x44,0x71), b(0x0D,0xF0,0x6F,0xFC)),
         p(0x08010608, b(0x05,0x71,0x44,0x71), b(0x0D,0xF0,0x9E,0xFB)),
-        // Version stamp override so this variant is identifiable over BLE. The stamp travels as a single
-        // byte in the 55 43 frame, so the value has to stay within 0..255.
-        p(0x0800C5DE, b(FW_BUILD), b(236)),
+        // Version stamp override so this variant is identifiable over BLE: the core group has just put
+        // `movs r7,#FW_BUILD` here; this rewrites the immediate to FW_BUILD + KICK_BUILD_OFFSET. The
+        // scooter therefore reports V236 where the plain build of the same source reports V36. The expect
+        // check on FW_BUILD is what makes this group refuse to run on an unpatched (core-less) image.
+        p(0x0800C5DE, b(FW_BUILD), b(FW_BUILD_KICK)),
         // kick_perm_cave @0x0801DD48 plus the end marker moved behind it. Without this group the marker
         // stays where CORE put it, which keeps the plain build byte-identical to the shipped V33.
         //   bic r4,r4,#0x40 ; strb r5,[r1,#4] ; strb r4,[r1,#5] ; bx lr
@@ -420,8 +431,15 @@ final class FirmwarePatcher {
     /** WHEEL-diameter (tacho) fix (R5.4.19). */
     void applyWheel() { applyGroup(WHEEL, "wheel"); }
 
-    /** KICKSTART - force ZeroStart permanently (only for controllers where the normal switch is dead). */
-    void applyKickstart() { applyGroup(KICKSTART, "kickstart"); }
+    /** KICKSTART - force ZeroStart permanently (only for controllers where the normal switch is dead).
+     *  Stamps the BLE version as FW_BUILD_KICK, so this build reports V2xx against the plain Vxx. */
+    void applyKickstart() {
+        if (FW_BUILD_KICK > 0xFF) {
+            throw new RuntimeException("kickstart version stamp " + FW_BUILD_KICK
+                    + " does not fit in the single BLE version byte - lower KICK_BUILD_OFFSET");
+        }
+        applyGroup(KICKSTART, "kickstart");
+    }
 
     // ─────────────────────────── HEX output ───────────────────────────
 

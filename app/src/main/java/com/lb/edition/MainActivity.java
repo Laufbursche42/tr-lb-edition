@@ -1035,6 +1035,13 @@ public class MainActivity extends Activity {
             return FirmwarePatcher.FW_BUILD;
         }
 
+        /** Same build with the kickstart option ticked - it carries its own stamp (V36 -> V236) so the two
+         *  variants are told apart on the scooter. Read by the patcher UI so the text cannot go stale. */
+        @JavascriptInterface
+        public int localFirmwareKickBuild() {
+            return FirmwarePatcher.FW_BUILD_KICK;
+        }
+
         /** Download the app APK into the public Downloads folder via the system DownloadManager (which
          *  shows a download notification), then open the installer when it finishes. Using DownloadManager
          *  guarantees the file is a real, visible file in Downloads and yields an installable content URI. */
