@@ -21,7 +21,7 @@ final class SettingsState {
     // Settings exposed through LB.sendSetting
     volatile int gear = 1;                 // 1..5
     volatile double wheel = 8.5;           // internal wheel unit (55 71 t[6] * 0.1)
-    volatile int sysProTemp = 80;          // protection temp
+    volatile int sysProTemp = 120;         // protection temp, firmware factory value (range 80..130)
     volatile int motorPolePairs = 15;
     volatile int assistSpeedLimit = 25;    // a[10] per-gear/assist limit (55 71 t[10])
     volatile int speedLimit = 25;          // a[11] main limit (55 71 t[11])

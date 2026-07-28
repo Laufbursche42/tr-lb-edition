@@ -1290,6 +1290,11 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
         </select>
       </div>
       <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label">Protection temp</div><div class="settings-row-sublabel">&deg;C</div></div>
+        <button type="button" class="set-help" data-set-help="ss-prottemp" aria-label="What is this?">?</button>
+        <input class="set-ctrl" id="ss-prottemp" type="number" min="80" max="130" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label">Wheel size</div><div class="settings-row-sublabel">inch</div></div>
         <button type="button" class="set-help" data-set-help="ss-wheel" aria-label="What is this?">?</button>
         <input class="set-ctrl" id="ss-wheel" type="number" min="1" max="20" step="0.1" inputmode="decimal">
@@ -1985,6 +1990,7 @@ const SETTINGS_HELP = {
   "ss-fcur": { title: "Front current limit", text: "Read-only - shows the FRONT motor current limit of the currently active gear. It is a per-gear value: to change it, edit the front current in the per-gear editor and Save there. On eKFV units it stays 0 (the motor controller reports and enforces 0)." },
   "ss-rcur": { title: "Rear current limit", text: "Read-only - shows the REAR motor current limit of the currently active gear. It is a per-gear value: to change it, edit the rear current in the per-gear editor and Save there. On eKFV units it stays 0 (the motor controller reports and enforces 0)." },
   "ss-abs": { title: "ABS", text: "Enables the controller's anti-lock braking behavior: it modulates the electronic brake to reduce wheel lock-up during hard braking. (Different from EABS, which is the recuperation strength.)" },
+  "ss-prottemp": { title: "Protection temp", text: "The temperature at which the CONTROLLER starts cutting power to protect itself, in degrees C. The controller derates harder the closer it gets to this value, so a low setting costs acceleration and top speed long before anything is actually hot. The factory value for this firmware is 120; the allowed range is 80 to 130. Read it here before you change it, because this is the scooter's own stored value." },
   "ss-packvolt": { title: "Pack voltage (nominal)", text: "The battery's nominal voltage (e.g. 60 V). The controller uses it in its power/speed calculations - set it to match your actual battery, or the math will be off." },
   "ss-wheel": { title: "Wheel size", text: "Wheel diameter in inches used for the speedometer and odometer (tacho) reading, so set it to your real tire size or the speed and distance will read wrong.\n\nWhile unlocked the scooter display shows the speed calibrated from this value; while locked the display shows the stock 10.0\" so a roadside check reads stock. It calibrates the tacho ONLY and does not change the motor controller (ESC), so the real speed is unchanged. It can only be changed while the scooter is unlocked.\n\nNOTE: this needs the \"Wheel-diameter fix\" firmware from the patcher. Stock 5.4.19 ignores the app's wheel value, so on unpatched firmware this setting has no effect on the speed reading." },
   "ss-fstart": { title: "Front start level", text: "Global launch aggressiveness of the FRONT motor from a standstill. Higher = punchier; lower = smoother." },
@@ -4213,7 +4219,7 @@ window.__onOtaState = function(sArg) {
 // currents) live in the per-gear editor, so they are not duplicated here.
 const SS_NUM_FIELDS = [
   ['ss-speed', 'speedLimit'], ['ss-wheel', 'wheel'],
-  ['ss-packvolt', 'packVolt']
+  ['ss-packvolt', 'packVolt'], ['ss-prottemp', 'sysProTemp']
 ];
 const SS_BOOL_FIELDS = [
   ['ss-abs', 'abs'], ['ss-start', 'startMode'], ['ss-eco', 'enfEcon'],
@@ -4259,6 +4265,7 @@ function prefillScooterSettings(live) {
     }
   }
   setV('ss-packvolt', 'packVolt',     pick(d, ['packVolt']));
+  setV('ss-prottemp', 'sysProTemp',   pick(d, ['sysProTemp']));
 
   let eco   = pick(d, ['enfEcon']);    if (eco   == null) eco   = b(sys[0]);
   let um    = pick(d, ['isUnitMile']); if (um    == null) um    = b(sys[1]);
