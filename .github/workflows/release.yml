@@ -1,5 +1,5 @@
 # Release build - fully automatic, no manual tagging.
-# On every push to `main` this computes the version as 1.0.<n> (n = commits after the
+# On every push to `main` this computes the version from version.properties (the same
 # initial one), builds a SIGNED release APK and publishes a GitHub Release `v1.0.<n>`
 # with the APK attached. The first public release is v1.0.0. If a release for that
 # version already exists it does nothing, so a new release appears whenever a new
@@ -43,10 +43,14 @@ jobs:
         id: ver
         run: |
           COUNT=$(git rev-list --count HEAD)
-          PATCH=$((COUNT - 1)); [ "$PATCH" -lt 0 ] && PATCH=0
-          echo "version=1.0.$PATCH" >> "$GITHUB_OUTPUT"
-          echo "tag=v1.0.$PATCH" >> "$GITHUB_OUTPUT"
-          echo "Version 1.0.$PATCH  (1.0.0 at the initial commit, patch = commits after it)"
+          # The series comes from version.properties, the same file the gradle build reads.
+          MAJOR=$(sed -n 's/^major=//p' version.properties)
+          MINOR=$(sed -n 's/^minor=//p' version.properties)
+          ZERO=$(sed -n 's/^patchZeroAt=//p' version.properties)
+          PATCH=$(( COUNT - ZERO )); [ "$PATCH" -lt 0 ] && PATCH=0
+          echo "version=$MAJOR.$MINOR.$PATCH" >> "$GITHUB_OUTPUT"
+          echo "tag=v$MAJOR.$MINOR.$PATCH" >> "$GITHUB_OUTPUT"
+          echo "Version $MAJOR.$MINOR.$PATCH  (commit count $COUNT, patch 0 at $ZERO)"
 
       - name: Skip if this version was already released
         id: exists

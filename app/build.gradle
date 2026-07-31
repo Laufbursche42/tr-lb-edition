@@ -44,13 +44,22 @@ if (keystorePropertiesFile.exists()) {
 def hasReleaseSigning = releaseSigning.storeFile != null && !releaseSigning.storeFile.toString().trim().isEmpty()
 
 // ── Automatic versioning from the git commit count ───────────────────────────
-// versionName = "1.0.<n>" where n = (git commit count - 1): the initial commit is
-// 1.0.0 and each further commit bumps the patch, with no manual bump. So the first
-// public release is 1.0.0; the next is 1.0.1; etc. versionCode stays monotonic as
-// VERSION_BASE + commit count so every build installs over the previous 0.x dev
-// builds. Falls back to the baseline when git is not available (e.g. a source zip
-// without .git) so the build never breaks. The release workflow computes the SAME tag.
-def VERSION_BASE = 58
+// The series lives in version.properties in the repo root, which the release workflow
+// reads as well so the tag and the number inside the APK cannot drift apart:
+//
+//   versionName = <major>.<minor>.<commit count - patchZeroAt>
+//   versionCode = codeBase + <commit count>
+//
+// No manual bump: each commit raises the patch level. versionCode counts straight
+// through a series change and never goes backwards, so a build always installs over
+// the one before it. Falls back to the baseline when git is not available (e.g. a
+// source zip without .git) so the build never breaks.
+def versionProps = new Properties()
+rootProject.file('version.properties').withInputStream { versionProps.load(it) }
+def VERSION_MAJOR = versionProps.getProperty('major').toInteger()
+def VERSION_MINOR = versionProps.getProperty('minor').toInteger()
+def PATCH_ZERO_AT = versionProps.getProperty('patchZeroAt').toInteger()
+def VERSION_BASE = versionProps.getProperty('codeBase').toInteger()
 def gitCommitCount = {
     try {
         def proc = ['git', 'rev-list', '--count', 'HEAD'].execute(null, rootProject.projectDir)
@@ -62,7 +71,7 @@ def gitCommitCount = {
     }
 }()
 def appVersionCode = VERSION_BASE + gitCommitCount
-def appVersionName = "1.0.${Math.max(0, gitCommitCount - 1)}"
+def appVersionName = "${VERSION_MAJOR}.${VERSION_MINOR}.${Math.max(0, gitCommitCount - PATCH_ZERO_AT)}"
 
 android {
     namespace = 'com.lb.edition'
@@ -218,7 +227,7 @@ dependencies {
 // SpotBugs works on compiled bytecode. The plugin's Android integration already creates
 // a `spotbugsDebug` task; this only tunes it: analyse the debug javac output with the
 // debug compile + Android boot classpaths as auxiliary references, MAX effort / MEDIUM
-// confidence, and emit an HTML + XML report. Reporting only - ignoreFailures keeps it
+// confidence and emit an HTML + XML report. Reporting only - ignoreFailures keeps it
 // from ever breaking the build.
 //   ./gradlew spotbugsDebug  ->  app/build/reports/spotbugs/spotbugs-debug.html
 spotbugs {
@@ -240,7 +249,7 @@ tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach { t ->
     t.effort = com.github.spotbugs.snom.Effort.MAX
     t.reportLevel = com.github.spotbugs.snom.Confidence.valueOf('MEDIUM')
     // Exclude ONLY intentional-design SECURITY findings (documented, per-exclusion reasons):
-    // local file:// WebView + JS bridge, geolocation for the bundled page, and app-scoped
+    // local file:// WebView + JS bridge, geolocation for the bundled page and app-scoped
     // external-files storage. Real issues (e.g. path traversal) are fixed in code, not excluded.
     t.excludeFilter.set(file('findbugs-exclude.xml'))
 
