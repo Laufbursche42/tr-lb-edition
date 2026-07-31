@@ -6,21 +6,20 @@ package com.lb.edition;
 
 /**
  * Builds the 20-byte outgoing command frames (phone -> VCU) for the Teverun UART-over-BLE
- * protocol, exactly as the original uni-app bundle does (see BLE_PROTOCOL.md sections 3 & 4).
+ * protocol, in the layout the VCU accepts (see the protocol reference in the README).
  *
  * Frame layout: [0]=0xAA header, [1]=cmdId, [2..18]=17 payload bytes (default 0xFF), [19]=CRC-8.
  *
  * CRC-8: polynomial 0x07, init 0x00, MSB-first, no reflection, no final XOR, computed over the
- * first 19 bytes. IMPORTANT: the original masks the accumulator with 0xFF only ONCE per input
- * byte (after the inner 8-shift loop), NOT on every shift. That is faithfully reproduced here
- * with 32-bit int math; a textbook per-iteration mask would produce different CRCs and every
- * frame would be rejected by the controller.
+ * first 19 bytes. IMPORTANT: the accumulator is masked to 8 bits ONCE per input byte (after the
+ * inner 8-shift loop), NOT on every shift. A textbook per-iteration mask yields a different value
+ * for the same bytes and the controller then rejects every frame.
  */
 final class CommandBuilder {
 
     private CommandBuilder() {}
 
-    // ── CRC-8 (poly 0x07) - replicates getCrcCode() from the bundle exactly ──
+    // ── CRC-8 (poly 0x07): the trailing byte the controller checks every frame against ──
 
     static int crc8(int[] data, int len) {
         int crc = 0;
@@ -50,8 +49,8 @@ final class CommandBuilder {
 
     /**
      * CRC-16/MODBUS over {@code data[0..len-1]}: polynomial 0xA001 (reflected 0x8005), init 0xFFFF,
-     * refin/refout true, no final XOR. Replicates the original app's getCrc()/CRC16() from the
-     * OTA bundle EXACTLY (utils/upgrade.js). Returned as a 0..0xFFFF int; the OTA INFO frame and the
+     * refin/refout true, no final XOR. This is the checksum the bootloader verifies an image
+     * against. Returned as a 0..0xFFFF int; the OTA INFO frame and the
      * file-trailer integrity check transmit it big-endian (hi = (crc>>8)&0xFF, lo = crc&0xFF).
      */
     static int crc16Modbus(byte[] data, int len) {
@@ -120,9 +119,9 @@ final class CommandBuilder {
         return finalizeFrame(a);
     }
 
-    // ── sendConnectCode(e) - handshake / keep-alive (§3.3): AA 01 10 <e> FF..FF CRC ──
+    // ── connectCode(e) - handshake / keep-alive (§3.3): AA 01 10 <e> FF..FF CRC ──
 
-    static byte[] sendConnectCode(int e) {
+    static byte[] connectCode(int e) {
         int[] a = base(1);   // cmdId 0x01
         a[2] = 0x10;         // 16
         a[3] = e & 0xFF;
@@ -185,64 +184,63 @@ final class CommandBuilder {
         return finalizeFrame(a);
     }
 
-    // ── Voltage code a[14] derived from packVolt (§3.4) ──
+    // ── Voltage code a[14] derived from packVoltage (§3.4) ──
 
-    static int voltCode(int packVolt) {
-        switch (packVolt) {
+    static int voltCode(int packVoltage) {
+        switch (packVoltage) {
             case 36: return 30;
             case 48: return 39;
             case 52: return 42;
             case 60: return 48;
             case 72: return 60;
             case 84: return 69;
-            default: return packVolt & 0xFF; // fallback: pass through
+            default: return packVoltage & 0xFF; // fallback: pass through
         }
     }
 
-    // ── sendSettingCode - full settings write, cmd 0x18 (§3.4) ──
+    // ── writeSettings - full settings write, cmd 0x18 (§3.4) ──
 
     /**
      * @param s current maintained settings state (never null)
      * @param n write mode: 0 = normal, 2 = immediate (motor toggle / charge)
      * @param r when n==2, a[3] is overwritten with this assist-level index (1 for a single frame)
      */
-    static byte[] sendSettingCode(SettingsState s, int n, int r) {
+    static byte[] writeSettings(SettingsState s, int n, int r) {
         // Read the maintained state under its monitor so the whole frame is a consistent snapshot
         // even if a 55 71 update lands mid-build (updateFrom71 synchronizes on the same instance).
         synchronized (s) {
             int gearByte = (n == 2) ? (r & 0xFF) : (s.gear & 0xFF);
             // Normal full write carries the CURRENT gear's maintained per-gear/assist values.
             return buildSettingFrame(s, n, gearByte,
-                    s.eabsLevel, s.fStartLevel, s.rStartLevel,
-                    s.assistSpeedLimit, s.fCurrent, s.rCurrent);
+                    s.eabsRegen, s.frontStartLevel, s.rearStartLevel,
+                    s.assistSpeedLimit, s.frontCurrent, s.rearCurrent);
         }
     }
 
     /**
      * sendGearSetting - write ONE gear/assist profile (cmd 0x18, BLE_PROTOCOL §3.4).
      *
-     * <p>Mirrors the original app's per-gear write: {@code a[3]} = the gear/assist index,
+     * <p>The per-gear write the VCU expects: {@code a[3]} = the gear/assist index,
      * {@code a[10]} = that gear's speed limit, {@code a[8]}/{@code a[9]} = its assist nibbles
-     * (high = eabsLevel, low = fStartLevel / rStartLevel), {@code a[12]}/{@code a[13]} = its
+     * (high = eabsRegen, low = frontStartLevel / rearStartLevel), {@code a[12]}/{@code a[13]} = its
      * front/rear current limits. Every OTHER config byte (control flags, wheel, voltage, timers,
      * main speed limit, motor mode …) is taken from the maintained current-state {@code s} so the
      * frame stays valid. Write mode {@code n = 0} (normal).
      *
-     * @param s            maintained settings state for the unchanged config bytes (never null)
-     * @param gear         gear / assist index written into a[3]
-     * @param perGearSpeed a[10] per-gear speed limit
-     * @param eabsLevel    a[8]/a[9] high nibble (EABS / recuperation level)
-     * @param fStartLevel  a[8] low nibble (front start level)
-     * @param rStartLevel  a[9] low nibble (rear start level)
-     * @param fCurrent     a[12] front current limit
-     * @param rCurrent     a[13] rear current limit
+     * @param s               maintained settings state for the unchanged config bytes (never null)
+     * @param gear            gear / assist index written into a[3]
+     * @param perGearSpeed    a[10] per-gear speed limit
+     * @param eabsRegen       a[8]/a[9] high nibble (EABS / recuperation level)
+     * @param frontStartLevel a[8] low nibble (front start level)
+     * @param rearStartLevel  a[9] low nibble (rear start level)
+     * @param frontCurrent    a[12] front current limit
+     * @param rearCurrent     a[13] rear current limit
      */
-    static byte[] sendGearSetting(SettingsState s, int gear, int perGearSpeed, int eabsLevel,
-                                  int fStartLevel, int rStartLevel, int fCurrent, int rCurrent) {
-        // Per-gear write uses mode a[2]=2 with the target gear in a[3] (r=gear), matching the
-        // original app's per-gear save (sendSettingCode(state, 2, gear)).
+    static byte[] sendGearSetting(SettingsState s, int gear, int perGearSpeed, int eabsRegen,
+                                  int frontStartLevel, int rearStartLevel, int frontCurrent, int rearCurrent) {
+        // The controller applies a write to one gear only when a[2]=2 carries the gear index in a[3].
         return buildSettingFrame(s, 2, gear & 0xFF,
-                eabsLevel, fStartLevel, rStartLevel, perGearSpeed, fCurrent, rCurrent);
+                eabsRegen, frontStartLevel, rearStartLevel, perGearSpeed, frontCurrent, rearCurrent);
     }
 
     /**
@@ -251,8 +249,8 @@ final class CommandBuilder {
      * arguments so both the full write (current gear) and the per-gear write can reuse this.
      */
     private static byte[] buildSettingFrame(SettingsState s, int n, int gearByte,
-                                            int eabsLevel, int fStartLevel, int rStartLevel,
-                                            int perGearSpeed, int fCurrent, int rCurrent) {
+                                            int eabsRegen, int frontStartLevel, int rearStartLevel,
+                                            int perGearSpeed, int frontCurrent, int rearCurrent) {
         // Snapshot the shared state under its monitor (reentrant: the callers already hold it). This
         // makes the ~20 s.* reads below atomic w.r.t. a concurrent synchronized updateFrom71.
         synchronized (s) {
@@ -262,53 +260,53 @@ final class CommandBuilder {
         a[2] = n & 0xFF;
         a[3] = gearByte & 0xFF;
 
-        // a[4] rControlStatus byte (bytesToInt, LSB-first); bit7 = rmStatus
+        // a[4] rear control byte (bytesToInt, LSB-first); bit7 = rearMotorOn
         int[] s4 = new int[8];
         applyCruise(s4, s.cruise);
         s4[3] = s.abs ? 1 : 0;
         s4[6] = s.startMode ? 1 : 0;
-        s4[7] = s.rmStatus & 1;
+        s4[7] = s.rearMotorOn & 1;
         a[4] = bytesToInt(s4);
 
         a[5] = s.motorPolePairs & 0xFF;
         a[6] = (int) Math.round(s.wheel * 10.0) & 0xFF;   // wheel * 10
-        a[7] = s.sysProTemp & 0xFF;
+        a[7] = s.protectionTemp & 0xFF;
 
-        // a[8]/a[9] assist nibble bytes (bytesToInt2, MSB-first): high nibble = eabsLevel,
-        // low nibble = fStartLevel / rStartLevel.
-        a[8] = bytesToInt2(nibbles(eabsLevel, fStartLevel));
-        a[9] = bytesToInt2(nibbles(eabsLevel, rStartLevel));
+        // a[8]/a[9] assist nibble bytes (bytesToInt2, MSB-first): high nibble = eabsRegen,
+        // low nibble = frontStartLevel / rearStartLevel.
+        a[8] = bytesToInt2(nibbles(eabsRegen, frontStartLevel));
+        a[9] = bytesToInt2(nibbles(eabsRegen, rearStartLevel));
 
         a[10] = perGearSpeed & 0xFF;         // per-gear / assist speed limit
         a[11] = s.speedLimit & 0xFF;         // main speed limit
-        a[12] = fCurrent & 0xFF;
-        a[13] = rCurrent & 0xFF;
-        a[14] = voltCode(s.packVolt);
-        a[15] = s.packVolt & 0xFF;
+        a[12] = frontCurrent & 0xFF;
+        a[13] = rearCurrent & 0xFF;
+        a[14] = voltCode(s.packVoltage);
+        a[15] = s.packVoltage & 0xFF;
 
         // a[16] flag byte (bytesToInt, LSB-first)
         int[] d = new int[8];
-        d[0] = s.enfEcon ? 1 : 0;
-        d[1] = s.isUnitMile ? 1 : 0;
-        d[2] = s.atMode ? 1 : 0;
-        d[4] = s.isSmart ? 1 : 0;
+        d[0] = s.ecoMode ? 1 : 0;
+        d[1] = s.unitMiles ? 1 : 0;
+        d[2] = s.antiTheft ? 1 : 0;
+        d[4] = s.tractionControl ? 1 : 0;
         a[16] = bytesToInt(d);
 
-        // a[17] fControlStatus byte (bytesToInt, LSB-first); bit7 = doubleMotor
+        // a[17] front control byte (bytesToInt, LSB-first); bit7 = dualMotor
         int[] s17 = new int[8];
         applyCruise(s17, s.cruise);
         s17[3] = s.abs ? 1 : 0;
         s17[6] = s.startMode ? 1 : 0;
-        s17[7] = s.doubleMotor & 1;
+        s17[7] = s.dualMotor & 1;
         a[17] = bytesToInt(s17);
 
-        a[18] = ((s.prTime & 0x1F) << 3) | (s.sleepTime & 0x07);
+        a[18] = ((s.powerOffTime & 0x1F) << 3) | (s.sleepTime & 0x07);
 
         return finalizeFrame(a);
         }
     }
 
-    /** cruise==2 (manual) -> bit2; cruise==1 (auto) -> bit0 & bit1; else none. (matches original app) */
+    /** cruise==2 (manual) -> bit2; cruise==1 (auto) -> bit0 & bit1; else none. */
     private static void applyCruise(int[] bits, int cruise) {
         if (cruise == 2) {
             bits[2] = 1;

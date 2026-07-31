@@ -21,41 +21,37 @@ final class SettingsState {
     // Settings exposed through LB.sendSetting
     volatile int gear = 1;                 // 1..5
     volatile double wheel = 8.5;           // internal wheel unit (55 71 t[6] * 0.1)
-    volatile int sysProTemp = 120;         // protection temp, firmware factory value (range 80..130)
+    volatile int protectionTemp = 120;     // protection temp, firmware factory value (range 80..130)
     volatile int motorPolePairs = 15;
     volatile int assistSpeedLimit = 25;    // a[10] per-gear/assist limit (55 71 t[10])
     volatile int speedLimit = 25;          // a[11] main limit (55 71 t[11])
-    volatile int fCurrent = 0;             // a[12] front current limit (55 71 t[12])
-    volatile int rCurrent = 0;             // a[13] rear current limit (55 71 t[13])
-    volatile int packVolt = 60;            // a[15] nominal pack voltage
-    volatile boolean enfEcon = false;      // eco
-    volatile boolean isUnitMile = false;
-    volatile boolean atMode = false;
-    volatile boolean isSmart = false;
-    volatile int cruise = 0;               // 0 none, 1 auto, 2 manual (matches the original app + display)
+    volatile int frontCurrent = 0;         // a[12] front current limit (55 71 t[12])
+    volatile int rearCurrent = 0;          // a[13] rear current limit (55 71 t[13])
+    volatile int packVoltage = 60;         // a[15] nominal pack voltage
+    volatile boolean ecoMode = false;
+    volatile boolean unitMiles = false;
+    volatile boolean antiTheft = false;
+    volatile boolean tractionControl = false;
+    volatile int cruise = 0;               // 0 none, 1 auto, 2 manual, as the display shows it
     volatile boolean abs = false;
     volatile boolean startMode = false;    // launch mode
-    volatile int fStartLevel = 0;
-    volatile int rStartLevel = 0;
-    volatile int eabsLevel = 0;
+    volatile int frontStartLevel = 0;
+    volatile int rearStartLevel = 0;
+    volatile int eabsRegen = 0;
     volatile int sleepTime = 0;            // 0..7
-    volatile int prTime = 0;               // 0..31
+    volatile int powerOffTime = 0;         // auto power-off timer, 0..31
 
     // Motor mode bits (kept from 55 72 read-back; used for a[4] bit7 / a[17] bit7)
-    volatile int rmStatus = 1;             // rear motor active
-    volatile int doubleMotor = 1;          // dual / front motor active
+    volatile int rearMotorOn = 1;          // rear motor active
+    volatile int dualMotor = 1;            // dual / front motor active
 
     volatile boolean received71 = false;
-
-    // Per-gear cache: each gear's OWN per-gear/assist values, filled from every 55 71, so wheel +
-    // cruise can be fanned out to EVERY gear without disturbing that gear's other per-gear settings.
-    // int[] layout: {assistSpeedLimit, fCurrent, rCurrent, eabsLevel, fStartLevel, rStartLevel}.
 
     /** Update the state from a decoded 55 71 main-control frame (t = 20 unsigned bytes). */
     synchronized void updateFrom71(int[] t) {
         gear = t[3] & 0xFF;
 
-        int r = t[4] & 0xFF;                       // rControlStatus (LSB-first)
+        int r = t[4] & 0xFF;                       // rearControlStatus (LSB-first)
         int b1 = (r >> 1) & 1, b2 = (r >> 2) & 1;
         cruise = (b2 << 1) | b1;                   // (bit2<<1)|bit1
         abs = ((r >> 3) & 1) != 0;
@@ -63,32 +59,30 @@ final class SettingsState {
 
         motorPolePairs = t[5] & 0xFF;
         wheel = (t[6] & 0xFF) * 0.1;
-        sysProTemp = t[7] & 0xFF;
+        protectionTemp = t[7] & 0xFF;
 
-        fStartLevel = t[8] & 0x0F;                 // low nibble
-        eabsLevel = (t[9] >> 4) & 0x0F;            // high nibble
-        rStartLevel = t[9] & 0x0F;                 // low nibble
+        frontStartLevel = t[8] & 0x0F;             // low nibble
+        eabsRegen = (t[9] >> 4) & 0x0F;            // high nibble
+        rearStartLevel = t[9] & 0x0F;              // low nibble
 
         assistSpeedLimit = t[10] & 0xFF;
         speedLimit = t[11] & 0xFF;
-        fCurrent = t[12] & 0xFF;
-        rCurrent = t[13] & 0xFF;
-        packVolt = t[15] & 0xFF;
+        frontCurrent = t[12] & 0xFF;
+        rearCurrent = t[13] & 0xFF;
+        packVoltage = t[15] & 0xFF;
 
         int sys = t[17] & 0xFF;                    // systemStatus flags (LSB-first)
-        enfEcon = (sys & 0x01) != 0;               // bit0
-        isUnitMile = (sys & 0x02) != 0;            // bit1
-        atMode = (sys & 0x04) != 0;                // bit2
-        isSmart = (sys & 0x10) != 0;               // bit4
+        ecoMode = (sys & 0x01) != 0;               // bit0
+        unitMiles = (sys & 0x02) != 0;             // bit1
+        antiTheft = (sys & 0x04) != 0;             // bit2
+        tractionControl = (sys & 0x10) != 0;       // bit4
 
         int sp = t[18] & 0xFF;
         sleepTime = sp & 0x07;
-        prTime = (sp >> 3) & 0x1F;
+        powerOffTime = (sp >> 3) & 0x1F;
 
         received71 = true;
-
     }
-
 
     /** Merge a partial settings JSON object from the dashboard. All keys optional; unknown ignored. */
     synchronized void merge(JSONObject o) {
@@ -100,42 +94,42 @@ final class SettingsState {
         }
         if (o.has("gear")) gear = o.optInt("gear", gear);
         if (o.has("wheel")) wheel = o.optDouble("wheel", wheel);
-        if (o.has("sysProTemp")) sysProTemp = o.optInt("sysProTemp", sysProTemp);
-        if (o.has("fCurrent")) fCurrent = o.optInt("fCurrent", fCurrent);
-        if (o.has("rCurrent")) rCurrent = o.optInt("rCurrent", rCurrent);
-        if (o.has("packVolt")) packVolt = o.optInt("packVolt", packVolt);
+        if (o.has("protectionTemp")) protectionTemp = o.optInt("protectionTemp", protectionTemp);
+        if (o.has("frontCurrent")) frontCurrent = o.optInt("frontCurrent", frontCurrent);
+        if (o.has("rearCurrent")) rearCurrent = o.optInt("rearCurrent", rearCurrent);
+        if (o.has("packVoltage")) packVoltage = o.optInt("packVoltage", packVoltage);
         if (o.has("motorPolePairs")) motorPolePairs = o.optInt("motorPolePairs", motorPolePairs);
-        if (o.has("enfEcon")) enfEcon = o.optBoolean("enfEcon", enfEcon);
-        if (o.has("isUnitMile")) isUnitMile = o.optBoolean("isUnitMile", isUnitMile);
-        if (o.has("atMode")) atMode = o.optBoolean("atMode", atMode);
-        if (o.has("isSmart")) isSmart = o.optBoolean("isSmart", isSmart);
+        if (o.has("ecoMode")) ecoMode = o.optBoolean("ecoMode", ecoMode);
+        if (o.has("unitMiles")) unitMiles = o.optBoolean("unitMiles", unitMiles);
+        if (o.has("antiTheft")) antiTheft = o.optBoolean("antiTheft", antiTheft);
+        if (o.has("tractionControl")) tractionControl = o.optBoolean("tractionControl", tractionControl);
         if (o.has("cruise")) cruise = o.optInt("cruise", cruise);
         if (o.has("abs")) abs = o.optBoolean("abs", abs);
         if (o.has("startMode")) startMode = o.optBoolean("startMode", startMode);
-        if (o.has("fStartLevel")) fStartLevel = o.optInt("fStartLevel", fStartLevel);
-        if (o.has("rStartLevel")) rStartLevel = o.optInt("rStartLevel", rStartLevel);
-        if (o.has("eabsLevel")) eabsLevel = o.optInt("eabsLevel", eabsLevel);
+        if (o.has("frontStartLevel")) frontStartLevel = o.optInt("frontStartLevel", frontStartLevel);
+        if (o.has("rearStartLevel")) rearStartLevel = o.optInt("rearStartLevel", rearStartLevel);
+        if (o.has("eabsRegen")) eabsRegen = o.optInt("eabsRegen", eabsRegen);
         if (o.has("sleepTime")) sleepTime = o.optInt("sleepTime", sleepTime);
-        if (o.has("prTime")) prTime = o.optInt("prTime", prTime);
-        if (o.has("rmStatus")) rmStatus = o.optInt("rmStatus", rmStatus);
-        if (o.has("doubleMotor")) doubleMotor = o.optInt("doubleMotor", doubleMotor);
+        if (o.has("prTime")) powerOffTime = o.optInt("prTime", powerOffTime);
+        if (o.has("rearMotorOn")) rearMotorOn = o.optInt("rearMotorOn", rearMotorOn);
+        if (o.has("dualMotor")) dualMotor = o.optInt("dualMotor", dualMotor);
     }
 
     /**
      * Build ONE per-gear 0x18 settings frame for {@code gear} (controller gear/assist index). The
-     * six per-gear/assist values are read from {@code vals} (keys mirror the original app's
-     * assistList: {@code speedLimit, eabsLevel, fStartLevel, rStartLevel, fCurrent, rCurrent}); any
-     * missing key falls back to the maintained current-gear value. Every OTHER config byte stays at
-     * the maintained current state (BLE_PROTOCOL §3.4). Values are clamped byte/nibble-safe so the
+     * six per-gear/assist values are read from {@code vals} (keys follow the per-gear block:
+     * {@code speedLimit, eabsRegen, frontStartLevel, rearStartLevel, frontCurrent, rearCurrent});
+     * any missing key falls back to the maintained current-gear value. Every OTHER config byte stays
+     * at the maintained current state (BLE_PROTOCOL §3.4). Values are clamped byte/nibble-safe so the
      * frame is always valid.
      */
     synchronized byte[] gearFrame(int gear, JSONObject vals) {
-        int sl   = clamp(optI(vals, "speedLimit",  assistSpeedLimit), 0, 255);
-        int eabs = clamp(optI(vals, "eabsLevel",   eabsLevel),        0, 15);   // a[8]/a[9] nibble
-        int fs   = clamp(optI(vals, "fStartLevel", fStartLevel),      0, 15);   // a[8] low nibble
-        int rs   = clamp(optI(vals, "rStartLevel", rStartLevel),      0, 15);   // a[9] low nibble
-        int fc   = clamp(optI(vals, "fCurrent",    fCurrent),         0, 100);
-        int rc   = clamp(optI(vals, "rCurrent",    rCurrent),         0, 100);
+        int sl   = clamp(optI(vals, "speedLimit",      assistSpeedLimit), 0, 255);
+        int eabs = clamp(optI(vals, "eabsRegen",       eabsRegen),        0, 15);   // a[8]/a[9] nibble
+        int fs   = clamp(optI(vals, "frontStartLevel", frontStartLevel),  0, 15);   // a[8] low nibble
+        int rs   = clamp(optI(vals, "rearStartLevel",  rearStartLevel),   0, 15);   // a[9] low nibble
+        int fc   = clamp(optI(vals, "frontCurrent",    frontCurrent),     0, 100);
+        int rc   = clamp(optI(vals, "rearCurrent",     rearCurrent),      0, 100);
         return CommandBuilder.sendGearSetting(this, gear & 0xFF, sl, eabs, fs, rs, fc, rc);
     }
 

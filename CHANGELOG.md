@@ -17,67 +17,70 @@ If no matching section exists the notes fall back to the commit messages, so kee
 ## 1.1.0
 
 A series step rather than a patch: a second language, terms that have to be accepted before the
-first ride, the styling out of the page and the firmware patcher handed to the web.
+first ride, two repairs a rider will have noticed and the firmware patcher handed to the web.
 
-### The app speaks German
+**This release needs Android 10.** The floor moved up from Android 8 so that a recorded route can
+be written into the Downloads folder without asking for a storage permission, a route Android has
+been closing off for years. On Android 8 and 9 the previous version keeps working, with no further
+updates.
 
-- The interface exists in English and German, with the switch in the display settings. On a first
-  start the app follows the phone and remembers the choice after that.
-- English is the base language and German a translation layer, both in
-  `assets/dashboard/i18n.js`, keyed by meaning so a rewording never moves a key. A key missing from
-  German falls back to English, so a gap shows wording rather than a raw key.
+### Repairs
+
+- **A GPX export never arrived on the phone.** It reported a file name and stored nothing, because
+  the export took a path that only exists in a different kind of app shell. The file now lands in
+  the Downloads folder, where a file manager and a mail app can reach it. A second export of the
+  same route gets a counter instead of overwriting the first.
+- **Wheel size and cruise control overwrote your other gears.** Saving either one rewrote every
+  gear from a cache the app kept, so a value that had gone stale could be put back. Both are single
+  values in the controller, so one write is enough. The cache is gone. Look over your gear settings
+  once if something ever seemed to have moved by itself.
 
 ### Terms before the first ride
 
 - The liability terms open on the very first start and have to be accepted before anything else.
-  Neither the backdrop nor Escape dismisses that window while it is asking.
-- They are readable again at any time from **Version Info & Disclaimer** in the side menu.
+  Neither the backdrop nor Escape gets rid of that window while it is asking.
+- They are readable again at any time from **Version Info & Disclaimer** as well as from the
+  firmware page, both opening the same text with a close button instead of a tick box.
 - The firmware page carries its own tick box saying they were read. Without it **Start update**
-  stays dead. The tick is asked again on every visit to the page rather than remembered.
+  stays dead and the hint underneath says why. The tick is asked again every time the page opens
+  rather than remembered.
 
-### What is new, in the app
+### The app speaks German
 
-- After an update a window names what a rider notices. Closing it counts as read. It reopens at any time from the settings.
+- The switch sits in the display settings and a first start follows the phone. English stays the
+  base language, so a string nobody has translated yet shows English rather than a raw key.
+- German covers the dashboard. The navigation screen, the map download screen and a handful of
+  Android messages are still English.
 
 ### Recorded routes
 
-- **Fixed:** exporting a route as GPX now writes into the phone's **Downloads** folder, where a
-  file manager and a mail app can reach it. Exporting the same route again gets a counter instead
-  of overwriting the first file.
-
-### Scooter settings
-
-- **Fixed:** wheel size and cruise control no longer fan out to every gear. Both are single values
-  in the controller, so one write is enough and every gear keeps what was set for it. The cache
-  that carried the other gears' values along is gone.
+- **Saved routes** is **Recorded routes** everywhere: on the settings button, the page title, the
+  heading and the empty message. The button also left the **Scooter** group for **GPS recording**,
+  next to the switches that produce the routes.
+- An export now reports what the app really did, either the file name that was written or a red
+  message with the reason it failed.
 
 ### Firmware
 
-- Building a firmware left the app for
+- Building a firmware moved to
   [laufbursche42.github.io/tr-fw](https://laufbursche42.github.io/tr-fw/), which asks which build
   fits a given scooter. The same patcher had to be kept in step in three places at once, here, in
-  the iOS app and on the web page: that is what was cut, not the feature. The app still flashes
-  what the page builds.
-- No firmware image ships inside the APK any more.
+  the iOS app and on the web page. Building now needs a browser and the stock image of your own
+  scooter, because no firmware image ships inside the APK any more. Flashing still happens in the
+  app.
+- The warning naming the board plus the models these firmwares must not be flashed on moved from
+  the patcher screen to the page that does the flashing.
+- The wheel-size help no longer points at the in-app patcher.
 
-### Under the surface
+### A what-is-new window
 
-- The styling left the page for `assets/dashboard/dashboard.css`. The page declares a policy that
-  allows a stylesheet from a file next to it and nothing from the document itself, so a style can
-  no longer be injected into the markup.
-- The version series lives in `version.properties`, read by both the gradle build and the release
-  workflow, so the tag and the number inside the APK cannot drift apart.
+- After an update it names in a few points what a rider notices. Closing it counts as read and it
+  reopens at any time from the settings.
 
-### Documentation
-
-- The README opens by calling the app a feasibility study, with no promise of error-free operation
-  and no warranty.
-- The licence section says what it covers and what it does not: the scooter's Bluetooth protocol
-  and the manufacturer's firmware are not ours, so neither is ours to license.
-- Everything about the scooter's firmware and about patching it moved to the patcher's own
-  repository. What stays here is the app.
-- Gone: the section explaining how to clone a repository to somebody who already has it, the call
-  for an Apple developer plus the note about which details were redacted from the screenshots.
+Under the surface the styling left the page for its own stylesheet, with a policy that forbids a
+style from being injected into the markup. The version series is defined in one file that both the
+build and the release workflow read. The README handed everything about the scooter's firmware to
+the patcher's own repository.
 
 ---
 
@@ -87,12 +90,12 @@ first ride, the styling out of the page and the firmware patcher handed to the w
 
 ## 1.0.6
 
-- Firmware update: reworked the flash to match the original app exactly, which fixes it stalling after a few packets on some controllers. Data packets now go out fire-and-forget at a fixed pace (no waiting on write acknowledgements) and the app no longer requests a fast connection interval.
+- Firmware update: reworked the flash to the pacing the bootloader sustains, which fixes it stalling after a few packets on some controllers. Data packets now go out fire-and-forget at a fixed pace (no waiting on write acknowledgements) and the app no longer requests a fast connection interval.
 - Firmware update log: OTA lines are now written to the debug log too (when Debug mode is on), so a flash done away from the computer can be reviewed afterwards.
 
 ## 1.0.5
 
-- Firmware update: fixed the flash stalling after a few packets. It now writes to the controller without response (like the original app) with a self-healing per-packet watchdog, so a full flash runs to the end.
+- Firmware update: fixed the flash stalling after a few packets. It now writes to the controller without response, with a self-healing per-packet watchdog, so a full flash runs to the end.
 - VCU speed tile: triple-tap it to toggle the speed lock. This removes or restores the "DE" in the FIN over the identity command (Gate 1). The speed number is red when the FIN has no "TDE" (unlocked) and green when it does (locked). On firmware where the display clamp is patched out this is a live lock/unlock.
 - Scooter settings: the per-gear and main "speed limit" are power limits in percent, not km/h. Relabeled to "Power limit" (%) with a 0-100 range and corrected help.
 - Firmware update page: the Choose file, Start and Cancel buttons now match the app's button style.
@@ -106,7 +109,7 @@ first ride, the styling out of the page and the firmware patcher handed to the w
 Firmware update over Bluetooth - flash controller firmware straight from the app.
 
 - New "Firmware update" entry under Settings -> Scooter opens a dedicated page: pick a controller `.hex`, review the pre-flight checks then flash. A progress bar, a live log plus a Cancel button run throughout.
-- Byte-for-byte reimplementation of the original app's local-file flasher (VCU/BMS) so the exact same update protocol runs natively, no cloud account needed.
+- Speaks the update protocol of the controller's own bootloader (VCU/BMS) natively, so a `.hex` already on the phone can be flashed with no cloud account.
 - Safety checks before anything is written: file integrity (CRC16), that the file is a controller app image, the controller-versus-battery target plus a firmware-generation match against the installed version. A checklist shows what passed and Start stays disabled until the critical checks pass. An informed override is available for edge cases, but a corrupt file can never be flashed.
 - The screen stays on for the whole ~13-minute flash. An interrupted flash leaves the controller in update mode so it can simply be flashed again - it is not bricked.
 

@@ -11,8 +11,8 @@ import org.json.JSONObject;
 /**
  * Splits incoming BLE notification payloads into 20-byte frames, validates CRC-8 and decodes the
  * Teverun telemetry frames (VCU -> phone) into a live-data model (BLE_PROTOCOL §2). The model is
- * serialised to JSON with the field names from BRIDGE.md / §2.6 (plus the short aliases the
- * dashboard's existing parseBLE() already reads, so telemetry.html works unmodified).
+ * serialised to JSON with the field names of our bridge contract (BRIDGE.md §2.6) plus the short
+ * aliases telemetry.html reads.
  *
  * Thread-safety: onNotify() runs on the GATT callback thread; toJson() may run on the UI thread.
  * All mutable model fields are guarded by this instance's monitor.
@@ -33,22 +33,22 @@ final class FrameParser {
     volatile String btName = "";
 
     // ── Live model (BRIDGE.md §2.6) ──
-    private double realSpeed, avgSpeed, maxSpeed;
+    private double speed, avgSpeed, maxSpeed;
     private int SOC, soh;
-    private double VolPack, poleVol, power;
-    private double rMotorCurrent, fMotorCurrent;
-    private int rMotorTemp, fMotorTemp;
-    private double singleMile, totalMile, enFeedBack;
+    private double packVoltage, poleVoltage, power;
+    private double rearMotorCurrent, frontMotorCurrent;
+    private int rearMotorTemp, frontMotorTemp;
+    private double singleMile, totalMile, energyFeedback;
     private int gear, speedLimit, chargeCounter, customKey;
     // 55 71 on-wire t[2] speed-lock flag (TESTLOCK firmware): 0 = LOCKED, 1 = UNLOCKED, -1 = unknown
     // (old firmware that does not stream the byte).
     private int vcuUnlock = -1;
-    private int doubleMotor, rmStatus;
+    private int dualMotor, rearMotorOn;
     private int[] systemStatus = new int[8];
     private int[] ecuStatus1 = new int[8];
     private int[] ecuStatus2 = new int[8];
-    private int[] rControlStatus = new int[8];
-    private int[] fControlStatus = new int[8];
+    private int[] rearControlStatus = new int[8];
+    private int[] frontControlStatus = new int[8];
 
     // 55 54 error/severity array (t[2..18]); index = error type, value = severity (value>0 => fault).
     private int[] errors = new int[17];
@@ -66,14 +66,14 @@ final class FrameParser {
 
     // 55 53 BMS relays / MOS control / balance / cell count
     private int relay1, relay2, relay3;               // t[2]/t[3]/t[4] (relay3 == relay M / charMode)
-    private int chrMosState, dischrMosState;          // t[5]/t[6]
-    private int volListLength;                        // t[14] cell count
-    private int[] balState0 = new int[8];             // t[7] per-cell balancing bitfield
+    private int chargeMosfetState, dischargeMosfetState;  // t[5]/t[6]
+    private int cellCount;                            // t[14] cells the BMS reports (bounds cellMv)
+    private int[] balanceState = new int[8];          // t[7] balancing bitfield, one bit per cell 0-7
     private int[] batteryStatus = new int[8];         // t[3] doubles as a BMS status bitfield
 
     // 55 72 extended controller / ECU status
-    private int[] fEcuStatus1 = new int[8];           // t[2]
-    private int[] fEcuStatus2 = new int[8];           // t[3] ([3] = doubleMotor)
+    private int[] frontEcuStatus1 = new int[8];       // t[2]
+    private int[] frontEcuStatus2 = new int[8];       // t[3] (bit3 = dual motor)
     private int[] systemStatus3 = new int[8];         // t[18]
 
     // 55 73 extended status
@@ -83,11 +83,11 @@ final class FrameParser {
     private int chargeStatus;                         // 55 54 t[17] (charge-image index)
     private boolean have54 = false, have72 = false, have73 = false;
 
-    // Raw speed (kept to derive realSpeed once wheel size is known)
+    // Raw speed word from 55 72 (kept to derive the road speed once the wheel size is known)
     private int speedRaw = 0;
 
     // Identity / version strings (55 41..45, 4D)
-    private volatile String batCode = "";
+    private volatile String batteryCode = "";
     private volatile String frameNum = "";
     private String swVer = "", hwVer = "", displayVer = "";
 
@@ -139,7 +139,7 @@ final class FrameParser {
             case 0x71: parse71(t); break;
             case 0x72: parse72(t); break;
             case 0x73: parse73(t); break;
-            case 0x41: batCode = ascii(t, 2, 16, "AW"); break;
+            case 0x41: batteryCode = ascii(t, 2, 16, "AW"); break;
             case 0x42: frameNum = ascii(t, 2, 18, null); break;
             case 0x43: parse43(t); break;
             case 0x44: parse44(t); break;
@@ -155,7 +155,7 @@ final class FrameParser {
 
     private static int u16(int[] t, int i) { return ((t[i] & 0xFF) << 8) | (t[i + 1] & 0xFF); }
 
-    /** LSB-first bit array (index 0 = bit0), matching formattingBalStatus(). */
+    /** LSB-first bit array (index 0 = bit0), the order the status bytes are packed on the wire. */
     private static int[] bits(int v) {
         int[] b = new int[8];
         for (int i = 0; i < 8; i++) b[i] = (v >> i) & 1;
@@ -178,8 +178,8 @@ final class FrameParser {
     // ── frame decoders ──
 
     private synchronized void parse52(int[] t) {
-        VolPack = u16(t, 2) * 0.1;
-        poleVol = u16(t, 4) * 0.1;
+        packVoltage = u16(t, 2) * 0.1;
+        poleVoltage = u16(t, 4) * 0.1;
         packCurrent = u16(t, 6) * 0.1 - 1000;     // < 0 => regeneration
         SOC = u8(t, 8);
         soh = u8(t, 9);                            // raw*0.01*100 == raw
@@ -193,13 +193,13 @@ final class FrameParser {
         relay1 = u8(t, 2);
         relay2 = u8(t, 3);
         relay3 = u8(t, 4);                         // relay M / charMode
-        chrMosState = u8(t, 5);
-        dischrMosState = u8(t, 6);
-        balState0 = bits(u8(t, 7));                // per-cell balancing bitfield
+        chargeMosfetState = u8(t, 5);
+        dischargeMosfetState = u8(t, 6);
+        balanceState = bits(u8(t, 7));             // per-cell balancing bitfield
         if (u8(t, 3) != 0xFF) batteryStatus = bits(u8(t, 3));  // t[3] doubles as BMS status
         capacity = isVer2 ? u16(t, 10) : u16(t, 8);
         chargeCounter = u16(t, 12);
-        volListLength = u8(t, 14);                 // cell count
+        cellCount = u8(t, 14);                     // cell count
         maxCellV = u16(t, 15);
         minCellV = u16(t, 17);
         have53 = true;
@@ -208,7 +208,7 @@ final class FrameParser {
     /**
      * 55 54 - error codes / charge status. t[2..18] carry a per-error severity byte; the array index
      * is the error type, the value is the severity (value > 0 => fault). t[17] doubles as the charge
-     * status (error index 15). Kept raw here; the dashboard applies the app's warn thresholds.
+     * status (error index 15). Kept raw here; our dashboard applies the warn thresholds.
      */
     private synchronized void parse54(int[] t) {
         for (int i = 0; i < errors.length; i++) errors[i] = u8(t, i + 2);
@@ -230,36 +230,36 @@ final class FrameParser {
     private synchronized void parse71(int[] t) {
         vcuUnlock = u8(t, 2);   // TESTLOCK firmware: 0 = LOCKED, 1 = UNLOCKED
         gear = u8(t, 3);
-        rControlStatus = bits(u8(t, 4));
+        rearControlStatus = bits(u8(t, 4));
         speedLimit = u8(t, 11);
-        fControlStatus = bits(u8(t, 16));
+        frontControlStatus = bits(u8(t, 16));
         systemStatus = bits(u8(t, 17));
         // keep the maintained settings state current so partial writes produce a valid full frame
         settings.updateFrom71(t);
     }
 
     private synchronized void parse72(int[] t) {
-        fEcuStatus1 = bits(u8(t, 2));
-        int[] fEcu2 = bits(u8(t, 3));
-        fEcuStatus2 = fEcu2;
-        doubleMotor = fEcu2[3];
-        fMotorCurrent = u16(t, 4) * 0.1;
+        frontEcuStatus1 = bits(u8(t, 2));
+        int[] frontEcu2 = bits(u8(t, 3));
+        frontEcuStatus2 = frontEcu2;
+        dualMotor = frontEcu2[3];
+        frontMotorCurrent = u16(t, 4) * 0.1;
         int fTempRaw = u8(t, 9);
-        if (fTempRaw > 0) fMotorTemp = fTempRaw;     // per §2.4 table: raw (no -40 offset)
+        if (fTempRaw > 0) frontMotorTemp = fTempRaw;     // per §2.4 table: raw (no -40 offset)
 
         ecuStatus1 = bits(u8(t, 10));
         ecuStatus2 = bits(u8(t, 11));
-        rmStatus = ecuStatus2[3];
-        rMotorCurrent = u16(t, 12) * 0.1;
+        rearMotorOn = ecuStatus2[3];
+        rearMotorCurrent = u16(t, 12) * 0.1;
         speedRaw = u16(t, 15);
         int rTempRaw = u8(t, 17);
-        if (rTempRaw > 0) rMotorTemp = rTempRaw;
+        if (rTempRaw > 0) rearMotorTemp = rTempRaw;
         if (u8(t, 18) != 0xFF) systemStatus3 = bits(u8(t, 18));
         have72 = true;
 
         // sync current motor mode into the settings state so a settings write preserves it
-        settings.rmStatus = rmStatus;
-        settings.doubleMotor = doubleMotor;
+        settings.rearMotorOn = rearMotorOn;
+        settings.dualMotor = dualMotor;
 
         recomputeDerived();
     }
@@ -269,7 +269,7 @@ final class FrameParser {
         maxSpeed = u16(t, 4) * 0.1;
         singleMile = u16(t, 6) * 0.1;
         totalMile = ((t[8] & 0xFF) << 16) | ((t[9] & 0xFF) << 8) | (t[10] & 0xFF); // 3-byte BE
-        enFeedBack = u16(t, 11) * 0.1;
+        energyFeedback = u16(t, 11) * 0.1;
         if (u8(t, 16) != 0xFF) systemStatus2 = bits(u8(t, 16));   // [0]=batLock, [1]=gpsLock
         customKey = u8(t, 17);
         if (u8(t, 18) != 0xFF) status73 = bits(u8(t, 18));        // PowerMode/LightSens/Voice/AtLevel
@@ -291,19 +291,19 @@ final class FrameParser {
         }
     }
 
-    /** Real speed (region caps intentionally ignored) and power. */
+    /** Road speed (region caps intentionally ignored) and power. */
     private void recomputeDerived() {
         double wheel = settings.wheel;
         double v = 0;
         if (speedRaw > 0) v = 287.0 * wheel / speedRaw;
         if (speedRaw >= 3000 || v <= 0.5) v = 0;
-        if (settings.isUnitMile) v = v / 1.6093439;
-        realSpeed = v;
+        if (settings.unitMiles) v = v / 1.6093439;
+        speed = v;
 
-        if (doubleMotor == 1) {
-            power = (rMotorCurrent + fMotorCurrent) * VolPack / 1000.0;
+        if (dualMotor == 1) {
+            power = (rearMotorCurrent + frontMotorCurrent) * packVoltage / 1000.0;
         } else {
-            power = rMotorCurrent * VolPack / 1000.0;
+            power = rearMotorCurrent * packVoltage / 1000.0;
         }
     }
 
@@ -313,48 +313,50 @@ final class FrameParser {
         JSONObject o = new JSONObject();
         try {
             // Canonical names (BRIDGE.md §2.6)
-            o.put("realSpeed", round1(realSpeed));
+            o.put("speed", round1(speed));
             o.put("avgSpeed", round1(avgSpeed));
             o.put("maxSpeed", round1(maxSpeed));
             o.put("SOC", SOC);
             o.put("soh", soh);
-            o.put("VolPack", round1(VolPack));
-            o.put("poleVol", round1(poleVol));
+            // Measured pack voltage. Distinct key from the configured nominal voltage below, which
+            // is a settings value and would otherwise overwrite this one in the same object.
+            o.put("packVoltageLive", round1(packVoltage));
+            o.put("poleVoltage", round1(poleVoltage));
             o.put("power", round2(power));
-            o.put("rMotorCurrent", round1(rMotorCurrent));
-            o.put("fMotorCurrent", round1(fMotorCurrent));
-            o.put("rMotorTemp", rMotorTemp);
-            o.put("fMotorTemp", fMotorTemp);
+            o.put("rearMotorCurrent", round1(rearMotorCurrent));
+            o.put("frontMotorCurrent", round1(frontMotorCurrent));
+            o.put("rearMotorTemp", rearMotorTemp);
+            o.put("frontMotorTemp", frontMotorTemp);
             o.put("singleMile", round1(singleMile));
             o.put("totalMile", round1(totalMile));
-            o.put("enFeedBack", round1(enFeedBack));
+            o.put("enFeedBack", round1(energyFeedback));
             o.put("gear", gear);
             o.put("speedLimit", speedLimit);
             o.put("vcuUnlock", vcuUnlock);   // 55 71 t[2] speed lock: 0=LOCKED, 1=UNLOCKED, -1=unknown
             o.put("chargeCounter", chargeCounter);
             o.put("customKey", customKey);
-            o.put("doubleMotor", doubleMotor);
-            o.put("rmStatus", rmStatus);
+            o.put("dualMotor", dualMotor);
+            o.put("rearMotorOn", rearMotorOn);
             o.put("systemStatus", intArr(systemStatus));
             o.put("ecuStatus1", intArr(ecuStatus1));
             o.put("ecuStatus2", intArr(ecuStatus2));
-            o.put("rControlStatus", intArr(rControlStatus));
-            o.put("fControlStatus", intArr(fControlStatus));
-            o.put("fEcuStatus1", intArr(fEcuStatus1));
-            o.put("fEcuStatus2", intArr(fEcuStatus2));
+            o.put("rControlStatus", intArr(rearControlStatus));
+            o.put("fControlStatus", intArr(frontControlStatus));
+            o.put("fEcuStatus1", intArr(frontEcuStatus1));
+            o.put("fEcuStatus2", intArr(frontEcuStatus2));
             o.put("systemStatus2", intArr(systemStatus2));
             o.put("systemStatus3", intArr(systemStatus3));
-            o.put("balState0", intArr(balState0));
+            o.put("balState0", intArr(balanceState));
             o.put("batteryStatus", intArr(batteryStatus));
 
             // Per-cell voltages (mV) + pack cell metrics for the Battery Info page. cellMv holds the
-            // first volListLength cells (all 24 when the count is not known yet). maxCellV/minCellV in mV,
+            // first cellCount cells (all 24 when the count is not known yet). maxCellV/minCellV in mV,
             // capacity in Ah (raw), max/min cell temp in degC.
-            int cellN = (volListLength > 0 && volListLength <= cellMv.length) ? volListLength : cellMv.length;
+            int cellN = (cellCount > 0 && cellCount <= cellMv.length) ? cellCount : cellMv.length;
             JSONArray cellsJson = new JSONArray();
             for (int i = 0; i < cellN; i++) cellsJson.put(cellMv[i]);
             o.put("cellMv", cellsJson);
-            o.put("cellCount", volListLength);
+            o.put("cellCount", cellCount);
             o.put("maxCellV", maxCellV);
             o.put("minCellV", minCellV);
             o.put("capacity", capacity);
@@ -371,24 +373,24 @@ final class FrameParser {
             // settings page prefill (telemetry.html prefillScooterSettings()).
             if (settings.received71) {
                 o.put("wheel", round1(settings.wheel));
-                o.put("packVolt", settings.packVolt);
+                o.put("packVoltage", settings.packVoltage);             // configured nominal pack voltage
                 o.put("motorPolePairs", settings.motorPolePairs);
-                o.put("sysProTemp", settings.sysProTemp);
+                o.put("protectionTemp", settings.protectionTemp);
                 o.put("assistSpeedLimit", settings.assistSpeedLimit);   // 55 71 t[10] (per-gear)
-                o.put("fStartLevel", settings.fStartLevel);             // 55 71 t[8] low nibble
-                o.put("rStartLevel", settings.rStartLevel);             // 55 71 t[9] low nibble
-                o.put("eabsLevel", settings.eabsLevel);                 // 55 71 t[9] high nibble
-                o.put("fCurrentLimit", settings.fCurrent);              // 55 71 t[12] per-gear front current limit
-                o.put("rCurrentLimit", settings.rCurrent);              // 55 71 t[13] per-gear rear current limit
+                o.put("frontStartLevel", settings.frontStartLevel);     // 55 71 t[8] low nibble
+                o.put("rearStartLevel", settings.rearStartLevel);       // 55 71 t[9] low nibble
+                o.put("eabsRegen", settings.eabsRegen);                 // 55 71 t[9] high nibble
+                o.put("frontCurrentLimit", settings.frontCurrent);      // 55 71 t[12] per-gear front current limit
+                o.put("rearCurrentLimit", settings.rearCurrent);        // 55 71 t[13] per-gear rear current limit
                 o.put("sleepTime", settings.sleepTime);
-                o.put("prTime", settings.prTime);
+                o.put("prTime", settings.powerOffTime);
                 o.put("cruise", settings.cruise);
                 o.put("abs", settings.abs);
                 o.put("startMode", settings.startMode);
-                o.put("enfEcon", settings.enfEcon);
-                o.put("isUnitMile", settings.isUnitMile);
-                o.put("atMode", settings.atMode);
-                o.put("isSmart", settings.isSmart);
+                o.put("ecoMode", settings.ecoMode);
+                o.put("unitMiles", settings.unitMiles);
+                o.put("antiTheft", settings.antiTheft);
+                o.put("tractionControl", settings.tractionControl);
             }
 
             // Active errors (55 54) + ECU fault bits (BLE_PROTOCOL §2.3/§2.4) for the error-report view.
@@ -400,17 +402,16 @@ final class FrameParser {
             o.put("park", flag(ecuStatus1, 7) || flag(ecuStatus2, 7));
             o.put("cruiseActive", flag(ecuStatus2, 0));
 
-            // Short aliases consumed by telemetry.html parseBLE() (kept identical)
-            o.put("speed", round1(realSpeed));
+            // Short aliases consumed by telemetry.html parseBLE()
             o.put("soc", SOC);
-            o.put("volt", round1(VolPack));
-            o.put("poleVolt", round1(poleVol));
+            o.put("volt", round1(packVoltage));
+            o.put("poleVolt", round1(poleVoltage));
             o.put("current", round1(packCurrent));
-            o.put("rCurrent", round1(rMotorCurrent));
-            o.put("fCurrent", round1(fMotorCurrent));
-            o.put("rTemp", rMotorTemp);
-            o.put("fTemp", fMotorTemp);
-            o.put("fb", round1(enFeedBack));
+            o.put("rearCurrent", round1(rearMotorCurrent));
+            o.put("frontCurrent", round1(frontMotorCurrent));
+            o.put("rTemp", rearMotorTemp);
+            o.put("fTemp", frontMotorTemp);
+            o.put("fb", round1(energyFeedback));
             o.put("rssi", rssi);
             o.put("btName", btName);
 
@@ -419,7 +420,7 @@ final class FrameParser {
             o.put("bottom", buildBottom());
 
             // Identity (optional)
-            if (!batCode.isEmpty()) o.put("batCode", batCode);
+            if (!batteryCode.isEmpty()) o.put("batCode", batteryCode);
             if (!frameNum.isEmpty()) o.put("frameNum", frameNum);
             if (!swVer.isEmpty()) o.put("swVer", swVer);
             if (!hwVer.isEmpty()) o.put("hwVer", hwVer);
@@ -433,35 +434,37 @@ final class FrameParser {
 
     /**
      * Battery / BMS block for the dashboard's "All values" view (renderAllValues iterates top[]
-     * then bottom[]). Labels mirror the original app's battery detail view (battery.* / control.* /
-     * bat.* i18n, English). Values are pre-formatted strings with inline units.
+     * then bottom[]). Values are pre-formatted strings with inline units so the view stays generic.
+     * A label is a match key in telemetry.html (AV_HELP help lookup, BATTERY_AV_NAMES row filter),
+     * so renaming one here without the same edit there drops its help button or leaks it into the
+     * main list.
      */
     private JSONArray buildTop() {
         JSONArray a = new JSONArray();
         if (have52) {
-            a.put(nv("System Voltage", round1(VolPack) + " V"));   // 55 52 t[2..3]
-            a.put(nv("Pole Voltage", round1(poleVol) + " V"));     // 55 52 t[4..5]
-            a.put(nv("Current", round1(packCurrent) + " A"));      // 55 52 t[6..7] (<0 = regen)
-            a.put(nv("SOC", SOC + " %"));                          // 55 52 t[8]
-            a.put(nv("SOH", soh + " %"));                          // 55 52 t[9]
-            a.put(nv("CELL MAX TEMP", maxCellTemp + " °C"));       // 55 52 t[17]
-            a.put(nv("CELL MIN TEMP", minCellTemp + " °C"));       // 55 52 t[18]
+            a.put(nv("System Voltage", round1(packVoltage) + " V"));   // 55 52 t[2..3]
+            a.put(nv("Pole Voltage", round1(poleVoltage) + " V"));     // 55 52 t[4..5]
+            a.put(nv("Current", round1(packCurrent) + " A"));          // 55 52 t[6..7] (<0 = regen)
+            a.put(nv("SOC", SOC + " %"));                              // 55 52 t[8]
+            a.put(nv("SOH", soh + " %"));                              // 55 52 t[9]
+            a.put(nv("CELL MAX TEMP", maxCellTemp + " °C"));           // 55 52 t[17]
+            a.put(nv("CELL MIN TEMP", minCellTemp + " °C"));           // 55 52 t[18]
         }
         if (have53) {
-            a.put(nv("Cell Count", String.valueOf(volListLength)));    // 55 53 t[14]
+            a.put(nv("Cell Count", String.valueOf(cellCount)));        // 55 53 t[14]
             a.put(nv("Max Voltage", maxCellV + " mV"));                // 55 53 t[15..16]
             a.put(nv("Min Voltage", minCellV + " mV"));                // 55 53 t[17..18]
             a.put(nv("Rated Capacity", capacity + " Ah"));             // 55 53 t[8..9] / t[10..11]
             a.put(nv("Charge Counter", String.valueOf(chargeCounter)));// 55 53 t[12..13]
-            a.put(nv("Charge MOS", onOff(chrMosState)));               // 55 53 t[5]
-            a.put(nv("Discharge MOS", onOff(dischrMosState)));         // 55 53 t[6]
+            a.put(nv("Charge MOS", onOff(chargeMosfetState)));         // 55 53 t[5]
+            a.put(nv("Discharge MOS", onOff(dischargeMosfetState)));   // 55 53 t[6]
             a.put(nv("Relay 1", onOff(relay1)));                       // 55 53 t[2]
             a.put(nv("Relay 2", onOff(relay2)));                       // 55 53 t[3]
             a.put(nv("Relay M", onOff(relay3)));                       // 55 53 t[4]
-            a.put(nv("Balance", activeBits(balState0)));               // 55 53 t[7]
+            a.put(nv("Balance", activeBits(balanceState)));            // 55 53 t[7]
         }
         if (have54) {
-            a.put(nv("Charge Status", String.valueOf(chargeStatus))); // 55 54 t[17]
+            a.put(nv("Charge Status", String.valueOf(chargeStatus)));  // 55 54 t[17]
         }
         return a;
     }
@@ -473,28 +476,28 @@ final class FrameParser {
     private JSONArray buildBottom() {
         JSONArray a = new JSONArray();
         if (have52) {
-            // 55 52 t[10..16] - the 7 pack temperatures with the original app's distinct labels.
-            a.put(nv("Cell TEMP0", (int) batTemp[0] + " °C"));     // t[10]
-            a.put(nv("Cell TEMP1", (int) batTemp[1] + " °C"));     // t[11]
-            a.put(nv("Cell TEMP2", (int) batTemp[2] + " °C"));     // t[12]
-            a.put(nv("MOS TEMP0", (int) batTemp[3] + " °C"));      // t[13]
-            a.put(nv("MOS TEMP1", (int) batTemp[4] + " °C"));      // t[14]
-            a.put(nv("BMS PCB TEMP0", (int) batTemp[5] + " °C"));  // t[15]
-            a.put(nv("BMS PCB TEMP1", (int) batTemp[6] + " °C"));  // t[16]
+            // 55 52 t[10..16] - the 7 pack temperatures, each with its own label.
+            a.put(nv("Cell TEMP0", (int) batTemp[0] + " °C"));       // t[10]
+            a.put(nv("Cell TEMP1", (int) batTemp[1] + " °C"));       // t[11]
+            a.put(nv("Cell TEMP2", (int) batTemp[2] + " °C"));       // t[12]
+            a.put(nv("MOS TEMP0", (int) batTemp[3] + " °C"));        // t[13]
+            a.put(nv("MOS TEMP1", (int) batTemp[4] + " °C"));        // t[14]
+            a.put(nv("BMS PCB TEMP0", (int) batTemp[5] + " °C"));    // t[15]
+            a.put(nv("BMS PCB TEMP1", (int) batTemp[6] + " °C"));    // t[16]
         }
         if (have72) {
-            a.put(nv("Front Motor Current", round1(fMotorCurrent) + " A"));  // 55 72 t[4..5]
-            a.put(nv("Rear Motor Current", round1(rMotorCurrent) + " A"));   // 55 72 t[12..13]
-            a.put(nv("Front Motor Temp", fMotorTemp + " °C"));               // 55 72 t[9]
-            a.put(nv("Rear Motor Temp", rMotorTemp + " °C"));                // 55 72 t[17]
-            a.put(nv("Motor Mode", motorModeText(rmStatus, doubleMotor)));   // 55 72 t[3]/t[11]
-            a.put(nv("Power", round2(power) + " kW"));                       // derived
-            a.put(nv("Real Speed", round1(realSpeed) + (settings.isUnitMile ? " mph" : " km/h")));
+            a.put(nv("Front Motor Current", round1(frontMotorCurrent) + " A"));  // 55 72 t[4..5]
+            a.put(nv("Rear Motor Current", round1(rearMotorCurrent) + " A"));    // 55 72 t[12..13]
+            a.put(nv("Front Motor Temp", frontMotorTemp + " °C"));               // 55 72 t[9]
+            a.put(nv("Rear Motor Temp", rearMotorTemp + " °C"));                 // 55 72 t[17]
+            a.put(nv("Motor Mode", motorModeText(rearMotorOn, dualMotor)));      // 55 72 t[3]/t[11]
+            a.put(nv("Power", round2(power) + " kW"));                           // derived
+            a.put(nv("Speed", round1(speed) + (settings.unitMiles ? " mph" : " km/h")));
         }
         if (settings.received71) {
-            a.put(nv("Reverse Gear", yesNo(flag(systemStatus, 5))));       // 55 71 t[17] bit5
-            a.put(nv("Rear Control Status", activeBits(rControlStatus)));  // 55 71 t[4]
-            a.put(nv("Front Control Status", activeBits(fControlStatus))); // 55 71 t[16]
+            a.put(nv("Reverse Gear", yesNo(flag(systemStatus, 5))));          // 55 71 t[17] bit5
+            a.put(nv("Rear Control Status", activeBits(rearControlStatus)));  // 55 71 t[4]
+            a.put(nv("Front Control Status", activeBits(frontControlStatus)));// 55 71 t[16]
         }
         if (have72) {
             // Decoded ECU status flags (55 72 t[10]=ecuStatus1, t[11]=ecuStatus2).
@@ -507,8 +510,8 @@ final class FrameParser {
             a.put(nv("Headlight", onOff(flag(ecuStatus2, 4))));                            // ecuStatus2[4]
             a.put(nv("Turn Signal L", onOff(flag(ecuStatus2, 5))));                        // ecuStatus2[5]
             a.put(nv("Turn Signal R", onOff(flag(ecuStatus2, 6))));                        // ecuStatus2[6]
-            a.put(nv("Front ECU 1", activeBits(fEcuStatus1)));                             // 55 72 t[2]
-            a.put(nv("Front ECU 2", activeBits(fEcuStatus2)));                             // 55 72 t[3]
+            a.put(nv("Front ECU 1", activeBits(frontEcuStatus1)));                         // 55 72 t[2]
+            a.put(nv("Front ECU 2", activeBits(frontEcuStatus2)));                         // 55 72 t[3]
             a.put(nv("System Status 3", activeBits(systemStatus3)));                       // 55 72 t[18]
         }
         if (have73) {
@@ -517,13 +520,13 @@ final class FrameParser {
             a.put(nv("Power Mode", onOff(flag(status73, 3))));                             // 55 73 t[18][3]
             a.put(nv("Light Sensor", onOff(flag(status73, 4))));                           // 55 73 t[18][4]
             a.put(nv("Voice", onOff(flag(status73, 5))));                                  // 55 73 t[18][5]
-            a.put(nv("AT Level", String.valueOf((status73[7] << 1) | status73[6])));       // 55 73 t[18] bits7,6
+            a.put(nv("Anti-theft level", String.valueOf((status73[7] << 1) | status73[6])));// 55 73 t[18] bits7,6
             a.put(nv("Custom Key", customKeyText(customKey)));                             // 55 73 t[17]
             a.put(nv("Avg Speed", round1(avgSpeed) + " km/h"));                            // 55 73 t[2..3]
             a.put(nv("Max Speed", round1(maxSpeed) + " km/h"));                            // 55 73 t[4..5]
             a.put(nv("Trip", round1(singleMile) + " km"));                                 // 55 73 t[6..7]
             a.put(nv("Odometer", round1(totalMile) + " km"));                              // 55 73 t[8..10]
-            a.put(nv("Recuperation", String.valueOf(round1(enFeedBack))));    // 55 73 t[11..12]
+            a.put(nv("Recuperation", String.valueOf(round1(energyFeedback))));             // 55 73 t[11..12]
         }
         return a;
     }
@@ -564,14 +567,6 @@ final class FrameParser {
         return sb.length() == 0 ? "none" : sb.toString();
     }
 
-    private static String cruiseText(int level) {
-        switch (level) {
-            case 1: return "Auto";
-            case 2: return "Manual";
-            default: return "Off";
-        }
-    }
-
     private static String motorModeText(int rm, int dm) {
         if (rm == 1 && dm == 1) return "Dual";
         if (rm == 1 && dm == 0) return "Rear only";
@@ -579,20 +574,20 @@ final class FrameParser {
         return "-";
     }
 
-    /** Custom-key function names (BLE_PROTOCOL §3.5). */
+    /** Our label for the shortcut-key function code the scooter reports in 55 73 t[17]. */
     private static String customKeyText(int v) {
         switch (v) {
-            case 1: return "Motor";
-            case 2: return "Kick Start";
-            case 3: return "Auto Cruise";
-            case 4: return "Limit Speed";
-            case 5: return "Lock Scooter";
-            case 6: return "TCS";
-            case 7: return "Led Switch";
-            case 8: return "Led Mode Switch";
+            case 1: return "Motor mode";
+            case 2: return "Push start";
+            case 3: return "Cruise, automatic";
+            case 4: return "Speed cap";
+            case 5: return "Immobiliser";
+            case 6: return "Traction control";
+            case 7: return "Light on/off";
+            case 8: return "Light mode";
             case 9: return "Turbo";
-            case 10: return "Manual Cruise";
-            case 11: return "EABS";
+            case 10: return "Cruise, manual";
+            case 11: return "Regen brake";
             default: return String.valueOf(v);
         }
     }

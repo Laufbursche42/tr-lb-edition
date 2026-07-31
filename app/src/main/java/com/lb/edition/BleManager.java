@@ -33,10 +33,10 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Native BLE layer for the Teverun VCU (UART-over-BLE). Replicates the ORIGINAL uni-app connection
- * flow exactly (BLE_PROTOCOL §1): scan by name prefix, connect GATT, discover the primary
+ * Native BLE layer for the Teverun VCU (UART-over-BLE). The connection flow the VCU answers to:
+ * scan by name prefix, connect GATT, discover the primary
  * 0000FF.. / 495353.. service, pick notify/write characteristics, enable notifications (local +
- * CCCD), then send sendConnectCode(0) once and every 6.5 s to start/sustain the telemetry stream.
+ * CCCD), then send connectCode(0) once and every 6.5 s to start/sustain the telemetry stream.
  *
  * All public entry points are null/exception-safe so nothing ever throws across the JS bridge.
  */
@@ -58,8 +58,8 @@ final class BleManager {
     private static final String[] NAME_PREFIXES = {"XY", "T", "BT04"};
 
     private static final long CONNECT_CODE_INTERVAL_MS = 6500;
-    private static final long DISCOVER_DELAY_MS = 1500;   // original waits 1500 ms after connect
-    private static final long WRITE_GAP_MS = 200;         // app spaces multi-frame writes ~200 ms
+    private static final long DISCOVER_DELAY_MS = 1500;   // the module needs ~1.5 s after connect
+    private static final long WRITE_GAP_MS = 200;         // the module keeps up at ~200 ms per frame
     private static final long RECONNECT_BASE_MS = 3000;    // exponential-backoff base delay
     private static final long RECONNECT_MAX_MS = 30000;    // exponential-backoff cap
     private static final long PUSH_INTERVAL_MS = 500;     // live-data push ~2x/s
@@ -340,7 +340,7 @@ final class BleManager {
             if (newState == BluetoothGatt.STATE_CONNECTED) {
                 Log.i(TAG, "GATT connected");
                 pushState("discovering");
-                // Original waits ~1500 ms before discovering services.
+                // The module reports an incomplete service list when queried right after connect.
                 main.postDelayed(() -> {
                     try { if (gatt != null) gatt.discoverServices(); } catch (Throwable ignored) {}
                 }, DISCOVER_DELAY_MS);
@@ -406,7 +406,7 @@ final class BleManager {
             } catch (Throwable ignored) {}
             pushState("connected");
             startPush();
-            startKeepAlive();   // sends sendConnectCode(0) immediately, then every 6.5 s
+            startKeepAlive();   // sends connectCode(0) immediately, then every 6.5 s
             drainWriteQueue();
         }
 
@@ -556,14 +556,14 @@ final class BleManager {
             notifyChar = svc.getCharacteristic(UUID.fromString(ISSC_NOTIFY));
             writeChar = svc.getCharacteristic(UUID.fromString(ISSC_WRITE));
         } else {
-            // 0000FFxx family: pick by property, mirroring the ORIGINAL app EXACTLY
-            // (mixins/bluetooths.js getBLEDeviceCharacteristics): iterate ALL characteristics and
+            // 0000FFxx family: pick by property rather than by a fixed UUID, because the module
+            // hands them out in no reliable order: iterate ALL characteristics and
             // keep the LAST one carrying the notify property as the notify char and the LAST
-            // write-only (write property, no notify) characteristic as the write char. The original
-            // ternary assigns a notify+write characteristic to notify only. Using the LAST match
-            // (not the first) is essential on units that expose more than one notify characteristic
-            // where the real telemetry/settings stream - including the 55 71 settings frame - is on
-            // a later characteristic; picking the first delivered only a subset of frames.
+            // write-only (write property, no notify) characteristic as the write char. A
+            // characteristic that can notify AND write is used for notifications only.
+            // Using the LAST match (not the first) is essential on units that expose more than one
+            // notify characteristic where the real telemetry/settings stream, the 55 71 settings
+            // frame included, sits on a later characteristic; the first delivers only some frames.
             BluetoothGattCharacteristic anyWritable = null;   // fallback if no plain-write char exists
             for (BluetoothGattCharacteristic c : svc.getCharacteristics()) {
                 int props = c.getProperties();
@@ -571,9 +571,9 @@ final class BleManager {
                 boolean write = (props & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0;
                 boolean writeNr = (props & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0;
                 if (notify) {
-                    notifyChar = c;                 // last notify char wins (as in the original)
+                    notifyChar = c;                 // last notify char wins
                 } else if (write) {
-                    writeChar = c;                  // last write-only char wins (as in the original)
+                    writeChar = c;                  // last write-only char wins
                 }
                 if (write || writeNr) anyWritable = c;
             }
@@ -590,13 +590,13 @@ final class BleManager {
     }
 
     private BluetoothGattService pickService(BluetoothGatt g) {
-        // Mirror the ORIGINAL app (mixins/bluetooths.js getBLEDeviceServices): scan ALL services and
-        // keep the LAST primary service whose UUID starts with 0000FF.. or 495353.. Using the last
+        // Scan ALL services rather than trusting one advertised UUID. Keep the
+        // LAST primary service whose UUID starts with 0000FF.. or 495353.. Using the last
         // match (not the first) matters on units that expose more than one matching service, where
         // the real telemetry/settings service is the later one; picking the first yielded only a
-        // subset of frames (e.g. battery but no 55 71 settings frame). Prefer a primary service like
-        // the original (`e.isPrimary`), but fall back to the last match of any type so a device that
-        // reports its data service as non-primary still connects.
+        // subset of frames (e.g. battery but no 55 71 settings frame). Prefer a primary service but
+        // fall back to the last match of any type so a device that reports its data service as
+        // non-primary still connects.
         BluetoothGattService chosen = null;         // last matching service of any type
         BluetoothGattService chosenPrimary = null;  // last matching PRIMARY service
         for (BluetoothGattService svc : g.getServices()) {
@@ -653,7 +653,7 @@ final class BleManager {
         @Override
         public void run() {
             if (!notifyReady) return;
-            enqueueWrite(CommandBuilder.sendConnectCode(0));
+            enqueueWrite(CommandBuilder.connectCode(0));
             main.postDelayed(this, CONNECT_CODE_INTERVAL_MS);
         }
     };
@@ -739,7 +739,7 @@ final class BleManager {
     /**
      * OTA characteristic write - forces WRITE_TYPE_NO_RESPONSE (falling back to default only if the
      * characteristic cannot do no-response). The VCU bootloader flashes with no-response writes just
-     * like the original app; write-with-response is NOT sustained by the bootloader's minimal ATT
+     * write-with-response is NOT sustained by the bootloader's minimal ATT
      * stack across a whole flash (after a few hundred writes it stops ACKing and a with-response
      * pump stalls waiting for the completion callback). No-response is fire-and-forget at the ATT
      * layer, which is what the bootloader expects.
@@ -784,19 +784,19 @@ final class BleManager {
         try {
             JSONObject o = (json == null || json.trim().isEmpty()) ? null : new JSONObject(json);
             settings.merge(o);
-            // Write mode a[2], EXACTLY as the original app: anti-theft (atMode) = 8, smart = 5,
-            // every other setting = 2 (the app's sendSetting() default). n=0 was wrong and the VCU
-            // silently ignored the change (same class of bug as the Smart toggle).
+            // Write mode a[2], the value the VCU handler dispatches on: anti-theft = 8,
+            // traction control = 5, every other setting = 2. With n=0 the VCU silently ignores the
+            // change (same class of bug as the traction-control toggle).
             int mode = 2;
             if (o != null) {
-                if (o.has("atMode")) mode = 8;
-                else if (o.has("isSmart")) mode = 5;
+                if (o.has("antiTheft")) mode = 8;
+                else if (o.has("tractionControl")) mode = 5;
             }
             // ONE write, to the active gear only. Wheel and cruise are GLOBAL in the controller
             // (0x2000029D and 0x200002D1, one byte each, not per gear), so one frame carrying the
             // active gear's own values applies them. Writing every gear would push cached per-gear
             // values back into gears the user never touched.
-            enqueueWrite(CommandBuilder.sendSettingCode(settings, mode, settings.gear & 0xFF));
+            enqueueWrite(CommandBuilder.writeSettings(settings, mode, settings.gear & 0xFF));
         } catch (Throwable t) {
             Log.e(TAG, "sendSetting failed", t);
         }
@@ -808,27 +808,26 @@ final class BleManager {
         if (!settingsReady()) return;
         try {
             switch (mode) {
-                case 1: settings.rmStatus = 1; settings.doubleMotor = 0; break;  // rear-only
-                case 2: settings.rmStatus = 0; settings.doubleMotor = 1; break;  // front-only
+                case 1: settings.rearMotorOn = 1; settings.dualMotor = 0; break;  // rear-only
+                case 2: settings.rearMotorOn = 0; settings.dualMotor = 1; break;  // front-only
                 case 0:
-                default: settings.rmStatus = 1; settings.doubleMotor = 1; break; // dual
+                default: settings.rearMotorOn = 1; settings.dualMotor = 1; break; // dual
             }
-            enqueueWrite(CommandBuilder.sendSettingCode(settings, 2, 1));   // n=2 immediate
+            enqueueWrite(CommandBuilder.writeSettings(settings, 2, 1));   // n=2 immediate
         } catch (Throwable t) {
             Log.e(TAG, "setMotorMode failed", t);
         }
     }
 
     /**
-     * SMART / TCS traction control toggle. The original app writes Smart with a[2]=5
-     * ({@code sendSettingCode(state, 5)}), NOT the generic normal write ({@link #sendSetting}
-     * uses a[2]=2), so it goes through its own write mode here. Null/exception-safe.
+     * Traction-control (TCS) toggle. The VCU only applies it when the frame carries a[2]=5, not the
+     * generic a[2]=2 of {@link #sendSetting}, so it gets its own write mode. Null/exception-safe.
      */
     void setSmart(boolean on) {
         if (!settingsReady()) return;
         try {
-            settings.isSmart = on;
-            enqueueWrite(CommandBuilder.sendSettingCode(settings, 5, 1));   // n=5 (Smart write)
+            settings.tractionControl = on;
+            enqueueWrite(CommandBuilder.writeSettings(settings, 5, 1));   // n=5 (traction control)
         } catch (Throwable t) {
             Log.e(TAG, "setSmart failed", t);
         }
@@ -872,8 +871,8 @@ final class BleManager {
 
     /**
      * Write ONE gear/assist profile (cmd 0x18, BLE_PROTOCOL §3.4). {@code json} may carry any of
-     * {@code speedLimit, eabsLevel, fStartLevel, rStartLevel, fCurrent, rCurrent}; missing fields
-     * fall back to the maintained current-gear state. All other config bytes stay current.
+     * {@code speedLimit, eabsRegen, frontStartLevel, rearStartLevel, frontCurrent, rearCurrent};
+     * missing fields fall back to the maintained current-gear state. Other config bytes stay current.
      */
     void sendGearSetting(int gear, String json) {
         if (!settingsReady()) return;
@@ -913,8 +912,8 @@ final class BleManager {
             synchronized (writeQueue) { writeQueue.clear(); writing = false; }
             final OtaEngine engine = new OtaEngine(otaHost);
             ota = engine;
-            // A ver2 (T2/tetra) device flashes through config_dis with a 06 e2 node-select handshake;
-            // the legacy (T1) path is unchanged. The flag comes from the advertised BLE name.
+            // A ver2 (T2/tetra) device takes every node through the display block (START id
+            // 0x07 0x80) after a 06 e2 node-select handshake. The flag comes from the BLE name.
             final boolean ver2 = parser != null && parser.isVer2;
             // Let any in-flight normal write complete on the normal path before the engine takes over
             // (isRunning() stays false until start()); then begin.
@@ -940,7 +939,7 @@ final class BleManager {
     private final OtaEngine.Host otaHost = new OtaEngine.Host() {
         @Override
         public boolean writeFrame(byte[] frame) {
-            return doWriteOta(frame);   // OTA path: write WITHOUT response (matches the original app)
+            return doWriteOta(frame);   // OTA path: write WITHOUT response
         }
 
         @Override

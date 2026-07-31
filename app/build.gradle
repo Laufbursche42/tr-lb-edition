@@ -79,7 +79,7 @@ android {
 
     defaultConfig {
         applicationId = 'com.laufbursche.edition'
-        minSdk = 26
+        minSdk = 29   // Android 10: writing into Downloads goes through MediaStore, which needs it
         targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersionName
@@ -174,6 +174,11 @@ android {
     // Offline rendering (Mapsforge) pulls in jars whose META-INF metadata / multi-release
     // class files must be dropped so the Android packager does not choke on duplicates.
     packaging {
+        // From minSdk 28 on the packager stores the dex uncompressed, which more than doubles the
+        // download. The app ships as a direct download, so the smaller file wins.
+        dex {
+            useLegacyPackaging = true
+        }
         resources {
             excludes += [
                 'META-INF/DEPENDENCIES',

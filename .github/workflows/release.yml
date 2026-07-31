@@ -1,9 +1,8 @@
 # Release build - fully automatic, no manual tagging.
-# On every push to `main` this computes the version from version.properties (the same
-# initial one), builds a SIGNED release APK and publishes a GitHub Release `v1.0.<n>`
-# with the APK attached. The first public release is v1.0.0. If a release for that
-# version already exists it does nothing, so a new release appears whenever a new
-# commit lands on main.
+# On every push to `main` this computes the version from version.properties, the same file the
+# gradle build reads, builds a SIGNED release APK and publishes a GitHub Release tagged
+# `v<major>.<minor>.<n>` with the APK attached. If a release for that version already exists it
+# does nothing, so a new release appears whenever a new commit lands on main.
 # Manual runs (Actions -> Run workflow) behave the same.
 #
 # Required repository Secrets (Settings -> Secrets and variables -> Actions):

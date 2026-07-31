@@ -62,7 +62,7 @@ Everything below is implemented and shipping in the app.
 - **Live speed drums** - side-by-side scooter speed and GPS speed.
 - **Hero tiles** - state of charge (SOC), current gear and battery current at a glance.
 - **Dual-motor tiles** - per-motor temperatures, currents and power for the front and rear motors.
-- **Motor-mode quick-toggle** next to the **Motors** heading on the main screen - **Front / Rear / Both / Smart-TCS**. It reflects the scooter's current mode and is disabled while disconnected.
+- **Motor-mode quick-toggle** next to the **Motors** heading on the main screen - front, rear, both and traction control (TCS). It reflects the scooter's current mode and is disabled while disconnected.
 
 ### "All values" telemetry (scroll down on the main screen)
 
@@ -82,13 +82,13 @@ Everything below is implemented and shipping in the app.
 - **A "?" help popup on EVERY setting.**
 - **Per-gear settings editor** - per-gear speed limit, EABS / recuperation, start levels and currents. On eKFV units the internal gears 2/3/4 are shown as 1/2/3 on the scooter's own display. The IVCU sends only the CURRENTLY active gear to the app, so if a gear's values are missing you have to switch through all gears once on the scooter to load them. The app reads these values live and never stores them on the phone, because a stale gear value must never be shown or written back to the IVCU.
 - **Live 1 s refresh** while the settings screen is open, without clobbering edits you are making in the app or changes made on the scooter's own display.
-- **Motor mode** (Dual / Rear / Front) and **Smart mode** (TCS traction control).
+- **Motor mode** (dual / rear / front) and **traction control** (TCS).
 - **Manufacturer-locked settings cannot be changed** - the app can only change settings the IVCU actually allows. Any setting the manufacturer has locked in the IVCU cannot be changed from this app or from any other app. This limit does not apply when the IVCU runs custom or open firmware.
 - **Country write-protection** - the app displays all of the settings the scooter's IVCU supports, but the IVCU enforces a write-protection that depends on your country or region. Depending on the country the IVCU will not save (it write-protects) some settings, so some of the functions shown in the app may not be available or changeable in every country - the app still shows them, but the IVCU may refuse to store them. This country write-protection is enforced by the IVCU firmware and does not apply when the IVCU runs custom or open firmware.
 
 ### Firmware update
 
-Flash an IVCU firmware (a `.hex` file) to the scooter over Bluetooth, straight from the app - no cloud account and no Teverun login, just a local file you already have. The one thing to know up front: unlike the original app it decides compatibility from the file's **content** (a CRC, the target region and the version in the trailer), not from its **file name**, so a correctly-working file the original app rejects purely over a rename still flashes. Reached via **Settings -> Firmware update**.
+Flash an IVCU firmware (a `.hex` file) to the scooter over Bluetooth, straight from the app - no cloud account and no Teverun login, just a local file you already have. The one thing to know up front: it decides compatibility from the file's **content** (a CRC, the target region and the version in the trailer), not from its **file name**, so a correctly-working file that the usual tooling rejects purely over a rename still flashes. Reached via **Settings -> Firmware update**.
 
 Step-by-step in [Firmware: update and flash](#firmware-update-and-flash). Implementation detail is in [Firmware updater (app implementation)](https://github.com/Laufbursche42/tr-fw/blob/main/README.md#firmware-updater-app-implementation).
 
@@ -169,9 +169,9 @@ If every check passes, **Start** is enabled. If a check fails, Start is disabled
 
 This is the app-side detail behind the user-facing flasher; the byte-level clamp mechanics live in [Removing the clamp in VCU firmware](https://github.com/Laufbursche42/tr-fw/blob/main/README.md#removing-the-clamp-in-vcu-firmware). Every offset here is specific to the Teverun Fighter Mini Pro eKFV, no other model was examined.
 
-- **Content-based compatibility (vs `isComplyRules`)** - the original app gates a local flash on the **file name** (`isComplyRules`: the name starts with `AWIVCU` / `AWVCU` and on an eKFV / TDE unit the version segment ends in "5"), which is why a shortened or renamed-but-valid file throws "Error loading upgrade file". Laufbursche Edition instead validates the image itself and treats the name rule as an advisory line only. Four checks: a **CRC16** over the image (integrity, never overridable), the target is the **VCU application region** (not the bootloader), the image is a **VCU** target (not a BMS image) and the **trailer version** against the version currently on the scooter. Every check has an explicit "flash anyway" override for informed users except two: the CRC and the app-region check are both refused again when the flash actually starts.
+- **Content-based compatibility** - controller firmware files carry a naming convention (`AWIVCU...` / `AWVCU...`) and a flasher that gates on the **file name** alone refuses a perfectly valid image that was merely shortened or renamed. Laufbursche Edition validates the image itself instead and treats the name as an advisory line only. Four checks: a **CRC16** over the image (integrity, never overridable), the target is the **VCU application region** (not the bootloader), the image is a **VCU** target (not a BMS image) and the **trailer version** against the version currently on the scooter. Every check has an explicit "flash anyway" override for informed users except two: the CRC and the app-region check are both refused again when the flash actually starts.
 - **Kept in memory, never on disk** - the picked image lives only in two in-RAM `String` fields (`otaHexText` / `otaFileName`); nothing firmware-related is ever written to the filesystem. Only one image exists at a time and each new pick overwrites it. After a flash completes or fails the app drops it (`otaClear()`) so no stale image lingers; a cancel keeps it so you can restart immediately.
-- **Auto-off cannot be raised over BLE** - a short auto-off (sleep) timer can power the scooter off mid-flash, but the app cannot prevent this. The VCU settings handler copies only `a[2..17]` and drops `a[18]`, where sleepTime lives (verified on `fw_r5419`; the original app puts it in the same `a[18]` and hits the same wall - see [Sleep and power-off timer quirk](https://github.com/Laufbursche42/tr-fw/blob/main/README.md#sleep-and-power-off-timer-quirk)). The flash confirm dialog therefore warns the user in red to raise the auto-off timer in the scooter's own display menu first.
+- **Auto-off cannot be raised over BLE** - a short auto-off (sleep) timer can power the scooter off mid-flash, but the app cannot prevent this. The VCU settings handler copies only `a[2..17]` and drops `a[18]`, where sleepTime lives (verified on `fw_r5419`; every writer hits the same wall, the byte simply never arrives - see [Sleep and power-off timer quirk](https://github.com/Laufbursche42/tr-fw/blob/main/README.md#sleep-and-power-off-timer-quirk)). The flash confirm dialog therefore warns the user in red to raise the auto-off timer in the scooter's own display menu first.
 - **Cross-compatibility (Box C)** - R5.4.19 and ALI D3.4.12 share the Box C flash layout, so either can replace the other - flash R5.4.19 onto an open box to make it eKFV-compliant or ALI onto an eKFV box to open it. Every Box C VCU image (R3 / R5 / D10_4 and the ALI D3 dump) uses flash base `0x08007000`; the older R2 / D2 hardware uses `0x08008000` instead, so an image flashed across that base boundary will not boot - that is the real reason this is Box C only.
 
 ### The live speed lock
@@ -370,7 +370,7 @@ Debug builds are only for local development and testing (fast iteration while de
 
 ## BLE protocol reference
 
-The UART-over-BLE VCU wire protocol - frame layout, command set and settings model - is documented inline below. This documents the BLE protocol of the Teverun VCU as reverse-engineered from the [Official Teverun App](https://play.google.com/store/apps/details?id=uni.UNI2202FAB) (a uni-app bundle) and validated against the Teverun Fighter Mini Pro (eKFV) scooter. It covers all the frames and commands the original app uses, but it is not guaranteed to be exhaustive of everything the VCU firmware supports - the VCU may have frames or commands the app never uses (which are not visible from the app code), other scooter models may differ and some fields are marked as uncertain where noted.
+The UART-over-BLE VCU wire protocol - frame layout, command set and settings model - is documented inline below. This documents the UART-over-BLE protocol of the Teverun VCU as observed on the radio link and validated against a Teverun Fighter Mini Pro (eKFV). It covers the frames and commands that appeared on the link; the firmware may support further frames that never showed up there, other models may differ and fields are marked where they stay uncertain.
 
 ### Transport summary
 
@@ -390,23 +390,10 @@ Proprietary UART-over-BLE, ISSC / Microchip Transparent UART profile. Not OBD/OB
 
 The scooter this app targets uses the ISSC Transparent UART service (`49535343-...`). The canonical 16-bit-style base for that service is `49535343-fe7d-4ae5-8fa9-9fafd205e455` (only the prefix `495353...` is matched in code - do not hard-code the full service UUID; discover it).
 
-Characteristic selection logic:
-
-```js
-// r = stored serviceId
-n.characteristics.forEach(function (e) {
-  if (e.properties && e.uuid !== "") {
-    if (r.startsWith("495353")) {                 // ISSC UART service
-      notifyId = "49535343-1e4d-4bd9-ba61-23c647249616";  // hard-coded
-      writeId  = "49535343-aca3-481c-91ec-d85e28a60318";  // hard-coded
-    } else if (e.properties.notify) {
-      notifyId = e.uuid;                           // 0000ffxx family: pick by property
-    } else if (e.properties.write) {
-      writeId  = e.uuid;
-    }
-  }
-});
-```
+Characteristic selection: on a `495353...` service use the two ISSC characteristic UUIDs listed
+above. On a `0000FFxx` service take the characteristic that advertises the NOTIFY property for
+telemetry and the one that advertises WRITE for commands, because the order they are handed out
+in is not reliable.
 
 So: if the service is `495353...`, use the two hard-coded characteristic UUIDs above. Otherwise (a `0000FFxx` service) pick the characteristic that advertises the `notify` property as notify and the one that advertises `write` as write.
 
@@ -416,140 +403,90 @@ Connection identifiers worth persisting: `deviceId`, `name`, `serviceId`, `notif
 
 #### 1.2 Scan / device identification
 
-Scan for the scooter:
+Scan filter: accept a discovered device whose advertised name or local name starts with `XY`,
+`T` or `BT04`. The single-character `T` is deliberately broad, since every Teverun identity
+string begins with it. This is a scan filter only, it classifies nothing.
 
-```js
-uni.startBluetoothDevicesDiscovery({ allowDuplicatesKey: true, powerLevel: "high" });
-// accept a discovered device if its name OR localName startsWith one of:
-//   "XY", "T", "BT04"        (normal mode)
-//   + "AWE072060A"           (only when openPush is set)
-```
-
-The scan accepts any device whose name (or localName) starts with one of the literal prefixes `XY`, `T` or `BT04` (plus `AWE072060A` when `openPush` is set). The single-character `T` prefix is deliberately broad: every Teverun model name begins with `T` (`T1...`, `T2...`, `TDE...`, `TAT...` and so on), so matching `T` catches all of them. This is only the scan filter - it does not classify the model.
+The scan accepts any device whose name or local name starts with one of the literal prefixes `XY`, `T` or `BT04`. The single-character `T` prefix is deliberately broad: every Teverun model name begins with `T` (`T1...`, `T2...`, `TDE...`, `TAT...` and so on), so matching `T` catches all of them. This is only the scan filter - it does not classify the model.
 
 Model / feature identification from the BLE advertised name happens after the GATT link is up and only sets client-side feature flags (for example the gear range and whether it is a v2 platform). It is not needed to communicate with the VCU.
 
-The classification hinges on a single test, `name.startsWith("T2")`:
+The classification hinges on a single question: does the identity string start with `T2`?
 
-- Names starting with `T2` are the ver2 platform: `isVer2 = true`.
-- Every other `T`-prefixed name (`T1...`, `TDE...`, `TAT...`, ...) is the non-ver2 / T1-class family: `isVer2 = false`. In particular `TDE` is a T1-class model precisely because it does not start with `T2` (the name is `TDE`, not `T2DE`); the same applies to `TAT`. So `T2` is the only ver2 prefix and it is not one option among several parallel model prefixes - it is the single discriminator that separates ver2 from the T1 class.
+- Names starting with `T2` are the ver2 platform.
+- Every other `T`-prefixed name (`T1...`, `TDE...`, `TAT...`, ...) belongs to the older T1 class. `TDE` is a T1-class model precisely because it does not start with `T2` (the name is `TDE`, not `T2DE`) and the same holds for `TAT`. `T2` is therefore the single discriminator between the two platforms, not one option among several parallel model prefixes.
 
-| Name prefix | isVer2 | Flags set | Notes |
-|-------------|--------|-----------|-------|
-| `T2...` | true | `minGear=0`, `maxGear=5`, `isSmartEnable=true` | ver2 platform; model from chars [7..8] |
-| `T1...` | false | `isEcuDevice=true` | `T1IL...` -> `isIsraelEcuDevice=true` |
-| `TDE...` or `TAT...` | false | `isTdeDevice=true`, `minGear=2`, `maxGear=4`, `isTdeInt=true` | eKFV region units; T1-class (no `T2` prefix) |
-| (anything else) | false | `minGear=0`, `maxGear=5` | default (`SE` / "TEVERUN SPACE") |
+| Identity prefix | ver2 | Gear range | Notes |
+|-----------------|------|------------|-------|
+| `T2...` | yes | 0-5 | the ver2 platform, which also offers traction control (TCS) |
+| `T1...` | no | 0-5 | the ECU variant; `T1IL...` is its Israeli form |
+| `TDE...` or `TAT...` | no | 2-4 | eKFV units. The scooter's own display shows these as 1-3 |
+| anything else | no | 0-5 | |
 
-> "INT" in the task brief refers to the flag `isTdeInt` ("international"), which is set `true` for `TDE` / `TAT` devices - it is not a BLE-name prefix. `isTdeTat` is set from the `TAT` prefix. These flags only affect app-side speed caps (see Section 2.5), which the LB patch removes.
+> The gear index travels in `55 71` t[3] and that frame is the only source for it. A client should
+> follow what the VCU reports rather than a table, which is why this one carries no more than the
+> range to expect.
 
-The cosmetic model display name is derived from the BLE name using two cases, selected by the same `startsWith("T2")` test:
-
-- For `T2...` names, chars [7..8] (`name.substring(7,9)`) map to a model:
-  - `FM` -> FIGHTER MINI
-  - `FP` -> FIGHTER MINI PRO
-  - `FE` -> FIGHTER ELEVEN
-  - `FU` -> FIGHTER ELEVEN+
-  - `SU` -> SUPREM ULTRA
-  - `SR` -> SUPREM 7260
-  - `T2` -> TETRA 2 MOTOR
-  - `T4` -> TETRA 4 MOTOR
-- For all other names, chars [6..8] (`name.substring(6,9)`) map to a model:
-  - `GTE` / `GTP` -> TEVERUN GT
-  - `T20` -> TETRA 2 MOTOR
-  - `T40` -> TETRA 4 MOTOR
-  - `FTE` -> FIGHTER TEN
-  - `FEE` / `FEP` -> FIGHTER ELEVEN
-  - `SPP` -> SUPREME PLUS
-  - `SPU` -> SUPREME ULTRA
-  - `SPR` -> SUPREME 7260R
-  - `BME` / `BMP` / `BMU` -> BLADE MINI
-  - `FME` / `FMO` / `FMP` -> FIGHTER MINI
-  - `BQE` / `BQP` -> BLADE Q
-  - `FQ` -> FIGHTER Q
-  - `SE` -> TEVERUN SPACE
-
-This mapping is cosmetic (model display name) only.
+The characters after the prefix carry a cosmetic model name for display. Only the first three
+characters matter for talking to the VCU, because they carry the regional marker the firmware acts
+on. Everything after that is decoration and this app does not depend on it.
 
 > The advertised name is more than a label: it is the VCU's device-identity string, which is the scooter's FIN. It is stored in the VCU's I2C EEPROM config block (persisted), mirrored to RAM at boot and changeable at runtime over BLE with command 0x1f (Section 3.6) - no firmware flash, persisted to EEPROM, reversible. Its first three characters gate the firmware speed clamp: a name starting with `TDE` is the restricted eKFV marker (see the [Firmware](https://github.com/Laufbursche42/tr-fw/blob/main/README.md#firmware-reverse-engineering) section). Robust name resolution: on a non-bonded LE connection the advertised name is often empty, so the app also reads the GAP Device Name characteristic (service `0x1800`, characteristic `0x2A00`) right after connecting, plumbs the known name through its `connect(addr, name)` path and never persists an empty name.
 
 #### 1.3 Connect, MTU, notifications
 
-```js
-uni.createBLEConnection({ timeout: 12000, deviceId });
-// on success: after 1500 ms -> discover services
-// on disconnect (connected == 0) -> reconnect
-```
+Connect, then wait a moment (about 1.5 s) before discovering services: subscribing too early loses
+the first notifications on some Android stacks. Reconnect when the link drops.
 
-- MTU: some code paths request `setBLEMTU({ mtu: 511 })`, but frames are 20 bytes, so the default ATT MTU (23, 20-byte payload) is sufficient either way. Requesting a larger MTU is optional.
-- Notify subscription / CCCD:
-
-  ```js
-  uni.notifyBLECharacteristicValueChange({
-    type: "notification",           // notifications, NOT indications
-    state: true,                    // enables the CCCD
-    deviceId, serviceId, characteristicId: notifyId
-  });
-  uni.onBLECharacteristicValueChange(cb);   // receive handler
-  ```
-
-In native Java this means: enable local notifications with `setCharacteristicNotification(notifyChar, true)` and write the CCCD descriptor `00002902-0000-1000-8000-00805f9b34fb` with `ENABLE_NOTIFICATION_VALUE` (`0x01 0x00`).
-- Handshake / keep-alive: the original app sends `sendConnectCode(0)` once after connecting and then every 6500 ms. The VCU streams telemetry frames continuously; there is no per-frame poll (`sendGetInfoCode` is defined but not called in that build). Sending the connect frame is what starts / sustains the stream.
-
----
-
-### 2. Incoming telemetry frames (VCU -> phone)
+- **MTU:** frames are 20 bytes, so the default ATT MTU of 23 carries one frame per packet and no
+  negotiation is needed.
+- **Notifications, not indications:** enable notify locally and write `01 00` to the CCCD `0x2902`.
+- **Keep-alive:** the VCU streams telemetry unsolicited once it has been greeted. Send the
+  handshake frame after connecting and repeat it about every 6.5 s; without it the stream stops.
+  There is no per-frame polling command.
 
 #### 2.1 Receive pipeline
 
-On each incoming notification:
+A single BLE notification may carry several 20-byte frames one after the other, so split the
+buffer every 20 bytes before doing anything else. Accept a frame only when it is exactly 20 bytes
+long and its CRC-8 over bytes `[0..18]` equals byte `[19]`; drop it otherwise, silently. Then
+dispatch on byte `[0]`, the sync byte `0x55`, plus byte `[1]`, the frame id.
 
-```js
-var t = i.buf2hex(value);          // -> ARRAY of 2-char lowercase hex byte strings, e.g. ["55","52",...]
-var frames = [];
-if (t.length > 20)                 // a single notification may hold several concatenated frames
-  for (a = 0; a < t.length; a += 20) frames.push(t.slice(a, a + 20));
-else frames.push(t);
-frames.forEach(function (f) {
-  if (validateCRC(f)) { /* dispatch on f[0], f[1] */ }
-});
-```
+A 16-bit value spans two bytes, high byte first.
 
-- `buf2hex` returns an array, one element per byte, each a 2-char hex string. Indexing `t[n]` = byte n. `t[2]+t[3]` = big-endian 16-bit hex string -> `parseInt(_,16)`.
-- `validateCRC(e)`: rejects unless `e.length === 20`; CRC = `e[19]`, computed over `e[0..18]` with `getCrcCode(slice(0,19), 19, true)`. Drop the frame if CRC fails.
-- Dispatch key: `f[0] === "55"` (sync) and `f[1]` = frame id.
+#### 2.2 How a packed byte is read
 
-#### 2.2 Bit-field helpers
+Three packings appear in the frames below. The tables refer to them by these names.
 
-| Helper | Behaviour |
-|--------|-----------|
-| `formattingBalStatus(byte)` | `parseInt(hex,16)` -> 8-bit binary -> array, then reversed -> index [0] = bit0 (LSB) ... [7] = bit7 (MSB) |
-| `formatLevel(byte)` | returns `[highNibble, lowNibble]` = `[bits7..4, bits3..0]` |
-| `getSleepAndPrTime(byte)` | `{ sleepTime: byte & 0x07, prTime: (byte >> 3) & 0x1F }` |
+| Packing | Layout |
+|---------|--------|
+| bit array | one flag per bit, listed LSB-first: index `[0]` = bit 0 ... index `[7]` = bit 7 |
+| nibble pair | `[high nibble, low nibble]` = `[bits 7..4, bits 3..0]` |
+| timer byte | sleep timer = `byte & 0x07`, power-off timer = `(byte >> 3) & 0x1F` |
 
 #### 2.3 Version / identity frames
 
-| Frame | Field(s) | Bytes -> value | Var |
-|-------|----------|----------------|-----|
+| Frame | Field(s) | Bytes -> value | Field name |
+|-------|----------|----------------|------------|
 | `55 41` | Battery serial | `t[2..16]` (15 bytes) ASCII, trimmed; prefix `"AW"` if missing | `batCode` |
 | `55 42` | VCU frame number | `t[2..18]` (17 bytes) ASCII | `frameNum` |
-| `55 43` | VCU SW / HW | if `t[2]>0`: `swVer = t[2].t[3].t[4]` (decimal). Smart-capable if `3 <= t[3] <= 10`. if `t[6]>0`: `hwVer = t[6].t[7].t[8]` | `swVer`, `hwVer` |
-| `55 44` | Display / Battery / LC fw | `t[2]`=disProType, `t[3]`=disProCode, `t[4].t[5].t[6]`=display SW; `t[8]/t[9]`+`t[10..12]`=battery; `t[14]/t[15]`+`t[16..18]`=LC. (`FF FF FF` -> `-.-.-`) | - |
-| `55 45` | Main / secondary ctrl | `t[2]/t[3]`+`t[4..6]`=rear-main ver; `t[8]/t[9]`+`t[10..12]`=front-main ver | - |
-| `55 4D` | Rear / front ctrl (4-motor) | `t[2]/t[3]`+`t[4..6]`=RR ver; `t[8]/t[9]`+`t[10..12]`=RF ver | - |
+| `55 43` | VCU SW / HW | if `t[2]>0`: `swVer = t[2].t[3].t[4]` (decimal). Traction control is available if `3 <= t[3] <= 10`. if `t[6]>0`: `hwVer = t[6].t[7].t[8]` | `swVer`, `hwVer` |
+| `55 44` | Display / Battery / LC fw | `t[2]` = display product type, `t[3]` = display product code, `t[4].t[5].t[6]` = display SW; `t[8]/t[9]`+`t[10..12]` = battery; `t[14]/t[15]`+`t[16..18]` = LC. (`FF FF FF` -> `-.-.-`) | - |
+| `55 45` | Main / secondary ctrl | `t[2]/t[3]`+`t[4..6]` = rear main controller version; `t[8]/t[9]`+`t[10..12]` = front main controller version | - |
+| `55 4D` | Extra controllers (4-motor) | `t[2]/t[3]`+`t[4..6]` = second rear controller version; `t[8]/t[9]`+`t[10..12]` = second front controller version | - |
 
 > The scooter's identity string (its FIN, used as the BLE advertised name) is not one of these telemetry frames. It is read from the advertised name or the GAP Device Name characteristic (Section 1.2) and can be changed with command 0x1f (Section 3.6). Its first three characters (`TDE` on an eKFV unit) gate the firmware speed clamp - see the [Firmware](https://github.com/Laufbursche42/tr-fw/blob/main/README.md#firmware-reverse-engineering) section.
 
 #### 2.4 Live telemetry frames
 
-`parseInt(...,16)` is implied for every raw value.
+`raw` below is the unsigned value of the byte or byte pair named in the first column.
 
 ##### `55 52` - Battery voltage / current / SOC / temperatures
 
-| Bytes | Formula | Var / dashboard field | Unit |
-|-------|---------|-----------------------|------|
-| `t[2]+t[3]` | `raw * 0.1` | `VolPack` (pack voltage) | V |
-| `t[4]+t[5]` | `raw * 0.1` | `poleVol` | V |
+| Bytes | Formula | Field name | Unit |
+|-------|---------|------------|------|
+| `t[2]+t[3]` | `raw * 0.1` | `packVoltage` (measured pack voltage) | V |
+| `t[4]+t[5]` | `raw * 0.1` | `poleVoltage` | V |
 | `t[6]+t[7]` | `raw * 0.1 - 1000` | pack current; < 0 = regeneration | A |
 | `t[8]` | `raw` | `SOC` | % |
 | `t[9]` | `raw * 0.01 * 100` (= `raw`) | `soh` | % |
@@ -559,18 +496,18 @@ frames.forEach(function (f) {
 
 ##### `55 53` - BMS relays / capacity / cell voltages
 
-| Bytes | Formula | Var | Unit |
-|-------|---------|-----|------|
+| Bytes | Formula | Field name | Unit |
+|-------|---------|------------|------|
 | `t[2]` | `raw` | `relay1` | bool |
-| `t[3]` | `raw`; if `!= ff` -> `batteryStatus = formattingBalStatus(t[3])` | `relay2` | bool |
+| `t[3]` | `raw`; also a bit array of the pack status when `!= ff` | `relay2` | bool |
 | `t[4]` | `raw` | `relay3`; also `charMode` | - |
 | `t[5]` | `raw` | `chrMosState` | - |
 | `t[6]` | `raw` | `dischrMosState` | - |
-| `t[7]` | `formattingBalStatus` | `balState0` (bitfield) | - |
-| `t[8]+t[9]` | `raw` (non-Ver2) | capacity | Ah |
-| `t[10]+t[11]` | `raw` (isVer2) | capacity | Ah |
+| `t[7]` | bit array | `balState0` (cell balancing, one bit per cell) | - |
+| `t[8]+t[9]` | `raw` (T1 class) | capacity | Ah |
+| `t[10]+t[11]` | `raw` (ver2) | capacity | Ah |
 | `t[12]+t[13]` | `raw` | `chargeCounter` | cycles |
-| `t[14]` | `raw` | `VolListLength` (cell count) | - |
+| `t[14]` | `raw` | cell count | - |
 | `t[15]+t[16]` | `raw` | max cell voltage | mV |
 | `t[17]+t[18]` | `raw` | min cell voltage | mV |
 
@@ -578,106 +515,116 @@ frames.forEach(function (f) {
 
 | Bytes | Meaning |
 |-------|---------|
-| `t[2..18]` | error array `d`: loop index `h` = error type, `value = parseInt(d[h],16)` = severity. `value>0` -> `uploadWarnData(h, min(value,3))`. |
+| `t[2..18]` | fault array, 17 entries: the position in the array is the fault type and the byte value is its severity. `0` means no fault; anything above `3` still counts as `3`. |
 | `t[17]` | `chargeStatus` (charge-image index) |
 
-`hasWarnInfo` aggregation: any error severity `>2` (except index 16) => `2`; else index 0 or 2 with severity `>1` => `1`; else `0`.
+The app rolls the array up into one warning level: any severity above `2` (except at index 16) gives `2`; otherwise index 0 or index 2 above severity `1` gives `1`; otherwise `0`.
 
 ##### `55 71` - Main control: gear / limits / system status
 
-| Bytes | Formula | Var / store | Unit |
-|-------|---------|-------------|------|
+| Bytes | Formula | Field name | Unit |
+|-------|---------|------------|------|
 | `t[3]` | `raw` | `gear` | 1-5 |
-| `t[4]` | `formattingBalStatus` | `rControlStatus` (bitfield) | - |
+| `t[4]` | bit array | `rControlStatus` | - |
 | `t[5]` | `raw` | `motorPolePairs` | - |
 | `t[6]` | `raw * 0.1` | `wheel` (wheel size, internal unit) | - |
-| `t[7]` | `raw` | `sysProTemp` (protection temp) | C |
-| `t[8]` | `formatLevel` | assist byte 1: `[1]`=`fStartLevel` (low nibble) | - |
-| `t[9]` | `formatLevel` | assist byte 2: `[0]`=`eabsLevel` (high nibble), `[1]`=`rStartLevel` (low nibble) | - |
-| `t[10]` | `raw` | assist `speedLimit` (per-gear) | km/h |
+| `t[7]` | `raw` | `protectionTemp` | C |
+| `t[8]` | nibble pair | assist byte 1: low nibble = `frontStartLevel` | - |
+| `t[9]` | nibble pair | assist byte 2: high nibble = `eabsRegen`, low nibble = `rearStartLevel` | - |
+| `t[10]` | `raw` | per-gear `speedLimit` | km/h |
 | `t[11]` | `raw` | main `speedLimit` | km/h |
-| `t[12]` | `raw` | `fCurrent` | - |
-| `t[13]` | `raw` | `rCurrent` | - |
-| `t[15]` | `raw` | `packVolt` | V |
-| `t[16]` | `formattingBalStatus` | `fControlStatus` (bitfield) | - |
-| `t[17]` | `formattingBalStatus` | `systemStatus` (bitfield, see below) | - |
-| `t[18]` | `getSleepAndPrTime` | `sleepTime` = `t[18]&7`, `prTime` = `(t[18]>>3)&31` | - |
+| `t[12]` | `raw` | `frontCurrent` | - |
+| `t[13]` | `raw` | `rearCurrent` | - |
+| `t[15]` | `raw` | `packVoltage` (nominal, the configured pack size) | V |
+| `t[16]` | bit array | `fControlStatus` | - |
+| `t[17]` | bit array | `systemStatus` (see below) | - |
+| `t[18]` | timer byte | `sleepTime` = `t[18]&7`, `prTime` = `(t[18]>>3)&31` | - |
 
-`systemStatus` bits (`t[17]`, LSB-first): `[0]`=eco/`enfEcon`, `[1]`=`isUnitMile`, `[2]`=`atMode`, `[4]`=`isSmart`, `[5]`=reverse gear, `[6]`=hardware flag (TDE), `[7]`=DV/monitor.
+Status bits in `t[17]`, LSB-first: `[0]` `ecoMode`, `[1]` `unitMiles` (miles instead of kilometres), `[2]` `antiTheft`, `[4]` `tractionControl`, `[5]` reverse gear, `[6]` a hardware flag set on eKFV units, `[7]` monitor mode.
 
 This frame reports only the CURRENTLY active gear (`t[3]`) together with that gear's per-gear/assist values (`t[8]`-`t[13]`). There is no bulk read of all gears, so to populate every gear's values in the editor the scooter has to be switched through each gear once (the app caches them per session in memory only, never on disk). On eKFV (TDE) units the internal gears 2/3/4 map to 1/2/3 on the scooter display.
 
-`rControlStatus` bits (`t[4]`, LSB-first): cruise level = `(bit2 << 1) | bit1` (`parseInt(rControlStatus[2]+rControlStatus[1],2)`), `[3]`=ABS, `[6]`=`startMode` (launch).
+`rControlStatus` bits (`t[4]`, LSB-first): cruise level = `(bit2 << 1) | bit1`, `[3]`=ABS, `[6]`=`startMode` (launch).
 
 ##### `55 72` - Motor: current / temp / ECU status / raw speed
 
-| Bytes | Formula | Var | Unit |
-|-------|---------|-----|------|
-| `t[2]` | `formattingBalStatus` | `fEcuStatus1` (bitfield) | - |
-| `t[3]` | `formattingBalStatus` | `fEcuStatus2` (bitfield); `[3]` = `doubleMotor` | - |
-| `t[4]+t[5]` | `raw * 0.1` | `fMotorCurrent` (front) | A |
-| `t[9]` | `raw` (kept only if `>0`) | `fMotorTemp` (front) | C |
-| `t[10]` | `formattingBalStatus` | `ecuStatus1` (bitfield) | - |
-| `t[11]` | `formattingBalStatus` | `ecuStatus2` (bitfield); `[3]` = `rmStatus`, `[4]`=headlight, `[5]`/`[6]`=turn signals | - |
-| `t[12]+t[13]` | `raw * 0.1` | `rMotorCurrent` (rear) | A |
-| `t[15]+t[16]` | `raw` | `speed` (raw speed) | raw |
-| `t[17]` | `raw` (kept only if `>0`) | `rMotorTemp` (rear) | C |
-| `t[18]` | `formattingBalStatus` (if `!= ff`) | `systemStatus3` (bitfield) | - |
+| Bytes | Formula | Field name | Unit |
+|-------|---------|------------|------|
+| `t[2]` | bit array | `fEcuStatus1` | - |
+| `t[3]` | bit array | `fEcuStatus2`; `[3]` = `dualMotor` | - |
+| `t[4]+t[5]` | `raw * 0.1` | `frontMotorCurrent` | A |
+| `t[9]` | `raw` (kept only if `>0`) | `frontMotorTemp` | C |
+| `t[10]` | bit array | `ecuStatus1` | - |
+| `t[11]` | bit array | `ecuStatus2`; `[3]` = `rearMotorOn`, `[4]`=headlight, `[5]`/`[6]`=turn signals | - |
+| `t[12]+t[13]` | `raw * 0.1` | `rearMotorCurrent` | A |
+| `t[15]+t[16]` | `raw` | `speedRaw` | raw |
+| `t[17]` | `raw` (kept only if `>0`) | `rearMotorTemp` | C |
+| `t[18]` | bit array (if `!= ff`) | `systemStatus3` | - |
 
-`ecuStatus1` bits: `[0]`=brake fault, `[2]`=warning type2 (tail-light), `[3]`=warning, `[4]`=warning2, `[7]`=park (P). `ecuStatus2` bits: `[0]`=cruise active, `[3]`=`rmStatus`, `[7]`=park (P).
+`ecuStatus1` bits: `[0]`=brake fault, `[2]`=warning type2 (tail-light), `[3]`=warning, `[4]`=warning2, `[7]`=park (P). `ecuStatus2` bits: `[0]`=cruise active, `[3]`=`rearMotorOn`, `[7]`=park (P).
 
 ##### `55 73` - Ride: avg/max speed / distance / energy
 
-| Bytes | Formula | Var | Unit |
-|-------|---------|-----|------|
+| Bytes | Formula | Field name | Unit |
+|-------|---------|------------|------|
 | `t[2]+t[3]` | `raw * 0.1` | `avgSpeed` | km/h |
 | `t[4]+t[5]` | `raw * 0.1` | `maxSpeed` | km/h |
 | `t[6]+t[7]` | `raw * 0.1` | `singleMile` (trip) | km |
 | `t[8]+t[9]+t[10]` | `raw` (3 bytes, BE) | `totalMile` (odometer) | km |
 | `t[11]+t[12]` | `raw * 0.1` | `enFeedBack` (cumulative regen) | unit unverified |
-| `t[16]` | `formattingBalStatus` (if `!= ff`) | `systemStatus2`: `[0]`=batLock, `[1]`=gpsLock; `(bit7<<1)|bit6` -> power popup | - |
+| `t[16]` | bit array (if `!= ff`) | `systemStatus2`: `[0]`=battery lock, `[1]`=GPS lock; `(bit7<<1)\|bit6` = power level | - |
 | `t[17]` | `raw` | `customKey` (current custom-key function) | - |
-| `t[18]` | `formattingBalStatus` (if `!= ff`) | `[3]`=PowerMode, `[4]`=LightSens, `[5]`=Voice, AtLevel=`(bit7<<1)|bit6` | - |
+| `t[18]` | bit array (if `!= ff`) | `[3]`=power mode, `[4]`=light sensor, `[5]`=voice, anti-theft level = `(bit7<<1)\|bit6` | - |
 
 ##### `55 79` - 4-motor control status (Tetra)
 
-`t[4]` -> `rrControlStatus`, `t[16]` -> `rfControlStatus` (both `formattingBalStatus`).
+`t[4]` and `t[16]` are bit arrays: the control status of the second rear motor and of the second front motor.
 
 ##### `55 7A` - 4-motor rear/front (Tetra)
 
-| Bytes | Formula | Var | Unit |
-|-------|---------|-----|------|
-| `t[2]` | `formattingBalStatus` | `rfEcuStatus1` | - |
-| `t[4]+t[5]` | `raw * 0.1` | `rfMotorCurrent` | A |
-| `t[9]` | `raw` (if `>0`) | `rfMotorTemp` | C |
-| `t[10]` | `formattingBalStatus` | `rrEcuStatus1` | - |
-| `t[12]+t[13]` | `raw * 0.1` | `rrMotorCurrent` | A |
-| `t[17]` | `raw` (if `>0`) | `rrMotorTemp` | C |
+| Bytes | Formula | Meaning | Unit |
+|-------|---------|---------|------|
+| `t[2]` | bit array | second front motor: controller status | - |
+| `t[4]+t[5]` | `raw * 0.1` | second front motor: current | A |
+| `t[9]` | `raw` (if `>0`) | second front motor: temperature | C |
+| `t[10]` | bit array | second rear motor: controller status | - |
+| `t[12]+t[13]` | `raw * 0.1` | second rear motor: current | A |
+| `t[17]` | `raw` (if `>0`) | second rear motor: temperature | C |
 
 #### 2.5 Derived values
 
-Real speed:
+Road speed, from the raw speed value and the wheel size:
 
 ```
-realSpeed_kmh = 287 * wheel / speed_raw          // wheel = 55 71 t[6]*0.1
-realSpeed_mph = realSpeed_kmh / 1.6093439
-if (speed_raw >= 3000 || realSpeed <= 0.5) realSpeed = 0
+speed_kmh = 287 * wheel / speedRaw            // wheel = 55 71 t[6]*0.1
+speed_mph = speed_kmh / 1.6093439
+if (speedRaw >= 3000 || speed <= 0.5) speed = 0
 ```
 
-`realSpeed` is stored in mph when `isUnitMile`, else km/h. (App-side region caps - `isTdeTat` -> 25, `isTde && !isTdeInt` -> 22 - are applied here and in `55 73`; the LB patch removes them. A native implementation should ignore those caps.)
+The speed is carried in mph when the unit is set to miles, otherwise in km/h. Any cap a client puts on top of that is its own doing; the frame carries the value the VCU measured.
 
 Power:
 
 ```
-single motor: power_kW = rMotorCurrent * VolPack / 1000
-dual motor:   power_kW = (rMotorCurrent + fMotorCurrent) * VolPack / 1000
+single motor: power_kW = rearMotorCurrent * packVoltage / 1000
+dual motor:   power_kW = (rearMotorCurrent + frontMotorCurrent) * packVoltage / 1000
 ```
 
 Live regeneration: from `55 52` current = `t[6]+t[7]` * 0.1 - 1000; `current < 0` => regen, `|current|` = fed-back current [A].
 
-#### 2.6 Dashboard field name reference
+#### 2.6 Field names used in this app
 
-The values decoded from the telemetry frames are `realSpeed`, `avgSpeed`, `maxSpeed`, `SOC`, `soh`, `VolPack`, `poleVol`, `power`, `rMotorCurrent`, `fMotorCurrent`, `rMotorTemp`, `fMotorTemp`, `singleMile`, `totalMile`, `enFeedBack`, `gear`, `speedLimit`, `chargeCounter`, `customKey`, the status bit-arrays `systemStatus[]`, `ecuStatus1[]`, `ecuStatus2[]`, `rControlStatus[]` and `fControlStatus[]`, plus `doubleMotor` and `rmStatus`. Battery temperatures, cell voltages and capacity are decoded from the frames too (the original app stores that battery detail in its own internal `topList[]` / `bottomList[]` arrays - those arrays are internal to that app, not part of the protocol). GPS lat/lon/speed and RSSI are phone-side (read from the phone via `uni.getLocation` and `uni.getBLEDeviceRSSI`), not in the VCU frames.
+These are the names Laufbursche Edition gives the decoded values. They are our labels for the bytes described above, nothing the scooter ever sends: the link carries numbers, not names.
+
+Ride and drive: `speed`, `speedRaw`, `avgSpeed`, `maxSpeed`, `power`, `gear`, `speedLimit`, `singleMile`, `totalMile`, `enFeedBack`, `customKey`.
+
+Motors: `frontMotorCurrent`, `rearMotorCurrent`, `frontMotorTemp`, `rearMotorTemp`, `dualMotor`, `rearMotorOn`.
+
+Battery: `SOC`, `soh`, `packVoltage`, `poleVoltage`, `chargeCounter`, plus the pack temperatures, the per-cell voltages and the capacity, which feed the Battery info page.
+
+Status bit arrays: `systemStatus[]`, `ecuStatus1[]`, `ecuStatus2[]`, `rControlStatus[]` and `fControlStatus[]`.
+
+GPS position, GPS speed and the BLE signal strength come from the phone, not from the VCU frames.
 
 ---
 
@@ -694,89 +641,71 @@ Every command is a 20-byte frame:
 [19] CRC-8
 ```
 
-CRC-8 (`getCrcCode`):
+CRC-8:
 
-```js
-getCrcCode(arr, len, hexInput = true) {
-  let crc = 0;
-  for (let a = 0; len--; a++) {
-    crc ^= hexInput ? parseInt(arr[a], 16) : arr[a];
-    for (let n = 8; n > 0; --n)
-      crc = (crc & 0x80) ? ((crc << 1) ^ 0x07) : (crc << 1);
-    crc &= 0xFF;
-  }
-  return crc.toString(16).padStart(2, "0");
-}
-```
+- Polynomial `0x07`, init `0x00`, MSB-first, no input or output reflection, no final XOR. That is
+  the classic CRC-8/ATM, so any ready-made implementation of it fits.
+- Computed over the first 19 bytes `[0..18]`, result placed in byte `[19]`.
+- The same computation terminates an outgoing frame and validates an incoming one.
 
-- Polynomial `0x07`, init `0x00`, MSB-first, no input/output reflection, no final XOR.
-- Computed over the first 19 bytes (`[0..18]`); result placed at `[19]`.
-- Outgoing builders call it with `hexInput = false` (array holds numbers); the incoming `validateCRC` calls it with `hexInput = true` (array holds hex strings). Same algorithm.
+Send path: build the 20-byte frame, compute the CRC into byte `[19]` and write all 20 bytes in a
+single GATT write. Retry a handful of times on failure and serialize concurrent writes. The write
+characteristic supports both with-response and without-response writes; this app uses with-response
+for settings and without-response during a firmware flash, where pacing matters more than
+confirmation.
 
-Send path: `CRC(arr)` appends the CRC byte, maps every element to a 2-char hex string, then `sendcode` -> `writeBLECharacteristicValue`.
+#### 3.2 Frame layout for control commands
 
-Write (`writeBLECharacteristicValue`): takes the 40-char hex string, builds an `ArrayBuffer` of `len/2` bytes via `DataView.setUint8(i, "0X"+pair)` and writes the whole 20-byte frame in one `uni.writeBLECharacteristicValue`. On failure it retries up to 4x. Write type is the uni default (with response); the ISSC write characteristic also supports write-without-response - verify preferred write type on device.
-
-#### 3.2 Generic builder - `setControlCode(cmdId, overrides)`
-
-`setControlCode`:
-
-```js
-setControlCode(cmdId, overrides = []) {   // overrides: [{index, value}, ...]
-  let r = [170, 1, 255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255];
-  r[1] = cmdId;
-  overrides.forEach(o => r[o.index] = o.value);
-  uni.vibrateLong();
-  this.CRC(r);   // appends CRC-8, sends 20-byte frame
-}
-```
+Every command frame is 20 bytes. Byte `[0]` is the start marker `0xAA`, byte `[1]` is the command
+id, bytes `[2..18]` default to `0xFF` and only the fields a command actually uses are filled in,
+byte `[19]` is the CRC-8. The VCU treats anything left at `0xFF` as "no change", which is what
+makes a one-field write possible without resending the rest.
 
 #### 3.3 Command id map
 
-| cmdId (dec / hex) | Builder | Purpose | Key payload |
-|-------------------|---------|---------|-------------|
-| 1 / 0x01 | `sendGetInfoCode(e)` | request info (defined, not called in this build) | `[2]=e` |
-| 1 / 0x01 | `sendConnectCode(e=0,...)` | handshake / keep-alive (every 6.5 s) | `[2]=16 (0x10)`, `[3]=e`, `[4..7]=params(255)` |
-| 2 / 0x02 | `setControlCode(2,...)` | control; deep sleep = `[{index:11,value:1}]` | `[11]` |
-| 3 / 0x03 | `setControlCode(3,...)` | charge mode = `[{index:16,value:mode}]` | `[16]` |
-| 8 / 0x08 | `sendLedSettingCode` / `...2` | LED on/off, RGB, mode | `[2]`=on, `[4..6]`=RGB, `[3]`=mode, `[7]` |
-| 24 / 0x18 | `sendSettingCode` | full settings write (see Section 3.4) | whole frame |
-| 26 / 0x1A | `setControlCode(26,...)` | custom-key function = `[{index:6,value:N}]` | `[6]` = key id (Section 3.5) |
-| 28 / 0x1C | `setControlCode(28,...)` | RTC time sync | `[2]=year%100,[3]=month(1-12),[4]=day,[5]=hour,[6]=min,[7]=sec` |
-| 31 / 0x1F | `sendBtNameCode` | set BLE name / VCU identity (see Section 3.6) | `[2..17]` = 16 ASCII name bytes |
+| cmdId (dec / hex) | Purpose | Key payload |
+|-------------------|---------|-------------|
+| 1 / 0x01 | handshake / keep-alive (every 6.5 s) | `[2]=16 (0x10)`, `[3]=0`, `[4..7]` stay at `255` |
+| 2 / 0x02 | deep sleep | `[11]=1` |
+| 3 / 0x03 | charge mode | `[16]` = mode |
+| 8 / 0x08 | LED on/off, RGB, mode | `[2]`=on, `[3]`=mode, `[4..6]`=RGB, `[7]` |
+| 24 / 0x18 | full settings write (see Section 3.4) | whole frame |
+| 26 / 0x1A | custom-key function | `[6]` = key id (Section 3.5) |
+| 28 / 0x1C | RTC time sync | `[2]`=year%100, `[3]`=month (1-12), `[4]`=day, `[5]`=hour, `[6]`=min, `[7]`=sec |
+| 31 / 0x1F | set BLE name / VCU identity (see Section 3.6) | `[2..17]` = 16 ASCII name bytes |
 
-`sendConnectCode(0)` therefore serializes to: `AA 01 10 00 FF FF FF FF FF ... FF <CRC>`.
+The handshake therefore serializes to: `AA 01 10 00 FF FF FF FF FF ... FF <CRC>`.
 
-#### 3.4 `sendSettingCode` - full settings write (cmd 0x18)
+#### 3.4 The full settings write (cmd 0x18)
 
-`sendSettingCode(state, n = 0, r = 1)`. Base array is `a = [170, 24]` followed by seventeen `255` bytes; then:
+The frame carries a write mode and a gear index. It starts as `0xAA 0x18` followed by seventeen `0xFF` bytes; then:
 
 | Index | Value | Meaning |
 |-------|-------|---------|
 | `a[0]` | `170` (0xAA) | header |
 | `a[1]` | `24` (0x18) | cmdId |
-| `a[2]` | `n` | write mode: `0` normal, `2` immediate (used by motor toggle & charge). When `n==2`, `a[3]` is overwritten with `r`. |
-| `a[3]` | `gear` (`o`; TDE: gear 4 -> 5) | current gear / (when `n==2`) the assist-level index `r` |
-| `a[4]` | `bytesToInt(s)` | rControlStatus byte - see bit map below |
+| `a[2]` | write mode | `0` normal, `2` immediate (used by the motor toggle and by charge mode). In mode `2` the gear index goes into `a[3]`. |
+| `a[3]` | gear (TDE: gear 4 -> 5) | current gear. In mode `2` it holds the gear index being written |
+| `a[4]` | control bits | rControlStatus byte - see bit map below |
 | `a[5]` | `motorPolePairs` | |
 | `a[6]` | `wheel * 10` | wheel size |
-| `a[7]` | `sysProTemp` | protection temp |
-| `a[8]` | `bytesToInt2(u)` | assist byte 1: high nibble = `eabsLevel`, low nibble = `fStartLevel` |
-| `a[9]` | `bytesToInt2(l)` | assist byte 2: high nibble = `eabsLevel`, low nibble = `rStartLevel` |
-| `a[10]` | `c.speedLimit` | per-gear/assist speed limit |
-| `a[11]` | `state.speedLimit` | main speed limit |
-| `a[12]` | `c.fCurrent` | front current limit |
-| `a[13]` | `c.rCurrent` | rear current limit |
-| `a[14]` | voltage code (from `packVolt`) | see voltage-code table below |
-| `a[15]` | `packVolt` | pack nominal voltage (36/48/52/60/72/84) |
-| `a[16]` | `bytesToInt(d)` | flag byte - see bit map below |
-| `a[17]` | `bytesToInt(s)` (with `s[7]=doubleMotor`) | fControlStatus byte - bit7 = `doubleMotor` |
-| `a[18]` | `(prTime << 3) | sleepTime` | sleep / power-off timer (`setSleepAndPrTimeCode`) |
-| `a[19]` | CRC-8 | appended by `CRC()` |
+| `a[7]` | `protectionTemp` | |
+| `a[8]` | nibble pair | assist byte 1: high nibble = `eabsRegen`, low nibble = `frontStartLevel` |
+| `a[9]` | nibble pair | assist byte 2: high nibble = `eabsRegen`, low nibble = `rearStartLevel` |
+| `a[10]` | per-gear `speedLimit` | speed limit of the gear being written |
+| `a[11]` | main `speedLimit` | |
+| `a[12]` | `frontCurrent` | front current limit |
+| `a[13]` | `rearCurrent` | rear current limit |
+| `a[14]` | voltage code (from `packVoltage`) | see voltage-code table below |
+| `a[15]` | `packVoltage` | pack nominal voltage (36/48/52/60/72/84) |
+| `a[16]` | flag bits | flag byte - see bit map below |
+| `a[17]` | control bits with bit 7 = `dualMotor` | fControlStatus byte |
+| `a[18]` | `(prTime << 3) \| sleepTime` | sleep / power-off timer |
+| `a[19]` | CRC-8 | over `[0..18]` |
 
-`a[14]` voltage code, derived from `packVolt`:
+`a[14]` voltage code, derived from `packVoltage`:
 
-| packVolt | code |
+| `packVoltage` | code |
 |----------|------|
 | 36 | 30 |
 | 48 | 39 |
@@ -785,51 +714,51 @@ setControlCode(cmdId, overrides = []) {   // overrides: [{index, value}, ...]
 | 72 | 60 |
 | 84 | 69 |
 
-`a[16]` flag byte `d[]` (`bytesToInt`, LSB-first - index0 = bit0):
+`a[16]` flag byte, LSB-first:
 
-| Field | `d[]` index | Bit / mask |
-|-------|-------------|-----------|
-| `enfEcon` (eco) | `d[0]` | `0x01` |
-| `isUnitMile` | `d[1]` | `0x02` |
-| `atMode` | `d[2]` | `0x04` |
-| `isSmart` | `d[4]` | `0x10` |
+| Field | Bit | Mask |
+|-------|-----|------|
+| `ecoMode` | 0 | `0x01` |
+| `unitMiles` (miles instead of kilometres) | 1 | `0x02` |
+| `antiTheft` | 2 | `0x04` |
+| `tractionControl` | 4 | `0x10` |
 
-`a[4]` / `a[17]` control bytes `s[]` (`bytesToInt`, LSB-first):
+`a[4]` / `a[17]` control bytes, LSB-first:
 
-| Field | `s[]` index | Notes |
-|-------|-------------|-------|
-| cruise | `s[0]`, `s[1]`, `s[2]` | `cruise==1` (auto) -> `s[0]=1, s[1]=1` (bits0,1); `cruise==2` (manual) -> `s[2]=1` (bit2); `0` -> none |
-| `abs` | `s[3]` | |
-| `startMode` | `s[6]` | launch mode |
-| `rmStatus` | `s[7]` | for `a[4]` only - rear-motor status |
-| `doubleMotor` | `s[7]` | for `a[17]` only - `s[7]` is re-assigned to `doubleMotor` before computing `a[17]` |
+| Field | Bit | Notes |
+|-------|-----|-------|
+| cruise | 0, 1, 2 | automatic -> bits 0 and 1 set; manual -> bit 2 set; off -> none of them |
+| ABS | 3 | |
+| `startMode` | 6 | launch mode |
+| `rearMotorOn` | 7 | in `a[4]` only |
+| `dualMotor` | 7 | in `a[17]` only |
 
-> `bytesToInt(arr)` reverses then `parseInt(join,2)` -> index 0 = LSB. `bytesToInt2(arr)` does not reverse -> index 0 = MSB (used for the assist nibbles).
+> Bit 0 is the least significant bit of the byte in both control bytes and in the flag byte. The two assist nibbles are the other way round: high nibble first.
 
-Multi-frame behaviour: unless `isEcuDevice`, `sendSettingCode` re-sends itself for `r = 1..5` at `200*r` ms intervals - one frame per assist/gear profile. A native implementation that only changes one setting can send a single frame with the correct `r`/gear.
+Multi-frame behaviour: on a unit that is not the ECU variant the write is repeated once per gear profile, gear index 1 to 5, roughly 200 ms apart. Changing a single setting needs only one frame, sent with the gear index that setting belongs to.
 
-#### 3.5 Custom-key function values (`keys[]`)
+#### 3.5 Custom-key function values
 
-`keys[]` array:
+Byte `[6]` of command 0x1A selects what the scooter's physical custom key does:
 
 | Value | Function |
 |-------|----------|
-| 1 | Motor |
-| 2 | Kick Start |
-| 3 | Auto Cruise |
-| 4 | Limit Speed |
-| 5 | Lock Scooter |
-| 6 | TCS |
-| 7 | Led Switch |
-| 8 | Led Mode Switch |
-| 9 | Turbo |
-| 10 | Manual Cruise |
-| 11 | EABS |
+| 1 | motor mode |
+| 2 | kick to start |
+| 3 | cruise control, automatic |
+| 4 | speed limit |
+| 5 | scooter lock |
+| 6 | traction control |
+| 7 | lights on / off |
+| 8 | light mode |
+| 9 | boost |
+| 10 | cruise control, manual |
+| 11 | EABS regeneration |
 
 Assign a function to the physical custom key with:
 
 ```
-setControlCode(26, [{ index: 6, value: N }]);   // N from the table
+cmd 0x1A with [6] = N                          // N from the table
 // -> AA 1A FF FF FF FF <N> FF FF ... FF <CRC>
 ```
 
@@ -855,28 +784,28 @@ The first three characters of this identity gate the eKFV speed clamp: a name st
 
 ### 4. Motor enable / disable (single vs dual, drive mode)
 
-User action - `changeMotor()` cycles the drive mode and then writes the full settings frame with `n=2`:
+The motor-mode toggle cycles the drive mode and then writes the full settings frame in mode 2:
 
 ```
-current (rmStatus, doubleMotor)          next state
-------------------------------------     ----------
-dual  (rmStatus=1, doubleMotor=1)  ->    rear-only  (rmStatus=1, doubleMotor=0)
-rear-only                          ->    front-only (rmStatus=0, doubleMotor=1)
-front-only                         ->    dual       (rmStatus=1, doubleMotor=1)
-then: sendSettingCode(state, 2);         // cmd 0x18, mode 2
+current (rearMotorOn, dualMotor)             next state
+----------------------------------------     ----------
+dual  (rearMotorOn=1, dualMotor=1)    ->     rear-only  (rearMotorOn=1, dualMotor=0)
+rear-only                             ->     front-only (rearMotorOn=0, dualMotor=1)
+front-only                            ->     dual       (rearMotorOn=1, dualMotor=1)
+then: settings write, mode 2                 // cmd 0x18
 ```
 
 On the wire (write, cmd 0x18):
 
-- `a[4]` bit 7 = `rmStatus` (rear motor active)
-- `a[17]` bit 7 = `doubleMotor` (dual / front motor active)
+- `a[4]` bit 7 = `rearMotorOn` (rear motor active)
+- `a[17]` bit 7 = `dualMotor` (dual / front motor active)
 
 Read-back (cmd 0x72):
 
-- `doubleMotor` = `fEcuStatus2[3]` = bit 3 of `t[3]`
-- `rmStatus` = `ecuStatus2[3]` = bit 3 of `t[11]`
+- `dualMotor` = `fEcuStatus2[3]` = bit 3 of `t[3]`
+- `rearMotorOn` = `ecuStatus2[3]` = bit 3 of `t[11]`
 
-> Caution - verify on device. The write encodes these two flags in bit 7 of control bytes `a[4]` / `a[17]`, whereas the read-back decodes them from bit 3 of different status bytes in the `55 72` frame. They are distinct bytes in distinct frames, so there is no direct contradiction, but the exact VCU-side bit position for commanding single vs. dual motor should be confirmed against a live VCU. There is no dedicated "motor" opcode - motor mode is only ever changed through the full settings write (cmd 0x18); the "Motor" custom key (value 1, Section 3.5) merely maps the hardware button to this same toggle.
+> Caution - verify on device. The write encodes these two flags in bit 7 of control bytes `a[4]` / `a[17]`, whereas the read-back decodes them from bit 3 of different status bytes in the `55 72` frame. They are distinct bytes in distinct frames, so there is no direct contradiction, but the exact VCU-side bit position for commanding single vs. dual motor should be confirmed against a live VCU. There is no dedicated "motor" opcode - motor mode is only ever changed through the full settings write (cmd 0x18) and the custom-key motor function (value 1, Section 3.5) merely maps the hardware button to this same toggle.
 
 `motorPolePairs` (`a[5]` out / `55 71` `t[5]` in) is a motor parameter, not an enable flag.
 
@@ -886,13 +815,13 @@ Read-back (cmd 0x72):
 
 - Endianness: all multi-byte numeric fields are big-endian (`hex[n] + hex[n+1]` in stream order, high byte first). `55 73 totalMile` is a 3-byte BE value (`t[8]+t[9]+t[10]`).
 - Signedness: every raw value is treated as unsigned; negative results come from fixed offsets - current `raw*0.1 - 1000`, all temperatures `raw - 40`. There are no two's-complement fields.
-- Byte representation: the JS works on arrays of 2-char hex strings. In Java, index the raw `byte[]` directly and mask with `& 0xFF`. Frame = `byte[20]`.
+- Byte representation: index the raw `byte[]` directly and mask with `& 0xFF`. Frame = `byte[20]`.
 - Frame gating: only accept a 20-byte frame whose CRC-8 (poly `0x07`, init `0x00`, MSB-first) over bytes `[0..18]` equals byte `[19]`. Drop otherwise. A single BLE notification may contain several concatenated 20-byte frames - split every 20 bytes before validating.
 - Dispatch: incoming header byte `[0] = 0x55`; command in `[1]`. Outgoing header `[0] = 0xAA`; command in `[1]`; CRC in `[19]`.
-- Bit order: `formattingBalStatus` and outgoing `bytesToInt` are LSB-first (array index 0 = bit 0). `bytesToInt2` (assist nibbles) is MSB-first. `formatLevel` splits a byte into `[high nibble, low nibble]`.
-- Notifications, not indications (`type:"notification"`): enable local notify + write CCCD `0x2902` = `0x01 0x00`.
-- Startup sequence: connect -> discover services (pick primary `0000FF...` / `495353...`) -> discover characteristics (notify/write per Section 1.1) -> enable notifications (CCCD) -> send `sendConnectCode(0)` and repeat every ~6.5 s. Telemetry then streams unsolicited; no per-frame request is needed.
-- Writes: send the complete 20-byte frame in a single GATT write; retry a few times on failure. Serialize concurrent writes (the original app spaces its multi-frame settings writes ~200 ms apart).
+- Bit order: every status byte is read and written LSB-first (array index 0 = bit 0). The assist nibbles are the exception, high nibble first.
+- Notifications, not indications: enable local notify + write CCCD `0x2902` = `0x01 0x00`.
+- Startup sequence: connect -> discover services (pick primary `0000FF...` / `495353...`) -> discover characteristics (notify/write per Section 1.1) -> enable notifications (CCCD) -> send the handshake frame and repeat every ~6.5 s. Telemetry then streams unsolicited; no per-frame request is needed.
+- Writes: send the complete 20-byte frame in a single GATT write; retry a few times on failure. Serialize concurrent writes; the multi-frame settings write wants roughly 200 ms between frames.
 - Uncertain items (flagged above): (a) exact VCU bit for single/dual-motor commanding - see Section 4; (b) `enFeedBack` physical unit - unverified; (c) preferred write type (with vs. without response) - the default is with-response.
 
 ## License

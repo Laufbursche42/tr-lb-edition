@@ -405,7 +405,7 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       Nothing is written until you save. Connect first.
     </div>
 
-    <!-- Per-gear (assist) settings - mirrors the original app's per-gear assistList
+    <!-- Per-gear (assist) settings, one profile per gear
          (0 power limit, 1 EABS, 2 front start, 3 rear start, 4 front current, 5 rear current). -->
     <div class="section-hdr sub-hdr" data-i18n="scooter.gear.section.title">Per-gear settings</div>
     <div class="settings-group pt-4">
@@ -488,16 +488,16 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <div class="settings-group pt-4">
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label" data-i18n="scooter.battery.packvoltage.label">Pack voltage</div><div class="settings-row-sublabel" data-i18n="scooter.battery.packvoltage.sub">Nominal</div></div>
-        <button type="button" class="set-help" data-set-help="ss-packvolt" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
-        <select class="set-ctrl" id="ss-packvolt">
+        <button type="button" class="set-help" data-set-help="ss-packvoltage" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
+        <select class="set-ctrl" id="ss-packvoltage">
           <option value="36" data-i18n="scooter.battery.packvoltage.option.36">36 V</option><option value="48" data-i18n="scooter.battery.packvoltage.option.48">48 V</option><option value="52" data-i18n="scooter.battery.packvoltage.option.52">52 V</option>
           <option value="60" data-i18n="scooter.battery.packvoltage.option.60">60 V</option><option value="72" data-i18n="scooter.battery.packvoltage.option.72">72 V</option><option value="84" data-i18n="scooter.battery.packvoltage.option.84">84 V</option>
         </select>
       </div>
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label" data-i18n="scooter.battery.prottemp.label">Protection temp</div><div class="settings-row-sublabel" data-i18n="scooter.battery.prottemp.unit">&deg;C</div></div>
-        <button type="button" class="set-help" data-set-help="ss-prottemp" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
-        <input class="set-ctrl" id="ss-prottemp" type="number" min="80" max="130" step="1" inputmode="numeric">
+        <button type="button" class="set-help" data-set-help="ss-protectiontemp" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
+        <input class="set-ctrl" id="ss-protectiontemp" type="number" min="80" max="130" step="1" inputmode="numeric">
       </div>
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label" data-i18n="scooter.wheel.size.label">Wheel size</div><div class="settings-row-sublabel" data-i18n="scooter.wheel.size.unit">inch</div></div>
@@ -510,7 +510,7 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <div class="section-hdr sub-hdr" data-i18n="scooter.modes.section.title">Modes</div>
     <div class="settings-group pt-4">
       <div class="settings-row">
-        <div class="settings-row-left"><div class="settings-row-label" data-i18n="scooter.mode.start.label">Start mode</div><div class="settings-row-sublabel" data-i18n="scooter.mode.start.sub">Launch / kick start</div></div>
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="scooter.mode.start.label">Start mode</div><div class="settings-row-sublabel" data-i18n="scooter.mode.start.sub">Push off first or start on throttle</div></div>
         <button type="button" class="set-help" data-set-help="ss-start" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
         <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-start"><label class="toggle-label" for="ss-start"></label></div>
       </div>
@@ -521,23 +521,23 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       </div>
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label" data-i18n="scooter.mode.eco.label">Eco mode</div></div>
-        <button type="button" class="set-help" data-set-help="ss-eco" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
-        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-eco"><label class="toggle-label" for="ss-eco"></label></div>
+        <button type="button" class="set-help" data-set-help="ss-ecomode" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-ecomode"><label class="toggle-label" for="ss-ecomode"></label></div>
       </div>
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label" data-i18n="scooter.mode.unitmiles.label">Unit: miles</div><div class="settings-row-sublabel" data-i18n="scooter.mode.unitmiles.sub">Scooter display unit</div></div>
-        <button type="button" class="set-help" data-set-help="ss-unitmile" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
-        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-unitmile"><label class="toggle-label" for="ss-unitmile"></label></div>
+        <button type="button" class="set-help" data-set-help="ss-unitmiles" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-unitmiles"><label class="toggle-label" for="ss-unitmiles"></label></div>
       </div>
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label" data-i18n="scooter.mode.antitheft.label">Anti-theft</div></div>
-        <button type="button" class="set-help" data-set-help="ss-atmode" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
-        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-atmode"><label class="toggle-label" for="ss-atmode"></label></div>
+        <button type="button" class="set-help" data-set-help="ss-antitheft" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-antitheft"><label class="toggle-label" for="ss-antitheft"></label></div>
       </div>
       <div class="settings-row">
         <div class="settings-row-left"><div class="settings-row-label" data-i18n="scooter.mode.smart.label">Smart mode</div></div>
-        <button type="button" class="set-help" data-set-help="ss-smart" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
-        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-smart"><label class="toggle-label" for="ss-smart"></label></div>
+        <button type="button" class="set-help" data-set-help="ss-tractioncontrol" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-tractioncontrol"><label class="toggle-label" for="ss-tractioncontrol"></label></div>
       </div>
     </div>
 
@@ -722,6 +722,8 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <div class="tb-right"><span class="tb-spacer"></span></div>
   </div>
   <div id="firmware-scroller">
+    <div class="fw-warn" data-i18n="fw.warn.board"></div>
+
     <div class="fw-warn" data-i18n="fw.warn.intro">
       <b>Read this first.</b> Flashing IVCU firmware over Bluetooth takes about 13 minutes. During the update: keep the scooter switched on and within range, keep this app in the foreground (the screen stays on) and do not turn the scooter off. If the flash is interrupted the IVCU stays in update mode and can simply be flashed again. It is not bricked. This page flashes whatever .hex you pick, so only flash a file that matches your IVCU.
     </div>
@@ -884,21 +886,17 @@ function syncDebugUI() {
 /* ── Utilities ────────────────────────────────────────────── */
 
 const storage = {
-  // Write to BOTH plus.storage and the webview's own localStorage. localStorage in this
-  // hybrid webview survives app restarts and in-place updates, so the SRT url sticks even
-  // if plus.storage misbehaves. Read plus.storage first, fall back to localStorage.
+  // localStorage in this webview survives app restarts and in-place updates, so values
+  // such as the SRT url stick. Every call is guarded: storage can throw when it is blocked.
   get: k => {
     let v = null;
-    if (window.plus) { try { v = plus.storage.getItem(k); } catch(_) {} }
-    if (v === null || v === undefined) { try { v = localStorage.getItem(k); } catch(_) {} }
+    try { v = localStorage.getItem(k); } catch(_) {}
     return v;
   },
   set: (k, v) => {
-    if (window.plus) { try { plus.storage.setItem(k, v); } catch(_) {} }
     try { localStorage.setItem(k, v); } catch(_) {}
   },
   remove: k => {
-    if (window.plus) { try { plus.storage.removeItem(k); } catch(_) {} }
     try { localStorage.removeItem(k); } catch(_) {}
   }
 };
@@ -1009,8 +1007,8 @@ function parseBLE(raw) {
       poleVolt: num(d.poleVolt),
       current:  num(d.current),
       gear:     typeof d.gear === 'number' ? d.gear : (parseInt(d.gear) || 0),
-      rCurrent: num(d.rCurrent),
-      fCurrent: num(d.fCurrent),
+      rearCurrent:  num(d.rearCurrent),
+      frontCurrent: num(d.frontCurrent),
       rTemp:    num(d.rTemp),
       fTemp:    num(d.fTemp),
       power:    num(d.power),
@@ -1066,7 +1064,7 @@ const AV_HELP = {
   "Rear Motor Temp": 'msg.help.av.rear.motor.temp',
   "Motor Mode": 'msg.help.av.motor.mode',
   "Power": 'msg.help.av.power',
-  "Real Speed": 'msg.help.av.real.speed',
+  "Speed": 'msg.help.av.speed',
   "Reverse Gear": 'msg.help.av.reverse.gear',
   "Rear Control Status": 'msg.help.av.rear.control.status',
   "Front Control Status": 'msg.help.av.front.control.status',
@@ -1087,7 +1085,7 @@ const AV_HELP = {
   "Power Mode": 'msg.help.av.power.mode',
   "Light Sensor": 'msg.help.av.light.sensor',
   "Voice": 'msg.help.av.voice',
-  "AT Level": 'msg.help.av.at.level',
+  "Anti-theft level": 'msg.help.av.antitheft.level',
   "Custom Key": 'msg.help.av.custom.key',
   "Avg Speed": 'msg.help.av.avg.speed',
   "Max Speed": 'msg.help.av.max.speed',
@@ -1143,7 +1141,6 @@ const SETTINGS_HELP = {
   "disp-dark": { title: 'msg.help.set.disp.dark.title', text: 'msg.help.set.disp.dark.text' },
   "disp-mph": { title: 'msg.help.set.disp.mph.title', text: 'msg.help.set.disp.mph.text' },
   "disp-fullscreen": { title: 'msg.help.set.disp.fullscreen.title', text: 'msg.help.set.disp.fullscreen.text' },
-  "motor-mode": { title: 'msg.help.set.motor.mode.title', text: 'msg.help.set.motor.mode.text' },
   "gps-auto": { title: 'msg.help.set.gps.auto.title', text: 'msg.help.set.gps.auto.text' },
   "gps-interval": { title: 'msg.help.set.gps.interval.title', text: 'msg.help.set.gps.interval.text' },
   "debug-mode": { title: 'msg.help.set.debug.mode.title', text: 'msg.help.set.debug.mode.text' },
@@ -1158,19 +1155,14 @@ const SETTINGS_HELP = {
   "ss-gear": { title: 'msg.help.set.ss.gear.title', text: 'msg.help.set.ss.gear.text' },
   "ss-start": { title: 'msg.help.set.ss.start.title', text: 'msg.help.set.ss.start.text' },
   "ss-cruise": { title: 'scooter.drive.cruise.label', text: 'msg.help.set.ss.cruise.text' },
-  "ss-fcur": { title: 'msg.help.set.ss.fcur.title', text: 'msg.help.set.ss.fcur.text' },
-  "ss-rcur": { title: 'msg.help.set.ss.rcur.title', text: 'msg.help.set.ss.rcur.text' },
   "ss-abs": { title: 'msg.help.set.ss.abs.title', text: 'msg.help.set.ss.abs.text' },
-  "ss-prottemp": { title: 'msg.help.set.ss.prottemp.title', text: 'msg.help.set.ss.prottemp.text' },
-  "ss-packvolt": { title: 'msg.help.set.ss.packvolt.title', text: 'msg.help.set.ss.packvolt.text' },
+  "ss-protectiontemp": { title: 'msg.help.set.ss.protectiontemp.title', text: 'msg.help.set.ss.protectiontemp.text' },
+  "ss-packvoltage": { title: 'msg.help.set.ss.packvoltage.title', text: 'msg.help.set.ss.packvoltage.text' },
   "ss-wheel": { title: 'msg.help.set.ss.wheel.title', text: 'msg.help.set.ss.wheel.text' },
-  "ss-fstart": { title: 'msg.help.set.ss.fstart.title', text: 'msg.help.set.ss.fstart.text' },
-  "ss-rstart": { title: 'msg.help.set.ss.rstart.title', text: 'msg.help.set.ss.rstart.text' },
-  "ss-eabs": { title: 'msg.help.set.ss.eabs.title', text: 'msg.help.set.ss.eabs.text' },
-  "ss-eco": { title: 'msg.help.set.ss.eco.title', text: 'msg.help.set.ss.eco.text' },
-  "ss-unitmile": { title: 'msg.help.set.ss.unitmile.title', text: 'msg.help.set.ss.unitmile.text' },
-  "ss-atmode": { title: 'msg.help.set.ss.atmode.title', text: 'msg.help.set.ss.atmode.text' },
-  "ss-smart": { title: 'msg.help.set.ss.smart.title', text: 'msg.help.set.ss.smart.text' },
+  "ss-ecomode": { title: 'msg.help.set.ss.ecomode.title', text: 'msg.help.set.ss.ecomode.text' },
+  "ss-unitmiles": { title: 'msg.help.set.ss.unitmiles.title', text: 'msg.help.set.ss.unitmiles.text' },
+  "ss-antitheft": { title: 'msg.help.set.ss.antitheft.title', text: 'msg.help.set.ss.antitheft.text' },
+  "ss-tractioncontrol": { title: 'msg.help.set.ss.tractioncontrol.title', text: 'msg.help.set.ss.tractioncontrol.text' },
   "ss-save": { title: 'msg.help.set.ss.save.title', text: 'msg.help.set.ss.save.text' },
   "gear-save": { title: 'msg.help.set.gear.save.title', text: 'msg.help.set.gear.save.text' },
   "dg-recup": { title: 'msg.help.set.dg.recup.title', text: 'msg.help.set.dg.recup.text' },
@@ -1363,12 +1355,12 @@ function updateBLEUI(data) {
   // Motors (dual motor)
   setTxt('mr-temp', data.rTemp.toFixed(0));
   setTxt('mf-temp', data.fTemp.toFixed(0));
-  setTxt('mr-cur', data.rCurrent.toFixed(1));
-  setTxt('mf-cur', data.fCurrent.toFixed(1));
+  setTxt('mr-cur', data.rearCurrent.toFixed(1));
+  setTxt('mf-cur', data.frontCurrent.toFixed(1));
   const mrt = document.getElementById('mr-temp'); if (mrt) mrt.style.color = tempColor(data.rTemp);
   const mft = document.getElementById('mf-temp'); if (mft) mft.style.color = tempColor(data.fTemp);
   setTxt('m-power', data.power.toFixed(2));
-  setTxt('m-total-cur', (data.rCurrent + data.fCurrent).toFixed(1));
+  setTxt('m-total-cur', (data.rearCurrent + data.frontCurrent).toFixed(1));
 
   // Grid
   setTxt('dg-volt', `${data.volt.toFixed(1)} V`);
@@ -1385,11 +1377,11 @@ function updateBLEUI(data) {
   {
     const s = liveRaw();
     const sv = (v, suf) => (v == null ? '-' : String(v) + (suf || ''));
-    setTxt('dg-fstart',  sv(s.fStartLevel));
-    setTxt('dg-rstart',  sv(s.rStartLevel));
-    setTxt('dg-eabs',    sv(s.eabsLevel));
-    setTxt('dg-fcurlim', sv(s.fCurrentLimit, ' A'));
-    setTxt('dg-rcurlim', sv(s.rCurrentLimit, ' A'));
+    setTxt('dg-fstart',  sv(s.frontStartLevel));
+    setTxt('dg-rstart',  sv(s.rearStartLevel));
+    setTxt('dg-eabs',    sv(s.eabsRegen));
+    setTxt('dg-fcurlim', sv(s.frontCurrentLimit, ' A'));
+    setTxt('dg-rcurlim', sv(s.rearCurrentLimit, ' A'));
   }
 
   // All values (battery/cells)
@@ -1529,28 +1521,20 @@ function periodicSaveRide() {
 function startGPSWatch() {
   if (state.gpsWatchId !== null) return;
   try {
-    if (window.plus) {
-      state.gpsWatchId = plus.geolocation.watchPosition(
-        onGPSSuccess, onGPSError,
+    if (navigator.geolocation) {
+      state.gpsWatchId = navigator.geolocation.watchPosition(
+        pos => onGPSSuccess({
+          coords: {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            altitude: pos.coords.altitude || 0,
+            speed: pos.coords.speed || 0
+          },
+          timestamp: pos.timestamp
+        }),
+        onGPSError,
         { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
       );
-    } else {
-      // Browser fallback for testing
-      if (navigator.geolocation) {
-        state.gpsWatchId = navigator.geolocation.watchPosition(
-          pos => onGPSSuccess({
-            coords: {
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              altitude: pos.coords.altitude || 0,
-              speed: pos.coords.speed || 0
-            },
-            timestamp: pos.timestamp
-          }),
-          onGPSError,
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-        );
-      }
     }
   } catch(e) {}
 }
@@ -1558,11 +1542,7 @@ function startGPSWatch() {
 function stopGPSWatch() {
   if (state.gpsWatchId === null) return;
   try {
-    if (window.plus) {
-      plus.geolocation.clearWatch(state.gpsWatchId);
-    } else if (navigator.geolocation) {
-      navigator.geolocation.clearWatch(state.gpsWatchId);
-    }
+    if (navigator.geolocation) navigator.geolocation.clearWatch(state.gpsWatchId);
   } catch(e) {}
   state.gpsWatchId = null;
   state.gpsPos = null;
@@ -2425,18 +2405,19 @@ function liveRaw() {
    and a write only changes the ONE field the user touched, merged onto the device's REAL reported state
    (the native received71 guard blocks a write until that state is known). So writing settings is safe on
    any model. Only the FIN unlock / speed clamp / firmware update stay Fighter-Mini-only (gated by the
-   body.is-fighter class). The Tetra is not supported (its 4-motor node frames are not handled). The name
-   decode mirrors the original Teverun app (T2-prefix: code at chars 7-9; legacy: chars 6-9). */
+   body.is-fighter class). The Tetra is not supported (its 4-motor node frames are not handled). The
+   scooter advertises its model code at a fixed offset in the BLE name: chars 7-9 on a T2 prefix,
+   chars 6-9 otherwise. */
 function detectModel(name) {
   name = (name || '').trim().toUpperCase();
   let code = '', model = '';
   if (name.startsWith('T2') && name.length >= 9) {
-    // ver2 / T2 naming: model code at chars 7-9 (mirrors the vendor app's setModelFromBtName)
+    // ver2 / T2 naming: the scooter puts its model code at chars 7-9 of the advertised name.
     code = name.substring(7, 9);
     model = ({ FM: 'FIGHTER MINI', FP: 'FIGHTER MINI PRO', FE: 'FIGHTER ELEVEN', FU: 'FIGHTER ELEVEN+',
-               SU: 'SUPREM ULTRA', SR: 'SUPREM 7260', T4: 'TETRA 4 MOTOR', T2: 'TETRA 2 MOTOR' })[code] || '';
+               SU: 'SUPREME ULTRA', SR: 'SUPREME 7260', T4: 'TETRA 4 MOTOR', T2: 'TETRA 2 MOTOR' })[code] || '';
   } else if (name.length >= 9) {
-    // legacy naming: model code at chars 6-9 (mirrors the vendor app)
+    // legacy naming: the model code sits at chars 6-9 instead.
     code = name.substring(6, 9);
     const tbl = [[/^GT[EP]/, 'TEVERUN GT'], [/^T40/, 'TETRA 4 MOTOR'], [/^T20/, 'TETRA 2 MOTOR'],
                  [/^FTE/, 'FIGHTER TEN'], [/^FE[EP]/, 'FIGHTER ELEVEN'], [/^SPP/, 'SUPREME PLUS'],
@@ -2444,10 +2425,9 @@ function detectModel(name) {
                  [/^FM[EOP]/, 'FIGHTER MINI'], [/^BQ[EP]/, 'BLADE Q'], [/^FQ/, 'FIGHTER Q'], [/^SE/, 'TEVERUN SPACE']];
     for (const [re, nm] of tbl) { if (re.test(code)) { model = nm; break; } }
   }
-  // Fallback for the short eKFV / ECU name formats the vendor app cannot resolve from the
-  // name either (e.g. TDE1FMA... or its unlocked T1FMA... form): the fixed-position code
-  // above lands off the model token, so the vendor app just asks the user. Recover the
-  // family from the letters right after "T" + optional 2-letter region + generation digit.
+  // Fallback for the short eKFV / ECU name formats (e.g. TDE1FMA... or its unlocked T1FMA...
+  // form): those names are shorter, so the fixed offsets above land off the model token.
+  // Recover the family from the letters right after "T" + optional 2-letter region + generation digit.
   if (!model) {
     const m = name.match(/^T(?:[A-Z]{2})?\d+([A-Z]{2,3})/);
     if (m) {
@@ -2590,13 +2570,12 @@ function closeScooterPage() {
 
 /* ── Error reports (active faults / warnings from live BLE data) ── */
 
-// 55 54 battery/BMS error code -> text. Mirrors the original app's getNameByIndex, which maps
-// error array index `code` to the i18n key warn.type{code+1}.
+// Our wording for each battery/BMS fault the 55 54 frame can raise, keyed by its array index.
 const ERROR_CODE_TEXT = {
-  0: t('msg2.error.bms.dhg_over_temp'), 1: t('msg2.error.bms.dhg_under_temp'), 2: t('msg2.error.bms.chg_high_temp'), 3: t('msg2.error.bms.chg_under_temp'),
+  0: t('msg2.error.bms.discharge_over_temp'), 1: t('msg2.error.bms.discharge_under_temp'), 2: t('msg2.error.bms.charge_over_temp'), 3: t('msg2.error.bms.charge_under_temp'),
   4: t('msg2.error.bms.cell_over_voltage'), 5: t('msg2.error.bms.cell_under_voltage'), 6: t('msg2.error.bms.pack_over_voltage'), 7: t('msg2.error.bms.pack_under_voltage'),
-  8: t('msg2.error.bms.dhg_over_current'), 9: t('msg2.error.bms.chg_over_current'), 10: t('msg2.error.bms.del_voltage'), 11: t('msg2.error.bms.del_temp'),
-  12: t('msg2.error.bms.soc_under'), 13: t('msg2.error.bms.mos1_over_temp'), 14: t('msg2.error.bms.mos2_over_temp'), 15: t('msg2.error.bms.charging_state'), 16: t('msg2.error.bms.pack_cl1')
+  8: t('msg2.error.bms.discharge_over_current'), 9: t('msg2.error.bms.charge_over_current'), 10: t('msg2.error.bms.cell_voltage_spread'), 11: t('msg2.error.bms.cell_temp_spread'),
+  12: t('msg2.error.bms.charge_level_low'), 13: t('msg2.error.bms.mosfet1_over_temp'), 14: t('msg2.error.bms.mosfet2_over_temp'), 15: t('msg2.error.bms.charging_state'), 16: t('msg2.error.bms.pack_flag_1')
 };
 
 // Read a fault flag: prefer the explicit boolean emitted by FrameParser, else fall back to the
@@ -2607,13 +2586,13 @@ function errBool(d, key, bitArrKey, bitIdx) {
   return Array.isArray(arr) && (arr[bitIdx] === 1 || arr[bitIdx] === '1');
 }
 
-// Build the list of currently active errors/faults, applying the original app's warn thresholds
+// Build the list of currently active errors/faults, applying the warn thresholds
 // for the 55 54 battery array plus the ECU fault bits.
 function collectErrors() {
   const d = liveRaw();
   const items = [];
 
-  // Battery / BMS errors (55 54). App rule: skip index 16; index 0/2 need severity>1; others >2.
+  // Battery / BMS errors (55 54). Index 16 is not a fault; index 0/2 need severity>1, others >2.
   const errs = Array.isArray(d.errors) ? d.errors : [];
   errs.forEach(e => {
     const code = (e && e.code != null) ? Number(e.code) : -1;
@@ -3016,15 +2995,6 @@ function closeInfoPage() {
 
 /* ── Battery Info page (pack, health and per-cell voltages from live BLE data) ── */
 
-// Battery warning labels for the 55 54 fault array (index = error code). Index 15 is the
-// charge-status byte, not a warning, so the health summary skips it.
-const BATTERY_ERROR_TEXT = {
-  0: 'DHG Over Temp', 1: 'DHG Under Temp', 2: 'CHG High Temp', 3: 'CHG Under Temp',
-  4: 'Cell Over Voltage', 5: 'Cell Under Voltage', 6: 'Pack Over Voltage', 7: 'Pack Under Voltage',
-  8: 'DHG Over Current', 9: 'CHG Over Current', 10: 'Del Voltage', 11: 'Del Temp',
-  12: 'SOC Under', 13: 'MOS1 Over Temp', 14: 'MOS2 Over Temp', 16: 'Pack CL1'
-};
-
 // Render the battery health summary, pack summary and per-cell grid from lb_live_data. No command
 // is sent - the BMS streams the 55 51/54/55/56/52/53 frames automatically once connected.
 function renderBatteryPage() {
@@ -3043,7 +3013,7 @@ function renderBatteryPage() {
 
   // Health summary: reuse the error-reports filter (which applies the correct 55 54 severity
   // thresholds - index 0/2 need severity > 1, others > 2) restricted to the battery / BMS faults, so
-  // it matches "Read error reports" and never shows a non-active level (e.g. a resting "SOC Under").
+  // it matches "Read error reports" and never shows a non-active level (for example a resting low charge level).
   const warnings = (typeof collectErrors === 'function' ? collectErrors() : [])
     .filter(it => it && typeof it.sub === 'string' && it.sub.indexOf('Battery / BMS') === 0)
     .map(it => it.title);
@@ -3065,7 +3035,7 @@ function renderBatteryPage() {
   const mv2v = mv => (typeof mv === 'number' && isFinite(mv)) ? (mv / 1000).toFixed(3) : null;
   const rows = [];
   const push = (label, val) => rows.push({ label: label, val: val });
-  push(t('msg2.battery.pack.system_voltage'),    d.VolPack != null ? dash(d.VolPack) + ' V' : '-');
+  push(t('msg2.battery.pack.system_voltage'),    d.packVoltageLive != null ? dash(d.packVoltageLive) + ' V' : '-');
   push(t('msg2.battery.pack.current'),           d.current != null ? dash(d.current) + ' A' : '-');
   push(t('msg2.battery.pack.soc'),               d.SOC != null ? dash(d.SOC) + ' %' : '-');
   push(t('msg2.battery.pack.soh'),               d.soh != null ? dash(d.soh) + ' %' : '-');
@@ -3213,8 +3183,8 @@ function fwPick() {
   try { LB.otaPickFile(); } catch (e) { showToast(tf('msg2.toast.error', { e: e })); }
 }
 
-/* The original app's isComplyRules, filename only: whether the ORIGINAL app would accept this name.
-   Kept faithful (AWVCU/AWIVCU prefix; split("_")[2] generation digit; TDE -> "5"). */
+/* Naming convention of the IVCU firmware files themselves: an AWVCU/AWIVCU prefix and a
+   generation digit in the third "_" segment ("5" on an eKFV/TDE scooter). Name only. */
 function fwNameGate(meta, isTde, swVer) {
   const up = (meta.name || '').toUpperCase();
   const isDigit = c => c >= '0' && c <= '9';
@@ -3225,13 +3195,13 @@ function fwNameGate(meta, isTde, swVer) {
   if (isTde) return (!isDigit(a) && isDigit(o) && o === '5');
   if (swVer.startsWith('2')) return (!isDigit(a) && o === '2');
   if (swVer.startsWith('3') || swVer.startsWith('4')) return (!isDigit(a) && (o === '3' || o === '4'));
-  return true;                                               // other SW -> fallback (as in the app)
+  return true;                                               // any other SW version: accept the name
 }
 
 /* Multi-signal compatibility verdict. The controller bootloader itself does NOT check model/version
    (only CRC + address range), so this is the real guard against flashing the wrong firmware. It is
    content-based where possible (trailer version vs the installed version, target address) so it is
-   both safer AND less brittle than the original filename-only gate.
+   both safer AND less brittle than judging a file by its name alone.
    Returns { ok, noOverride, checks:[{ok,crit,noOverride,label,detail}] }.
    - crit checks decide `ok`; a failing crit check with noOverride (CRC) can never be flashed.
    - non-crit checks (filename) are informational only. */
@@ -3277,7 +3247,7 @@ function fwCompat(meta) {
   checks.push({ ok: genOk, crit: true,
     label: genOk ? t('msg2.fw.check.generation.ok') : t('msg2.fw.check.generation.fail'), detail: genDetail });
 
-  // 5) Filename (the original app's isComplyRules). Informational only - a naming quirk is not a
+  // 5) Filename convention. Informational only - a naming quirk is not a
   //    safety problem when the content checks above pass.
   const nameOk = fwNameGate(meta, isTde, swVer);
   checks.push({ ok: nameOk, crit: false,
@@ -3515,11 +3485,11 @@ window.__onOtaState = function(sArg) {
 // currents) live in the per-gear editor, so they are not duplicated here.
 const SS_NUM_FIELDS = [
   ['ss-speed', 'speedLimit'], ['ss-wheel', 'wheel'],
-  ['ss-packvolt', 'packVolt'], ['ss-prottemp', 'sysProTemp']
+  ['ss-packvoltage', 'packVoltage'], ['ss-protectiontemp', 'protectionTemp']
 ];
 const SS_BOOL_FIELDS = [
-  ['ss-abs', 'abs'], ['ss-start', 'startMode'], ['ss-eco', 'enfEcon'],
-  ['ss-unitmile', 'isUnitMile'], ['ss-atmode', 'atMode'], ['ss-smart', 'isSmart']
+  ['ss-abs', 'abs'], ['ss-start', 'startMode'], ['ss-ecomode', 'ecoMode'],
+  ['ss-unitmiles', 'unitMiles'], ['ss-antitheft', 'antiTheft'], ['ss-tractioncontrol', 'tractionControl']
 ];
 /* Controller keys the user has changed since the last load/save (cruise is the seg control). */
 const ssDirty = new Set();
@@ -3560,17 +3530,17 @@ function prefillScooterSettings(live) {
       cruiseSeg.querySelectorAll('button').forEach(btn => { btn.disabled = locked; });
     }
   }
-  setV('ss-packvolt', 'packVolt',     pick(d, ['packVolt']));
-  setV('ss-prottemp', 'sysProTemp',   pick(d, ['sysProTemp']));
+  setV('ss-packvoltage',    'packVoltage',    pick(d, ['packVoltage']));
+  setV('ss-protectiontemp', 'protectionTemp', pick(d, ['protectionTemp']));
 
-  let eco   = pick(d, ['enfEcon']);    if (eco   == null) eco   = b(sys[0]);
-  let um    = pick(d, ['isUnitMile']); if (um    == null) um    = b(sys[1]);
-  let at    = pick(d, ['atMode']);     if (at    == null) at    = b(sys[2]);
-  let sm    = pick(d, ['isSmart']);    if (sm    == null) sm    = b(sys[4]);
-  let abs   = pick(d, ['abs']);        if (abs   == null) abs   = b(rc[3]);
-  let start = pick(d, ['startMode']);  if (start == null) start = b(rc[6]);
-  setC('ss-eco', 'enfEcon', eco); setC('ss-unitmile', 'isUnitMile', um); setC('ss-atmode', 'atMode', at);
-  setC('ss-smart', 'isSmart', sm); setC('ss-abs', 'abs', abs); setC('ss-start', 'startMode', start);
+  let eco   = pick(d, ['ecoMode']);         if (eco   == null) eco   = b(sys[0]);
+  let um    = pick(d, ['unitMiles']);       if (um    == null) um    = b(sys[1]);
+  let at    = pick(d, ['antiTheft']);       if (at    == null) at    = b(sys[2]);
+  let sm    = pick(d, ['tractionControl']); if (sm    == null) sm    = b(sys[4]);
+  let abs   = pick(d, ['abs']);             if (abs   == null) abs   = b(rc[3]);
+  let start = pick(d, ['startMode']);       if (start == null) start = b(rc[6]);
+  setC('ss-ecomode', 'ecoMode', eco); setC('ss-unitmiles', 'unitMiles', um); setC('ss-antitheft', 'antiTheft', at);
+  setC('ss-tractioncontrol', 'tractionControl', sm); setC('ss-abs', 'abs', abs); setC('ss-start', 'startMode', start);
 
   let cr = pick(d, ['cruise']);
   if (cr == null) { cr = ((b(rc[2]) ? 1 : 0) << 1) | (b(rc[1]) ? 1 : 0); if (cr > 2) cr = 0; }
@@ -3607,8 +3577,8 @@ function saveScooterSettings() {
     } else if (boolById[key]) {
       const el = document.getElementById(boolById[key]);
       if (el) {
-        // Smart/TCS uses a dedicated native write mode; route it through LB.setSmart, not sendSetting.
-        if (key === 'isSmart' && typeof LB !== 'undefined' && LB.setSmart) {
+        // Traction control uses a dedicated native write mode; route it through LB.setSmart.
+        if (key === 'tractionControl' && typeof LB !== 'undefined' && LB.setSmart) {
           try { LB.setSmart(el.checked); } catch (e) { showToast(tf('msg2.toast.error', { e: e })); }
         } else {
           pushSetting(key, el.checked);
@@ -3635,7 +3605,7 @@ function wireScooterSettings() {
   SS_NUM_FIELDS.forEach(pair => {
     const el = document.getElementById(pair[0]);
     if (!el) return;
-    if (pair[0] === 'ss-packvolt') {
+    if (pair[0] === 'ss-packvoltage') {
       el.addEventListener('focus', () => { el.dataset.prev = el.value; });
       el.addEventListener('change', () => {
         const newVal = el.value;
@@ -3646,7 +3616,7 @@ function wireScooterSettings() {
         document.getElementById('confirm-msg').textContent =
           tf('msg2.settings.packvolt.confirm.body', { value: newVal });
         document.getElementById('confirm-ok').textContent = t('msg2.confirm.ok.apply');
-        state.confirmCb = () => { el.value = newVal; el.dataset.prev = newVal; ssDirty.add('packVolt'); };
+        state.confirmCb = () => { el.value = newVal; el.dataset.prev = newVal; ssDirty.add('packVoltage'); };
         document.getElementById('confirm-overlay').classList.add('open');
       });
     } else {
@@ -3672,10 +3642,10 @@ function wireScooterSettings() {
   if (saveBtn) saveBtn.addEventListener('click', saveScooterSettings);
 }
 
-/* ── Per-gear (assist) settings - mirrors the original app's per-gear assistList ──
+/* ── Per-gear (assist) settings, one profile per gear ──
    The 55 71 frame only ever reports the CURRENTLY ACTIVE gear, so we cache each gear's values
-   as the rider switches gears (exactly how the original app accumulates assist1..assist5). The
-   editor prefills the selected gear from that cache and writes via LB.sendGearSetting. */
+   as the rider switches gears, filling one gear slot at a time. The editor prefills the selected
+   gear from that cache and writes via LB.sendGearSetting. */
 /* Per-gear values are cached in memory for the CURRENT SESSION ONLY - never persisted to disk. Stale
    per-gear values must never be shown or written back to the controller, so the cache is always
    rebuilt live from the scooter. The firmware sends only the active gear's values, so each gear's
@@ -3695,14 +3665,14 @@ function updateGearCache() {
   const d = liveRaw();
   const g = activeGear();
   if (g == null) return;
-  if (d.assistSpeedLimit == null && d.eabsLevel == null) return; // no 55 71 state yet
+  if (d.assistSpeedLimit == null && d.eabsRegen == null) return; // no 55 71 state yet
   gearCache[g] = {
-    speedLimit:  Number(pick(d, ['assistSpeedLimit'])) || 0,
-    eabsLevel:   Number(pick(d, ['eabsLevel'])) || 0,
-    fStartLevel: Number(pick(d, ['fStartLevel'])) || 0,
-    rStartLevel: Number(pick(d, ['rStartLevel'])) || 0,
-    fCurrent:    Number(pick(d, ['fCurrentLimit'])) || 0,
-    rCurrent:    Number(pick(d, ['rCurrentLimit'])) || 0
+    speedLimit:      Number(pick(d, ['assistSpeedLimit'])) || 0,
+    eabsRegen:       Number(pick(d, ['eabsRegen'])) || 0,
+    frontStartLevel: Number(pick(d, ['frontStartLevel'])) || 0,
+    rearStartLevel:  Number(pick(d, ['rearStartLevel'])) || 0,
+    frontCurrent:    Number(pick(d, ['frontCurrentLimit'])) || 0,
+    rearCurrent:     Number(pick(d, ['rearCurrentLimit'])) || 0
   };
 }
 
@@ -3734,9 +3704,9 @@ function prefillGearEditor(gear) {
   const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); };
   const c = gearCache[gear];
   if (c) {
-    setV('gs-speed', c.speedLimit); setV('gs-eabs', c.eabsLevel);
-    setV('gs-fstart', c.fStartLevel); setV('gs-rstart', c.rStartLevel);
-    setV('gs-fcur', c.fCurrent); setV('gs-rcur', c.rCurrent);
+    setV('gs-speed', c.speedLimit); setV('gs-eabs', c.eabsRegen);
+    setV('gs-fstart', c.frontStartLevel); setV('gs-rstart', c.rearStartLevel);
+    setV('gs-fcur', c.frontCurrent); setV('gs-rcur', c.rearCurrent);
   } else {
     ['gs-speed', 'gs-eabs', 'gs-fstart', 'gs-rstart', 'gs-fcur', 'gs-rcur'].forEach(id => setV(id, ''));
   }
@@ -3770,9 +3740,9 @@ function wireGearEditor() {
     const numOrNull = id => { const el = document.getElementById(id); const v = parseInt(el && el.value, 10); return isNaN(v) ? null : v; };
     const o = {};
     const add = (k, id) => { const v = numOrNull(id); if (v != null) o[k] = v; };
-    add('speedLimit', 'gs-speed'); add('eabsLevel', 'gs-eabs');
-    add('fStartLevel', 'gs-fstart'); add('rStartLevel', 'gs-rstart');
-    add('fCurrent', 'gs-fcur'); add('rCurrent', 'gs-rcur');
+    add('speedLimit', 'gs-speed'); add('eabsRegen', 'gs-eabs');
+    add('frontStartLevel', 'gs-fstart'); add('rearStartLevel', 'gs-rstart');
+    add('frontCurrent', 'gs-fcur'); add('rearCurrent', 'gs-rcur');
     try {
       LB.sendGearSetting(gear, JSON.stringify(o));
       showToast(tf('msg2.gear.toast.saved', { n: gear }));
@@ -3792,14 +3762,14 @@ function setMotorMode(mode) {
 
 /* ── Main-screen motor-mode quick toggle ──────────────────────
    Mirrors the settings-sheet #motor-mode-seg: Front/Rear/Both reuse setMotorMode() with
-   the SAME data-mode codes (2/1/0), Smart toggles TCS (isSmart). Reflects the scooter's
+   the SAME data-mode codes (2/1/0), Smart toggles traction control. Reflects the scooter's
    live state every tick and greys out / disables itself when not connected. */
 
-// Current isSmart (TCS) state from live data, with the systemStatus[4] bit as fallback.
+// Current traction-control state from live data, with the systemStatus[4] bit as fallback.
 function liveSmartOn() {
   const d = liveRaw();
   const b = v => v === true || v === 1 || v === '1';
-  let sm = pick(d, ['isSmart']);
+  let sm = pick(d, ['tractionControl']);
   if (sm == null) { const sys = Array.isArray(d.systemStatus) ? d.systemStatus : []; sm = b(sys[4]); }
   return b(sm);
 }
@@ -3813,8 +3783,8 @@ function toggleSmartMain() {
   catch (e) { showToast(tf('msg2.toast.error', { e: e })); }
 }
 
-// Reflect the scooter's motor mode + Smart state onto the main-screen quick toggle, and
-// enable/disable the whole control based on the BLE connection (called every tickBLE).
+// Reflect the scooter's motor mode + traction-control state onto the main-screen quick toggle.
+// Also enables/disables the whole control based on the BLE connection (called every tickBLE).
 function reflectMotorModeMain() {
   const wrap = document.getElementById('motor-quick');
   if (!wrap) return;
@@ -3822,8 +3792,8 @@ function reflectMotorModeMain() {
   wrap.classList.toggle('mq-disabled', !connected);
 
   const d = liveRaw();
-  const dm = pick(d, ['doubleMotor']);
-  const rm = pick(d, ['rmStatus']);
+  const dm = pick(d, ['dualMotor']);
+  const rm = pick(d, ['rearMotorOn']);
   const b = v => v === true || v === 1 || v === '1';
   let mode = -1;
   if (connected && dm !== undefined && rm !== undefined) {
@@ -4118,23 +4088,7 @@ function wireEvents() {
 
 /* ── Initialisation ───────────────────────────────────────── */
 
-function applyStatusBarInset() {
-  // The webview covers the whole screen including the Android status bar.
-  // plus.navigator.getStatusbarHeight() returns the height in CSS px - set it as
-  // --sat so the topbar/buttons below it are visible & clickable.
-  try {
-    if (window.plus && plus.navigator && plus.navigator.getStatusbarHeight) {
-      const h = plus.navigator.getStatusbarHeight();
-      if (h && h > 0) {
-        document.documentElement.style.setProperty('--sat', h + 'px');
-      }
-    }
-  } catch(e) {}
-}
-
 function init() {
-  // Keep the screen awake while this view is open - no screensaver while riding.
-  try { if (window.plus) plus.device.setWakelock(true); } catch (e) {}
   // Show the app version (read natively from the package) in the streaming build-info line.
   // The settings footer version now lives in the Version Info & Disclaimer modal.
   try {
@@ -4142,7 +4096,6 @@ function init() {
     const bi = document.getElementById('build-info');
     if (bi) bi.textContent = ver || '';
   } catch (e) {}
-  applyStatusBarInset();
   loadSettings();
   initLang();      // before anything renders, so the first paint is in the rider's language
   wireEvents();
@@ -4184,7 +4137,7 @@ function init() {
   }
 }
 
-// Wait for 5+ runtime or just run
+// Run once the document is parsed. If it already is, run straight away.
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {

@@ -65,7 +65,9 @@ public final class RideLogger {
 
 
     // Headline CSV columns emitted first (when present), before the rest in alphabetical order.
-    private static final String[] CSV_HEADLINE = {"realSpeed", "SOC", "power", "gear"};
+    // Each name must match a FrameParser.toJson() key. A name that matches nothing is silently
+    // ignored here and the real column drops back into the alphabetical block.
+    private static final String[] CSV_HEADLINE = {"speed", "SOC", "power", "gear"};
 
     private final Context appCtx;
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -596,12 +598,10 @@ public final class RideLogger {
         }
     }
 
+    /** Road speed of a snapshot; "speed" is the only key FrameParser emits for it. */
     private static double speedOf(String json) {
         try {
-            JSONObject o = new JSONObject(json);
-            double rs = o.optDouble("realSpeed", Double.NaN);
-            if (!Double.isNaN(rs)) return rs;
-            return o.optDouble("speed", 0.0);
+            return new JSONObject(json).optDouble("speed", 0.0);
         } catch (Throwable t) {
             return 0.0;
         }

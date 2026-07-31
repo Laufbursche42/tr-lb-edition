@@ -13,14 +13,15 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Native, byte-exact reimplementation of the original Teverun uni-app local-file firmware flasher
- * (Intel-HEX over BLE-UART). Reconstructed from apk/www/formatted/app-service.js (utils/upgrade.js)
- * and the fd1e frame-id module; see teverun/ota_1to1_spec.md for the full trace.
+ * Firmware update over the BLE-UART link: the bootloader takes an Intel-HEX image in 12-byte
+ * frames. Frame layout, ids and pacing are the ones the bootloader accepts, established by watching
+ * a working update on the wire.
  *
- * <p>Only the LEGACY path is implemented (config_vcu / config_bms) - that is the Fighter Mini path
- * ({@code isVer2 == false}). The ver2 / display path (config_dis) is intentionally out of scope.
+ * <p>The START id picks the target. The legacy path (Fighter Mini, {@code ver2 == false}) addresses
+ * the controller node (07 10) or the battery node (07 00) directly. A ver2 device takes every node
+ * through the display node (07 80) instead, selected by the 06 e2 handshake below.
  *
- * <p>Wire framing (all OTA frames): {@code 0xbb [idHi idLo b0..b7] crc8} = 12 bytes, crc8 over the
+ * <p>Wire framing (all update frames): {@code 0xbb [idHi idLo b0..b7] crc8} = 12 bytes, crc8 over the
  * 10 middle bytes. Responses: {@code 0xcc [idHi idLo status..] crc8}. CRC8 = poly 0x07 (shared with
  * {@link CommandBuilder#crc8}); firmware integrity = CRC16/MODBUS ({@link CommandBuilder#crc16Modbus}).
  *
@@ -31,9 +32,8 @@ import java.util.Locale;
  * FINISH resp (07 51 aa) = success. A 30-minute global watchdog is armed on the START response.
  *
  * <p>Threading: {@link #onNotify}/{@link #onWriteComplete} are called from the GATT binder thread and
- * immediately marshalled onto the main looper, so the whole state machine runs single-threaded -
- * exactly like the original (single JS thread). All BLE writes are issued from the main looper via
- * {@link Host#writeFrame}.
+ * immediately marshalled onto the main looper, so the whole state machine runs single-threaded.
+ * All BLE writes are issued from the main looper via {@link Host#writeFrame}.
  */
 final class OtaEngine {
 
@@ -47,7 +47,7 @@ final class OtaEngine {
         void setHighPriority(boolean high);
         /** Progress update: percent 0..100, current 1-based packet, total packets, short phase label. */
         void progress(int percent, int packet, int count, String phase);
-        /** Append one human-readable line to the flash log (mirrors the original infoList). */
+        /** Append one human-readable line to the flash log shown on the update page. */
         void log(String line);
         /** Terminal state: one of "running", "success", "failed", "cancelled" + a message. */
         void state(String state, String message);
@@ -55,18 +55,18 @@ final class OtaEngine {
         void finished(boolean success);
     }
 
-    // ── Frame-id config (fd1e: config_vcu / config_bms) ──
+    // ── Frame ids per target node (controller 07 10, battery 07 00, display 07 80) ──
     private static final class Config {
         final int[] START, START_RESP, INFO, INFO_RESP, PACKINFO, PACKINFO_RESP,
                 PACKDATA, PACKDATA_RESP, FINISH, FINISH_RESP;
-        final int[] HANDSHAKE, HANDSHAKE_RESP;   // ver2 (config_dis) node-select handshake; null for legacy
+        final int[] HANDSHAKE, HANDSHAKE_RESP;   // ver2 node-select handshake; null on the legacy path
         final int packLen, lineLen;
         Config(int idHi, int startLo, int packLen, int[] handshake, int[] handshakeResp) {
             // The id blocks are perfectly regular around the START low byte:
             //   START s, START_RESP s+0x40, FINISH s+1, FINISH_RESP s+0x41,
             //   INFO s+2, INFO_RESP s+0x42, PACKINFO s+3, PACKINFO_RESP s+0x43,
             //   PACKDATA s+4, PACKDATA_RESP s+0x44.
-            //   config_vcu s=0x10, config_bms s=0x00, config_dis s=0x80 (resp block = 0xc0..).
+            //   controller s=0x10, battery s=0x00, display s=0x80 (resp block = 0xc0..).
             START = new int[]{idHi, startLo};
             START_RESP = new int[]{idHi, startLo + 0x40};
             FINISH = new int[]{idHi, startLo + 0x01};
@@ -80,34 +80,34 @@ final class OtaEngine {
             HANDSHAKE = handshake;
             HANDSHAKE_RESP = handshakeResp;
             this.packLen = packLen;
-            this.lineLen = 16;   // UPGRADE_LINE_DATA_LENGTH is 16 for every target
+            this.lineLen = 16;   // 16 data bytes per Intel-HEX record for every target
         }
-        static Config vcu() { return new Config(0x07, 0x10, 512, null, null); }   // config_vcu
-        static Config bms() { return new Config(0x07, 0x00, 1024, null, null); }  // config_bms
-        // config_dis: ver2 devices flash EVERY node through the display block; the node is selected
-        // by the 06 e2 handshake (fileType/fileCode), not a separate id block.
+        static Config vcu() { return new Config(0x07, 0x10, 512, null, null); }   // controller node
+        static Config bms() { return new Config(0x07, 0x00, 1024, null, null); }  // battery node
+        // Display node: ver2 devices flash EVERY node through this block, the node being selected by
+        // the 06 e2 handshake (nodeType/projectCode) rather than by a separate id block.
         static Config dis() { return new Config(0x07, 0x80, 1024, new int[]{0x06, 0xe2}, new int[]{0x06, 0xea}); }
     }
 
-    /** One flash packet: 3-byte address (sId high byte + 16-bit backId) and its hex data string. */
+    /** One flash packet: 3-byte target address (bank byte + 16-bit offset) and its hex data. */
     private static final class Packet {
-        String sId = "00";     // slice(11,13) of the enclosing type-04 record (low byte of the bank)
-        String backId = "0000";// slice(3,7) of the packet's first data record (16-bit address)
-        String data = "";      // concatenated hex data, up to packLen bytes
+        String bank = "00";      // low byte of the enclosing type-04 extended-address record
+        String offset = "0000";  // 16-bit address field of the packet's first data record
+        String data = "";        // concatenated hex data, up to packLen bytes
     }
 
-    // ── Timers / pacing (utils/upgrade.js) ──
+    // ── Timers / pacing ──
     private static final long PREPARE_TO_START_MS = 1500;
     private static final long START_RETRY_MS = 1000;      // resend START every 1 s
     private static final int  START_MAX_RETRIES = 9;      // retryCount < 9 -> up to 10 sends total
     private static final long STEP_RESEND_MS = 3000;      // single resend of INFO / PACKINFO / FINISH
     private static final long GLOBAL_WATCHDOG_MS = 1_800_000; // 30 min armed on START response
-    private static final long STARTCHECK_STATE_MS = 3000; // START never answered -> give up
+    private static final long START_TIMEOUT_MS = 3000;    // START never answered -> give up
     private static final long STUCK_RECOVERY_MS = 5000;   // re-drive a stuck packet
     private static final long FINISH_CHECK_MS = 10_000;   // final success check
     private static final long CORRUPT_NUDGE_MS = 100;     // bad-crc cc frame -> re-drive
     private static final long PACKDATA_ERR_RETRY_MS = 200;// PACKDATA error -> retry packet
-    // Inter-frame delay for the write pump = the original app's spValue default (30 ms). The writes
+    // Inter-frame delay for the write pump, 30 ms, the value a working update runs at. The writes
     // are no-response (fire-and-forget at the ATT layer), so this floor prevents overrunning the
     // bootloader; the RF connection interval caps the real rate anyway (~60 ms/frame on hardware).
     private static final long INTERFRAME_MS = 30;
@@ -116,7 +116,7 @@ final class OtaEngine {
     private static final int PACKET_STALL_TICKS = 2;      // ~10 s of no response -> re-drive
     private static final int PACKET_MAX_RETRIES = 5;
     // Safety cap on the auto-restart-from-START recovery so a persistently failing flash cannot loop
-    // forever (the original relies only on the 30-min watchdog).
+    // until the 30-min watchdog fires.
     private static final int MAX_RESTARTS = 2;
 
     // VCU app base offset from 0x08000000 (app starts at 0x08007000). Anything below this is the
@@ -130,27 +130,27 @@ final class OtaEngine {
 
     private Config config;
     private boolean isVcu = true;
-    private boolean ver2 = false;              // config_dis flash (T2/ver2 devices) with a node handshake
-    private int fileType = -1, fileCode = -1;  // node select from the file trailer (uId, proId)
+    private boolean ver2 = false;              // flash through the display node with a node handshake
+    private int nodeType = -1, projectCode = -1;  // node select, read from the file trailer
     private final List<Packet> packets = new ArrayList<>();
     private byte[] allData = new byte[0];     // decoded firmware bytes (for CRC16 + INFO length)
     private String fileCrc = "";              // trailer CRC16 (4 hex, uppercase)
     private String fileVer = "";              // trailer sw version "a.b.c"
 
-    // engine state (names mirror the original)
-    private boolean upGradeType = false;      // START has been sent for this attempt
-    private int upGradeState = 0;             // 0 idle, 1 success, 2 no-START, 3 flashing
-    private int backIndex = 0;                // current packet
+    // engine state
+    private boolean startSent = false;        // START has been sent for this attempt
+    private int flashState = 0;               // 0 idle, 1 success, 2 no-START, 3 flashing
+    private int packetIndex = 0;              // current packet
     private int retryCount = 0;               // START resend counter
     private int restarts = 0;
     private int packetRetries = 0;            // re-drives of the current packet (stall recovery)
-    private boolean hasBreak = false;         // a PACKDATA error stalls the current burst
+    private boolean packetFailed = false;     // a PACKDATA error stalls the current burst
 
     // outbound: scheduled PACKDATA frame runnables (so a re-drive can cancel them)
     private final List<Runnable> pendingSends = new ArrayList<>();
 
     // timers (kept so they can be cancelled)
-    private Runnable startRetry, stepResend, stuckTimer, watchdog, startCheckState, finishCheck;
+    private Runnable startRetry, stepResend, stuckTimer, watchdog, startTimeout, finishCheck;
 
     OtaEngine(Host host) {
         this.host = host;
@@ -170,24 +170,25 @@ final class OtaEngine {
     void start(String hexText, String fileName) { start(hexText, fileName, false); }
 
     /**
-     * ver2 (T2/tetra) devices flash every node - display, light module, controllers, BMS - through
-     * the config_dis block, selecting the target node with a 06 e2 handshake (fileType/fileCode read
-     * from the file's :07AAA555 trailer). Otherwise identical framing/state-machine to the legacy path.
+     * ver2 (T2/tetra) devices flash every node (display, light module, controllers, battery) through
+     * the display block (START id 07 80), selecting the target node with a 06 e2 handshake whose
+     * node type and project code come from the file's :07AAA555 trailer. Framing and state machine
+     * are otherwise those of the legacy path.
      */
     void start(String hexText, String fileName, boolean ver2) {
         if (running) return;
         running = true;
         resetState();
         host.state("running", "Preparing");
-        host.log("Ready for upgrade");
+        host.log("Preparing the scooter for the update");
 
-        // Target select from the filename prefix, exactly like the original type gate: an AWE... name
-        // is a BMS image, everything else is a VCU image. This picks the frame-id config AND the
-        // packet grouping (VCU 32 lines/packet, BMS 64), so it must happen before grouping.
+        // Target select from the filename prefix: an AWE... name is a battery image, everything else
+        // is a controller image. This picks the frame-id config AND the packet grouping
+        // (controller 32 lines/packet, battery 64), so it must happen before grouping.
         String name = fileName == null ? "" : fileName.trim();
         this.ver2 = ver2;
         if (ver2) {
-            isVcu = false;                 // config_dis flashes any node; not the legacy VCU/BMS split
+            isVcu = false;                 // the display block takes any node, so no target split here
             config = Config.dis();
         } else {
             isVcu = !name.toUpperCase(Locale.US).startsWith("AWE");
@@ -199,12 +200,12 @@ final class OtaEngine {
             prepareGroups(config.packLen / config.lineLen);
         } catch (Throwable t) {
             Log.e(TAG, "parse failed", t);
-            fail("Could not read the upgrade file");
+            fail("Could not read this firmware file");
             return;
         }
 
         if (packets.isEmpty() || fileCrc.isEmpty()) {
-            fail("Please load the correct upgrade file");
+            fail("This file is not a firmware image the scooter can take");
             return;
         }
 
@@ -212,7 +213,7 @@ final class OtaEngine {
         String calc = String.format(Locale.US, "%04X", CommandBuilder.crc16Modbus(allData, allData.length));
         if (!calc.equalsIgnoreCase(fileCrc)) {
             Log.w(TAG, "crc mismatch calc=" + calc + " file=" + fileCrc);
-            fail("Please load the correct upgrade file (CRC mismatch)");
+            fail("This file is damaged: its contents do not match its own checksum");
             return;
         }
 
@@ -222,7 +223,7 @@ final class OtaEngine {
         // but this fails fast before erasing anything.
         if (isVcu) {
             Packet p0 = packets.get(0);
-            int[] a = addr3(p0.sId, p0.backId);
+            int[] a = addr3(p0.bank, p0.offset);
             int firstAddr = (a[0] << 16) | (a[1] << 8) | a[2];
             if (firstAddr < APP_BASE_OFFSET) {
                 Log.w(TAG, "refusing flash: first offset 0x" + Integer.toHexString(firstAddr) + " < app base");
@@ -231,31 +232,31 @@ final class OtaEngine {
             }
         }
 
-        host.log((ver2 ? "ver2 node " + fileType + "/" + fileCode : (isVcu ? "VCU" : "BMS"))
+        host.log((ver2 ? "ver2 node " + nodeType + "/" + projectCode : (isVcu ? "controller" : "battery"))
                 + " image, " + packets.size() + " packets, " + allData.length + " bytes, CRC " + calc);
         host.progress(0, 0, packets.size(), "Preparing");
 
-        // NOTE: do NOT request a HIGH connection priority - the original app runs at the default
-        // interval. A faster interval pushes frames at the controller quicker than its BLE-module
-        // UART forwards them, which overran it after a few packets (the VCU then stopped answering).
+        // NOTE: do NOT request a HIGH connection priority. A faster interval pushes frames at the
+        // controller quicker than its BLE-module UART forwards them, which overran it after a few
+        // packets (the VCU then stopped answering).
 
         if (ver2) {
             // ver2: no bootloader-prepare; the 06 e2 handshake selects the node and its 06 ea "01 aa"
             // ack drives START. No 1500 ms wait.
-            if (fileType < 0 || fileCode < 0) { fail("ver2 file has no node header (07AAA555)"); return; }
+            if (nodeType < 0 || projectCode < 0) { fail("This file carries no node header (07AAA555)"); return; }
             sendHandshake();
         } else {
-            // Step 0 - prepare / erase, then START after 1500 ms (startCheck()).
+            // Step 0: prepare / erase, then START after 1500 ms.
             sendPrepare();
-            host.log("Wait for system");
-            main.postDelayed(() -> { if (running) cilpPackage(); }, PREPARE_TO_START_MS);
+            host.log("Waiting for the controller to erase its app flash");
+            main.postDelayed(() -> { if (running) sendStart(); }, PREPARE_TO_START_MS);
         }
     }
 
     /** User-initiated abort. The VCU stays in bootloader receive-mode, so the flash can be retried. */
     void cancel() {
         if (!running) return;
-        host.log("Cancelled by user - re-flash before riding (the scooter is in update mode)");
+        host.log("Cancelled by the user. Flash again before riding: the scooter is in update mode");
         finish(false, "cancelled", "Cancelled");
     }
 
@@ -280,29 +281,29 @@ final class OtaEngine {
         // no-op
     }
 
-    // ── File parse (sendFile) ──
+    // ── File parse ──
 
     private String[] rawLines = new String[0];
 
-    /** Result of parsing an Intel-HEX file into flash packets + trailer info (sendFile). */
+    /** Result of parsing an Intel-HEX file into flash packets + trailer info. */
     private static final class ParseResult {
         final List<Packet> packets = new ArrayList<>();
         byte[] allData = new byte[0];
         String fileCrc = "";
         String fileVer = "";
-        int fileType = -1, fileCode = -1;   // trailer uId, proId (ver2 node select)
+        int nodeType = -1, projectCode = -1;   // trailer bytes selecting the ver2 target node
     }
 
     /**
      * Parse Intel-HEX lines into flash packets and read the ":07AAA555" trailer. Stateless so both a
      * live flash and the pre-flight {@link #inspect} can share it. Grouping = linesPerPacket lines
-     * (PACK_LENGTH / LINE_DATA_LENGTH); {@code sId} = the enclosing type-04 record's low bank byte
-     * ({@code slice(11,13)}), {@code backId} = the packet's first data record 16-bit address.
+     * (packet length / record length); {@code bank} = the enclosing type-04 record's low address
+     * byte, {@code offset} = the 16-bit address of the packet's first data record.
      */
     private static ParseResult parse(String[] rawLines, int linesPerPacket) {
         ParseResult res = new ParseResult();
         StringBuilder allHex = new StringBuilder();
-        String last04sId = "00";
+        String currentBank = "00";
         Packet cur = new Packet();
         StringBuilder data = new StringBuilder();
         int count = 0;
@@ -320,19 +321,19 @@ final class OtaEngine {
                     res.packets.add(cur);
                     allHex.append(cur.data);
                     cur = new Packet();
-                    cur.sId = last04sId;   // carry the current bank into the next packet
+                    cur.bank = currentBank;   // carry the current bank into the next packet
                     data.setLength(0);
                     count = 0;
                 }
-                if (line.length() >= 13 && isHex(line.substring(11, 13))) { last04sId = line.substring(11, 13); cur.sId = last04sId; }
+                if (line.length() >= 13 && isHex(line.substring(11, 13))) { currentBank = line.substring(11, 13); cur.bank = currentBank; }
             } else if ("00".equals(tt)) {
                 if (!isHex(line.substring(1, 3))) continue;           // corrupt byte-count field
                 int ll = Integer.parseInt(line.substring(1, 3), 16);
                 int end = 9 + 2 * ll;
-                // Reject a truncated or non-hex data record. This keeps every stored sId/backId hex, so
-                // the later addr3() parse (also run mid-flash) can never throw on a crafted/corrupt file.
+                // Reject a truncated or non-hex data record. This keeps every stored bank/offset hex,
+                // so the later addr3() parse (also run mid-flash) cannot throw on a corrupt file.
                 if (line.length() < end || !isHex(line.substring(1, end))) continue;
-                if (count == 0) cur.backId = line.substring(3, 7);
+                if (count == 0) cur.offset = line.substring(3, 7);
                 data.append(line.substring(9, end));
                 count++;
                 sawData = true;
@@ -341,17 +342,17 @@ final class OtaEngine {
                     res.packets.add(cur);
                     allHex.append(cur.data);
                     Packet next = new Packet();
-                    next.sId = cur.sId;
+                    next.bank = cur.bank;
                     cur = next;
                     data.setLength(0);
                     count = 0;
                 }
             }
 
-            // Trailer record ":07AAA555..": uId, proId, swVer, crc16, checkSum.
+            // Trailer record ":07AAA555..": node type, project code, sw version, crc16, checksum.
             if (line.length() >= 25 && "07AAA555".equals(line.substring(1, 9)) && isHex(line.substring(9, 23))) {
-                res.fileType = Integer.parseInt(line.substring(9, 11), 16);   // uId  (ver2 node type)
-                res.fileCode = Integer.parseInt(line.substring(11, 13), 16);  // proId (ver2 project code)
+                res.nodeType = Integer.parseInt(line.substring(9, 11), 16);      // ver2 node type
+                res.projectCode = Integer.parseInt(line.substring(11, 13), 16);  // ver2 project code
                 res.fileVer = Integer.parseInt(line.substring(13, 15), 16) + "."
                         + Integer.parseInt(line.substring(15, 17), 16) + "."
                         + Integer.parseInt(line.substring(17, 19), 16);
@@ -377,8 +378,8 @@ final class OtaEngine {
         allData = r.allData;
         fileCrc = r.fileCrc;
         fileVer = r.fileVer;
-        fileType = r.fileType;
-        fileCode = r.fileCode;
+        nodeType = r.nodeType;
+        projectCode = r.projectCode;
     }
 
     /**
@@ -386,7 +387,7 @@ final class OtaEngine {
      * CRC16 and read the trailer and report metadata as JSON {@code {ok,name,sizeBytes,packets,
      * fileVer,fileVerMajor,firstAddr,fileCrc,calcCrc,crcOk,targetIsVcu}}. The dashboard combines this
      * with the connected device's state for the compatibility gate. The filename target rule matches
-     * the flasher (AWE* = BMS, else VCU); {@code firstAddr} is the 24-bit flash offset (from
+     * the flasher (AWE* = battery, else controller); {@code firstAddr} is the 24-bit flash offset (from
      * {@code 0x08000000}) of the first packet, so the UI can confirm it is a VCU app image
      * (offset >= 0x7000, i.e. above the protected bootloader) and not a bootloader / display image.
      */
@@ -400,11 +401,11 @@ final class OtaEngine {
             ParseResult r = parse(lines, linesPerPacket);
             boolean parsed = !r.packets.isEmpty() && !r.fileCrc.isEmpty();
             String calc = String.format(Locale.US, "%04X", CommandBuilder.crc16Modbus(r.allData, r.allData.length));
-            // First-packet flash offset (sId high byte + 16-bit backId), the address the bootloader
+            // First-packet flash offset (bank byte + 16-bit offset), the address the bootloader
             // maps to 0x08000000 + offset. A VCU app starts at 0x08007000 -> offset 0x7000.
             int firstAddr = -1;
             if (!r.packets.isEmpty()) {
-                int[] a = addr3(r.packets.get(0).sId, r.packets.get(0).backId);
+                int[] a = addr3(r.packets.get(0).bank, r.packets.get(0).offset);
                 firstAddr = (a[0] << 16) | (a[1] << 8) | a[2];
             }
             // Trailer major version (e.g. "5.4.19" -> 5), the generation signal used by the gate.
@@ -430,8 +431,9 @@ final class OtaEngine {
     // ── prepare / START ──
 
     private void sendPrepare() {
-        // VCU: crc over [aa 04 03 ff*16] (19 bytes), no prefix. BMS: crc over [04 03 ff*16] (18
-        // bytes), then prepend 0xaa. The two differ in whether 0xaa is inside the crc - keep exact.
+        // Controller: crc over [aa 04 03 ff*16] (19 bytes), no prefix. Battery: crc over
+        // [04 03 ff*16] (18 bytes), then prepend 0xaa. The nodes differ in whether 0xaa is inside
+        // the crc, so keep both exact.
         byte[] out = new byte[20];
         if (isVcu) {
             int[] p = new int[19];
@@ -450,11 +452,11 @@ final class OtaEngine {
         otaWrite(out);
     }
 
-    private void cilpPackage() {
+    private void sendStart() {
         cancel(stepResend);
         retryCount = 0;
-        if (!upGradeType) {
-            upGradeType = true;
+        if (!startSent) {
+            startSent = true;
             startRetry = new Runnable() {
                 @Override public void run() {
                     if (!running) return;
@@ -464,10 +466,10 @@ final class OtaEngine {
                         retryCount++;
                         main.postDelayed(this, START_RETRY_MS);
                     } else {
-                        upGradeState = 2;
+                        flashState = 2;
                         retryCount = 0;
-                        armStartCheckState();
-                        fail("No response to the update request - is the scooter on and in range?");
+                        armStartTimeout();
+                        fail("The scooter is not answering. Is it switched on and in range?");
                     }
                 }
             };
@@ -475,23 +477,23 @@ final class OtaEngine {
         }
     }
 
-    private void armStartCheckState() {
-        startCheckState = () -> {
-            if (running && upGradeState == 2) fail("Update start timed out");
+    private void armStartTimeout() {
+        startTimeout = () -> {
+            if (running && flashState == 2) fail("The scooter did not enter update mode");
         };
-        main.postDelayed(startCheckState, STARTCHECK_STATE_MS);
+        main.postDelayed(startTimeout, START_TIMEOUT_MS);
     }
 
     // ── ver2 node-select handshake (06 e2 / 06 ea) ──
 
-    /** Send the 06 e2 request that selects the target node (fileType/fileCode) before START. */
+    /** Send the 06 e2 request that selects the target node (type/project code) before START. */
     private void sendHandshake() {
-        int sum7 = (0x01 + (fileType & 0xFF) + (fileCode & 0xFF)) & 0xFF;
-        int[] payload = new int[]{0x01, fileType & 0xFF, fileCode & 0xFF, 0, 0, 0, 0, sum7};
+        int sum7 = (0x01 + (nodeType & 0xFF) + (projectCode & 0xFF)) & 0xFF;
+        int[] payload = new int[]{0x01, nodeType & 0xFF, projectCode & 0xFF, 0, 0, 0, 0, sum7};
         byte[] hs = wire(frame(config.HANDSHAKE, payload));
-        host.log("Upgrade request (node " + fileType + "/" + fileCode + ")");
+        host.log("Asking the scooter for update mode (node " + nodeType + "/" + projectCode + ")");
         otaWrite(hs);
-        armStepResend(() -> otaWrite(hs));   // single 3 s resend, like the original's 3e3 timer
+        armStepResend(() -> otaWrite(hs));   // one 3 s resend covers a dropped request
     }
 
     /** Reply to a controller confirmation request (06 ea 02 a5): proceed (aa) or cancel (55). */
@@ -519,8 +521,8 @@ final class OtaEngine {
             return;
         }
         // Corrupted cc frame during an active flash -> re-drive the current packet (100 ms).
-        if (upGradeType && header == 0xcc && !crcOk) {
-            main.postDelayed(this::sendNextBack, CORRUPT_NUDGE_MS);
+        if (startSent && header == 0xcc && !crcOk) {
+            main.postDelayed(this::sendNextPacket, CORRUPT_NUDGE_MS);
         }
     }
 
@@ -532,45 +534,45 @@ final class OtaEngine {
             cancel(stepResend);
             if (status == 0x01) {                     // request ack
                 if (reason == 0xaa) {                  // accepted -> proceed to START
-                    host.log("Upgrade request accepted");
-                    cilpPackage();
+                    host.log("The scooter accepted the update request");
+                    sendStart();
                 } else if (reason == 0x55) {           // refused
                     String why;
                     switch (n[4]) {
-                        case 0x01: why = "node does not exist"; break;
-                        case 0x02: why = "node does not support upgrade"; break;
+                        case 0x01: why = "no such node"; break;
+                        case 0x02: why = "this node cannot be updated"; break;
                         case 0x03: why = "project code does not match"; break;
                         case 0x04: why = "controller not in idle state"; break;
                         default:   why = "reason 0x" + Integer.toHexString(n[4]);
                     }
-                    fail("Upgrade request refused (" + why + ")");
+                    fail("The scooter refused the update request (" + why + ")");
                 }
             } else if (status == 0x02 && reason == 0xa5) {   // controller asks to confirm -> confirm
-                host.log("Controller asks to confirm - confirming");
+                host.log("The controller wants a confirmation. Confirming");
                 sendConfirmReply(true);
-            } else if (status == 0x03) {               // node upgrade progress stream
-                host.log("Node upgrade progress " + Integer.toHexString(reason) + " " + Integer.toHexString(n[4]));
+            } else if (status == 0x03) {               // node progress stream
+                host.log("Node progress " + Integer.toHexString(reason) + " " + Integer.toHexString(n[4]));
             }
             return;
         }
 
         if (match(idHi, idLo, config.START_RESP) && status == 0x55) {
-            // START accepted. Stop the START-retry loop (the original clears its timer here) - if it
-            // is left running it keeps re-sending START every 1 s in the background and, after 10
-            // tries (~10 s = about packet 4-5), aborts the flash with "No response to the update
-            // request". THIS was the deterministic packet-4/5 abort, independent of write pacing.
+            // START accepted, so stop the START-retry loop. Left running it keeps re-sending START
+            // every 1 s in the background and after 10 tries (~10 s = about packet 4-5) aborts the
+            // flash for no answer. THIS was the deterministic packet-4/5 abort, independent of the
+            // write pacing.
             cancel(startRetry);
-            host.log("Update start accepted");
-            upGradeState = 3;
+            host.log("The scooter is in update mode");
+            flashState = 3;
             armGlobalWatchdog();
             cancel(stepResend);
             main.postDelayed(() -> { if (running) sendInfo(); }, 200);
             return;
         }
         if (match(idHi, idLo, config.INFO_RESP)) {
-            host.log("Info accepted - sending " + packets.size() + " packets");
+            host.log("Image header acknowledged. Sending " + packets.size() + " packets");
             cancel(stepResend);
-            backIndex = 0;
+            packetIndex = 0;
             packetRetries = 0;
             reportProgress("Sending");
             sendPackInfo();
@@ -578,39 +580,39 @@ final class OtaEngine {
         }
         if (match(idHi, idLo, config.PACKINFO_RESP)) {
             cancel(stepResend);
-            host.log("Packet " + (backIndex + 1) + " info-ack");
+            host.log("Packet " + (packetIndex + 1) + " header acknowledged");
             pumpPackData();
             return;
         }
         if (match(idHi, idLo, config.PACKDATA_RESP)) {
             if (status == 0xaa) {
-                backIndex++;
+                packetIndex++;
                 packetRetries = 0;
-                sendNextBack();
+                sendNextPacket();
             } else {
                 // reason: 01 = receive timeout, 02 = frame loss, 03 = flash write fail
-                host.log("Packet " + (backIndex + 1) + " error (" + Integer.toHexString(status) + "/"
+                host.log("Packet " + (packetIndex + 1) + " error (" + Integer.toHexString(status) + "/"
                         + Integer.toHexString(reason) + ")");
-                hasBreak = true;
+                packetFailed = true;
                 if (packetRetries >= PACKET_MAX_RETRIES) {
-                    fail("Packet " + (backIndex + 1) + "/" + packets.size() + " failed repeatedly - aborting");
+                    fail("The scooter kept rejecting packet " + (packetIndex + 1) + "/" + packets.size());
                     return;
                 }
                 packetRetries++;
-                main.postDelayed(this::sendNextBack, PACKDATA_ERR_RETRY_MS);
+                main.postDelayed(this::sendNextPacket, PACKDATA_ERR_RETRY_MS);
             }
             return;
         }
         if (match(idHi, idLo, config.FINISH_RESP)) {
             cancel(stepResend);
             if (status == 0xaa) {
-                host.log("CRC correct, refresh complete");
-                upGradeState = 1;
+                host.log("The scooter verified the image checksum");
+                flashState = 1;
                 succeed();
             } else {
-                if (status == 0x55) startCheckUpgrade("CRC error, upgrade failure");
-                else if (status == 0xa5) startCheckUpgrade("Timeout error");
-                else startCheckUpgrade("");
+                if (status == 0x55) armFinishCheck("The scooter found a checksum error in the image");
+                else if (status == 0xa5) armFinishCheck("The scooter stopped answering at the end");
+                else armFinishCheck("");
             }
         }
     }
@@ -620,8 +622,8 @@ final class OtaEngine {
     private void sendInfo() {
         Packet p0 = packets.get(0);
         int[] payload = new int[8];
-        // [0..2] start address = sId + backId (3 bytes)
-        int[] addr = addr3(p0.sId, p0.backId);
+        // [0..2] start address = bank + offset (3 bytes)
+        int[] addr = addr3(p0.bank, p0.offset);
         payload[0] = addr[0]; payload[1] = addr[1]; payload[2] = addr[2];
         // [3..5] total firmware byte length (3 bytes, big-endian)
         int total = allData.length;
@@ -630,35 +632,35 @@ final class OtaEngine {
         int crc = CommandBuilder.crc16Modbus(allData, allData.length);
         payload[6] = (crc >> 8) & 0xFF; payload[7] = crc & 0xFF;
 
-        host.log("Start upgrade");
+        host.log("Sending the image header (size and checksum)");
         otaWrite(wire(frame(config.INFO, payload)));
         armStepResend(() -> otaWrite(wire(frame(config.INFO, payload))));
     }
 
     private void sendPackInfo() {
-        if (backIndex < 0 || backIndex >= packets.size()) return;   // out-of-state response guard
-        Packet p = packets.get(backIndex);
+        if (packetIndex < 0 || packetIndex >= packets.size()) return;   // out-of-state response guard
+        Packet p = packets.get(packetIndex);
         int[] payload = new int[8];
-        int[] addr = addr3(p.sId, p.backId);
+        int[] addr = addr3(p.bank, p.offset);
         payload[0] = addr[0]; payload[1] = addr[1]; payload[2] = addr[2];
         int plen = p.data.length() / 2;
         payload[3] = (plen >> 16) & 0xFF; payload[4] = (plen >> 8) & 0xFF; payload[5] = plen & 0xFF;
-        payload[6] = backIndex & 0xFF;
+        payload[6] = packetIndex & 0xFF;
         payload[7] = packets.size() & 0xFF;
 
-        host.log("Send package " + (backIndex + 1) + "/" + packets.size());
+        host.log("Sending packet " + (packetIndex + 1) + "/" + packets.size());
         byte[] frame = wire(frame(config.PACKINFO, payload));
         otaWrite(frame);
         armStepResend(() -> otaWrite(frame));
     }
 
     private void pumpPackData() {
-        if (backIndex < 0 || backIndex >= packets.size()) return;   // stale/out-of-state PACKINFO response
-        hasBreak = false;
+        if (packetIndex < 0 || packetIndex >= packets.size()) return;   // stale PACKINFO response
+        packetFailed = false;
         clearPendingSends();
-        byte[] data = hexToBytes(packets.get(backIndex).data);
+        byte[] data = hexToBytes(packets.get(packetIndex).data);
         int frameCount = data.length / 7 + 1;
-        host.log("Packet " + (backIndex + 1) + ": sending " + frameCount + " data frames");
+        host.log("Packet " + (packetIndex + 1) + ": sending " + frameCount + " data frames");
         int pos = 0;
         for (int m = 0; m < frameCount; m++) {
             int[] payload = new int[8];
@@ -666,76 +668,76 @@ final class OtaEngine {
             for (int k = 1; k < 8; k++) payload[k] = 0xFF;   // default 0xff for the 7 data slots
             for (int k = 0; k < 7 && pos < data.length; k++) payload[1 + k] = data[pos++] & 0xFF;
             final byte[] out = wire(frame(config.PACKDATA, payload));
-            final Runnable r = () -> { if (running && !hasBreak) otaWrite(out); };
+            final Runnable r = () -> { if (running && !packetFailed) otaWrite(out); };
             pendingSends.add(r);
-            main.postDelayed(r, (long) (m + 1) * INTERFRAME_MS);   // scheduled spValue apart
+            main.postDelayed(r, (long) (m + 1) * INTERFRAME_MS);   // one inter-frame delay apart
         }
         // The VCU answers with one PACKDATA response (07 54) once it has received the whole packet.
     }
 
-    private void sendNextBack() {
+    private void sendNextPacket() {
         if (!running) return;
         cancel(stuckTimer);
         clearPendingSends();   // cancel any scheduled PACKDATA from a stalled packet before re-driving
         reportProgress("Sending");
-        if (backIndex < packets.size()) {
+        if (packetIndex < packets.size()) {
             sendPackInfo();
             // Per-packet stall watchdog. Ticks every 5 s and re-drives this packet if it errored
-            // (hasBreak) or got no PACKDATA response within PACKET_STALL_TICKS. A stale tick (the
+            // (packetFailed) or got no PACKDATA response within PACKET_STALL_TICKS. A stale tick (the
             // packet already advanced) no-ops. After PACKET_MAX_RETRIES on one packet, give up.
-            final int pkt = backIndex;
+            final int pkt = packetIndex;
             stuckTimer = new Runnable() {
                 int ticks = 0;
                 @Override public void run() {
-                    if (!running || backIndex != pkt) return;   // packet advanced -> stale timer
-                    boolean stalled = hasBreak || (++ticks >= PACKET_STALL_TICKS);
+                    if (!running || packetIndex != pkt) return;   // packet advanced -> stale timer
+                    boolean stalled = packetFailed || (++ticks >= PACKET_STALL_TICKS);
                     if (!stalled) { main.postDelayed(this, STUCK_RECOVERY_MS); return; }
                     if (packetRetries >= PACKET_MAX_RETRIES) {
-                        fail("Packet " + (pkt + 1) + "/" + packets.size()
-                                + " got no response - is the scooter on and in range?");
+                        fail("No answer to packet " + (pkt + 1) + "/" + packets.size()
+                                + ". Is the scooter switched on and in range?");
                         return;
                     }
                     packetRetries++;
-                    host.log("Packet " + (pkt + 1) + " stuck - re-sending (attempt " + (packetRetries + 1) + ")");
-                    sendNextBack();   // re-drive the same packet (backIndex unchanged)
+                    host.log("Packet " + (pkt + 1) + " stuck. Re-sending (attempt " + (packetRetries + 1) + ")");
+                    sendNextPacket();   // re-drive the same packet (packetIndex unchanged)
                 }
             };
             main.postDelayed(stuckTimer, STUCK_RECOVERY_MS);
         } else {
             // all packets done -> FINISH
-            host.log("Finishing");
+            host.log("All packets sent. Asking the scooter to verify the image");
             byte[] finish = wire(frame(config.FINISH, fill(8, 0xaa)));
             otaWrite(finish);
-            armStepResend(() -> { otaWrite(finish); startCheckUpgrade(""); });
+            armStepResend(() -> { otaWrite(finish); armFinishCheck(""); });
         }
     }
 
     // ── success / failure / recovery ──
 
-    private void startCheckUpgrade(String msg) {
+    private void armFinishCheck(String msg) {
         if (!msg.isEmpty()) host.log(msg);
         cancel(finishCheck);
         finishCheck = () -> {
-            if (!running || upGradeState == 1) return;
-            // The original treats a matching reported swVer as success; we do not receive telemetry
-            // during the flash, so fall through to a capped restart-from-START recovery.
+            if (!running || flashState == 1) return;
+            // The controller stops streaming telemetry in the bootloader, so there is no version to
+            // read back here. Fall through to a capped restart-from-START recovery instead.
             if (restarts >= MAX_RESTARTS) {
-                fail(msg.isEmpty() ? "Upgrade failed" : msg);
+                fail(msg.isEmpty() ? "The firmware update did not complete" : msg);
                 return;
             }
             restarts++;
-            host.log("Retrying upgrade (attempt " + (restarts + 1) + ")");
+            host.log("Starting over (attempt " + (restarts + 1) + ")");
             main.postDelayed(() -> {
                 if (!running) return;
-                upGradeType = false;
-                cilpPackage();
+                startSent = false;
+                sendStart();
             }, 1000);
         };
         main.postDelayed(finishCheck, FINISH_CHECK_MS);
     }
 
     private void succeed() {
-        host.log("Upgrade over");
+        host.log("The scooter took the firmware and is restarting");
         host.progress(100, packets.size(), packets.size(), "Done");
         finish(true, "success", "Firmware updated");
     }
@@ -754,12 +756,11 @@ final class OtaEngine {
         try { host.finished(success); } catch (Throwable ignored) {}
     }
 
-    // ── writer (fire-and-forget, exactly like the original app) ──
+    // ── writer (fire-and-forget, which is what the bootloader sustains) ──
     // No-response writes are NOT chained on the write-completion callback: the VCU bootloader does
     // not reliably deliver that callback for no-response writes across a whole flash, which stalled
     // the old pump after a few packets. Instead control frames are written immediately (a lost one
-    // is recovered by the 3 s step-resend) and PACKDATA frames are scheduled spValue apart, matching
-    // the original's setTimeout pacing.
+    // is recovered by the 3 s step-resend) while PACKDATA frames go out one INTERFRAME_MS apart.
 
     /** Write one frame fire-and-forget; one quick retry if the stack was momentarily busy. */
     private void otaWrite(byte[] frame) {
@@ -787,7 +788,7 @@ final class OtaEngine {
 
     private void armGlobalWatchdog() {
         cancel(watchdog);
-        watchdog = () -> { if (running && upGradeState == 3) fail("Upgrade timed out (30 min)"); };
+        watchdog = () -> { if (running && flashState == 3) fail("The update ran out of time (30 min)"); };
         main.postDelayed(watchdog, GLOBAL_WATCHDOG_MS);
     }
 
@@ -797,21 +798,21 @@ final class OtaEngine {
 
     private void clearAllTimers() {
         cancel(startRetry); cancel(stepResend); cancel(stuckTimer);
-        cancel(watchdog); cancel(startCheckState); cancel(finishCheck);
+        cancel(watchdog); cancel(startTimeout); cancel(finishCheck);
         main.removeCallbacksAndMessages(null);
     }
 
     private void resetState() {
-        upGradeType = false; upGradeState = 0; backIndex = 0; retryCount = 0;
-        restarts = 0; hasBreak = false;
+        startSent = false; flashState = 0; packetIndex = 0; retryCount = 0;
+        restarts = 0; packetFailed = false;
         clearPendingSends();
     }
 
     private void reportProgress(String phase) {
         int count = packets.size();
-        int percent = count > 0 ? (int) ((long) (backIndex + 1) * 100 / count) : 0;
+        int percent = count > 0 ? (int) ((long) (packetIndex + 1) * 100 / count) : 0;
         if (percent > 100) percent = 100;
-        host.progress(percent, Math.min(backIndex + 1, count), count, phase);
+        host.progress(percent, Math.min(packetIndex + 1, count), count, phase);
     }
 
     // ── framing helpers ──
@@ -843,10 +844,10 @@ final class OtaEngine {
         return idHi == (id[0] & 0xFF) && idLo == (id[1] & 0xFF);
     }
 
-    /** 3 address bytes from sId (2 hex) + backId (4 hex): [sId, backId hi, backId lo]. */
-    private static int[] addr3(String sId, String backId) {
-        String s = (sId == null || sId.isEmpty()) ? "00" : sId;
-        String b = (backId == null || backId.isEmpty()) ? "0000" : backId;
+    /** 3 address bytes from bank (2 hex) + offset (4 hex): [bank, offset hi, offset lo]. */
+    private static int[] addr3(String bank, String offset) {
+        String s = (bank == null || bank.isEmpty()) ? "00" : bank;
+        String b = (offset == null || offset.isEmpty()) ? "0000" : offset;
         String r = (s + b);
         while (r.length() < 6) r = "0" + r;
         return new int[]{

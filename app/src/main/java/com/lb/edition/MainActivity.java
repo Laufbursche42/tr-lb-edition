@@ -328,8 +328,8 @@ public class MainActivity extends Activity {
         try {
             String name = queryDisplayName(uri);
             byte[] bytes = readAllBytes(uri);
-            // Intel-HEX is ASCII; the original reads it as Latin-1 (byte -> char). Match that so the
-            // trailer/line parsing is byte-identical.
+            // Intel-HEX is ASCII. Decode as Latin-1 so every byte maps to exactly one char and the
+            // line/trailer parsing sees the file unchanged.
             String text = new String(bytes, StandardCharsets.ISO_8859_1);
             otaHexText = text;
             otaFileName = name;
@@ -661,7 +661,7 @@ public class MainActivity extends Activity {
             }
         }
 
-        /** Toggle SMART/TCS traction control. Written as a[2]=5, not the generic normal write. */
+        /** Toggle traction control (TCS). Written as a[2]=5, not the generic normal write. */
         @JavascriptInterface
         public void setSmart(boolean on) {
             try {
@@ -794,8 +794,8 @@ public class MainActivity extends Activity {
 
         /**
          * Write ONE gear/assist profile (BLE_PROTOCOL §3.4). {@code json} carries any of
-         * {@code speedLimit, eabsLevel, fStartLevel, rStartLevel, fCurrent, rCurrent}; missing
-         * fields fall back to the maintained current-gear state. Null/exception-safe.
+         * {@code speedLimit, eabsRegen, frontStartLevel, rearStartLevel, frontCurrent,
+         * rearCurrent}; missing fields fall back to the current-gear state. Null/exception-safe.
          */
         @JavascriptInterface
         public void sendGearSetting(int gear, String json) {
@@ -1219,10 +1219,7 @@ public class MainActivity extends Activity {
             try {
                 Log.i(TAG, "LB.saveGpxToDownloads(" + name + ")");
                 if (content == null) return gpxResult(false, name, "save");
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    return saveGpxViaMediaStore(name, content);
-                }
-                return saveGpxToPublicDir(name, content);
+                return saveGpxViaMediaStore(name, content);
             } catch (Throwable t) {
                 Log.e(TAG, "saveGpxToDownloads failed", t);
                 return gpxResult(false, name, "save");
@@ -1230,7 +1227,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Downloads collection write, API 29+. Needs no storage permission. */
+    /** Downloads collection write through MediaStore. Needs no storage permission. */
     private String saveGpxViaMediaStore(String name, String content) {
         ContentResolver cr = getContentResolver();
         Uri item = null;
@@ -1272,38 +1269,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Downloads folder write, API 26 to 28, where WRITE_EXTERNAL_STORAGE still governs it. */
-    private String saveGpxToPublicDir(String name, String content) {
-        if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            // Fail honestly now and ask, so a second attempt can succeed.
-            runOnUiThread(() -> {
-                try {
-                    requestPermissions(
-                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQ_PERMS);
-                } catch (Throwable t) {
-                    Log.e(TAG, "storage permission request failed", t);
-                }
-            });
-            return gpxResult(false, name, "downloads");
-        }
-        try {
-            File dir = Environment.getExternalStoragePublicDirectory(
-                    Environment.DIRECTORY_DOWNLOADS);
-            if (dir == null || (!dir.isDirectory() && !dir.mkdirs())) {
-                return gpxResult(false, name, "downloads");
-            }
-            File f = gpxFreeFile(dir, name);
-            try (OutputStream out = new FileOutputStream(f)) {
-                out.write(content.getBytes(StandardCharsets.UTF_8));
-                out.flush();
-            }
-            return gpxResult(true, f.getName(), null);
-        } catch (Throwable t) {
-            Log.e(TAG, "saveGpx public dir write failed", t);
-            return gpxResult(false, name, "save");
-        }
-    }
 
     /** The name MediaStore settled on, which differs from the request when it de-duplicated. */
     private String gpxDisplayName(ContentResolver cr, Uri uri, String fallback) {

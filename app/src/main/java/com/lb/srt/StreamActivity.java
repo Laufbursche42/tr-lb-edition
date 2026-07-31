@@ -12,8 +12,8 @@ import android.util.Log;
 
 /**
  * Transparent activity: requests the MediaProjection permission and starts the
- * StreamService with the result. Launched from the webview via plus.android.
- * Intent extra "url" = full SRT push URL.
+ * StreamService with the result. MainActivity launches it from the LB.startStream
+ * bridge method. Intent extra "url" = full SRT push URL.
  */
 public class StreamActivity extends Activity {
 
