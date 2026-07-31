@@ -20,10 +20,11 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
-      "<b>The firmware patcher lives on the web now.</b> Build your file at <span class=\"link-ble\" onclick=\"openExt('https://laufbursche42.github.io/tr-fw/')\">laufbursche42.github.io/tr-fw</span> and pick it under Firmware update, then flash it as before. The same patcher had to be maintained in three places at once, in this app, in the iOS app and on the web page: that is what was cut, not the feature.",
-      "<b>The factory reset is gone.</b> It wrote a full set of values into the controller, which is not something this app should do behind your back.",
+      "<b>The app asks once on a first start.</b> The terms have to be accepted before anything else and this list follows. Before a firmware update you tick a box saying you have read them.",
+      "<b>The firmware patcher lives on the web now.</b> Build your file at <span class=\"link-ble\" onclick=\"openExt('https://laufbursche42.github.io/tr-fw/')\">laufbursche42.github.io/tr-fw</span> and pick it under Firmware update, then flash it as before. The page asks which build fits your scooter. The same patcher had to be maintained in three places at once, in this app, in the iOS app and on the web page: that is what was cut, not the feature.",
+      "<b>The app speaks German as well.</b> The switch sits in the settings under Display. On a first start the app follows your phone.",
+      "<b>A recorded route exports as GPX into the Downloads folder.</b> A file manager and a mail app can reach it there. Exporting the same route again gets a counter instead of overwriting the first file.",
       "<b>Wheel size and cruise control no longer touch your other gears.</b> Both are single values in the controller, so one write is enough and every gear keeps what you set for it.",
-      "<b>The app speaks German as well.</b> The switch sits in the settings under Display. On the first start the app follows your phone.",
       "<b>This list opens by itself after an update.</b> You can read it again any time from the settings.",
     ],
 
@@ -674,10 +675,11 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
-      "<b>Der Firmware-Patcher liegt jetzt im Web.</b> Bau deine Datei auf <span class=\"link-ble\" onclick=\"openExt('https://laufbursche42.github.io/tr-fw/')\">laufbursche42.github.io/tr-fw</span> und wähle sie unter Firmware-Update aus, dann flashe sie wie bisher. Derselbe Patcher musste an drei Stellen gleichzeitig gepflegt werden, in dieser App, in der iOS-App und auf der Webseite: gestrichen ist diese dreifache Pflege, nicht die Funktion.",
-      "<b>Der Werksreset ist raus.</b> Er hat einen ganzen Satz Werte in den Controller geschrieben und das soll diese App nicht hinter deinem Rücken tun.",
-      "<b>Radgröße und Tempomat fassen deine anderen Gänge nicht mehr an.</b> Beides sind einzelne Werte im Controller, ein Schreibvorgang genügt also und jeder Gang behält, was du für ihn eingestellt hast.",
+      "<b>Die App fragt beim ersten Start nach.</b> Die Bedingungen musst du einmal annehmen, bevor es losgeht, danach kommt diese Liste. Vor einem Firmware-Update setzt du zusätzlich ein Häkchen, dass du sie gelesen hast.",
+      "<b>Der Firmware-Patcher liegt jetzt im Web.</b> Bau deine Datei auf <span class=\"link-ble\" onclick=\"openExt('https://laufbursche42.github.io/tr-fw/')\">laufbursche42.github.io/tr-fw</span> und wähle sie unter Firmware-Update aus, dann flashe sie wie bisher. Die Seite fragt dich, welche Version zu deinem Roller passt. Derselbe Patcher musste an drei Stellen gleichzeitig gepflegt werden, in dieser App, in der iOS-App und auf der Webseite: gestrichen ist diese dreifache Pflege, nicht die Funktion.",
       "<b>Die App spricht auch Deutsch.</b> Der Schalter sitzt in den Einstellungen unter Display. Beim ersten Start folgt die App deinem Telefon.",
+      "<b>Aufgezeichnete Routen landen als GPX im Downloads-Ordner.</b> Von dort kommen Dateimanager und Mail-App heran. Exportierst du dieselbe Route noch einmal, bekommt die zweite Datei einen Zähler statt die erste zu überschreiben.",
+      "<b>Radgröße und Tempomat fassen deine anderen Gänge nicht mehr an.</b> Beides sind einzelne Werte im Controller, ein Schreibvorgang genügt also und jeder Gang behält, was du für ihn eingestellt hast.",
       "<b>Diese Liste öffnet sich nach einem Update von selbst.</b> Du kannst sie jederzeit in den Einstellungen wieder aufrufen.",
     ],
 

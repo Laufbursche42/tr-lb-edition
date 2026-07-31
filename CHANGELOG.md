@@ -2,7 +2,7 @@
 
 Notable changes to Laufbursche Edition, newest first.
 
-Versions are `1.0.<n>` where `n` is the number of commits after the initial one, so the number rises by one on every release with no manual editing. The first public release is 1.0.0.
+The version series lives in `version.properties`, which both the gradle build and the release workflow read. `versionName` is `<major>.<minor>.<n>` where `n` counts the commits since the series began, so the number rises by one on every release with no manual editing. `versionCode` counts straight through a series change and never goes backwards.
 
 Release notes are built automatically for each release: if this file has a section whose heading matches the released version it is used verbatim, otherwise the commit subjects since the previous release are listed. Either way a fixed Disclaimer and a "phoning home" note are appended (see `.github/release-footer.md`).
 
@@ -13,6 +13,73 @@ To hand-write the notes for a release, add a section headed with its version num
     - Corrected the anti-theft help text
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
+
+## 1.1.0
+
+A series step rather than a patch: a second language, terms that have to be accepted before the
+first ride, the styling out of the page and the firmware patcher handed to the web.
+
+### The app speaks German
+
+- The interface exists in English and German, with the switch in the display settings. On a first
+  start the app follows the phone and remembers the choice after that.
+- English is the base language and German a translation layer, both in
+  `assets/dashboard/i18n.js`, keyed by meaning so a rewording never moves a key. A key missing from
+  German falls back to English, so a gap shows wording rather than a raw key.
+
+### Terms before the first ride
+
+- The liability terms open on the very first start and have to be accepted before anything else.
+  Neither the backdrop nor Escape dismisses that window while it is asking.
+- They are readable again at any time from **Version Info & Disclaimer** in the side menu.
+- The firmware page carries its own tick box saying they were read. Without it **Start update**
+  stays dead. The tick is asked again on every visit to the page rather than remembered.
+
+### What is new, in the app
+
+- After an update a window names what a rider notices. Closing it counts as read. It reopens at any time from the settings.
+
+### Recorded routes
+
+- **Fixed:** exporting a route as GPX now writes into the phone's **Downloads** folder, where a
+  file manager and a mail app can reach it. Exporting the same route again gets a counter instead
+  of overwriting the first file.
+
+### Scooter settings
+
+- **Fixed:** wheel size and cruise control no longer fan out to every gear. Both are single values
+  in the controller, so one write is enough and every gear keeps what was set for it. The cache
+  that carried the other gears' values along is gone.
+
+### Firmware
+
+- Building a firmware left the app for
+  [laufbursche42.github.io/tr-fw](https://laufbursche42.github.io/tr-fw/), which asks which build
+  fits a given scooter. The same patcher had to be kept in step in three places at once, here, in
+  the iOS app and on the web page: that is what was cut, not the feature. The app still flashes
+  what the page builds.
+- No firmware image ships inside the APK any more.
+
+### Under the surface
+
+- The styling left the page for `assets/dashboard/dashboard.css`. The page declares a policy that
+  allows a stylesheet from a file next to it and nothing from the document itself, so a style can
+  no longer be injected into the markup.
+- The version series lives in `version.properties`, read by both the gradle build and the release
+  workflow, so the tag and the number inside the APK cannot drift apart.
+
+### Documentation
+
+- The README opens by calling the app a feasibility study, with no promise of error-free operation
+  and no warranty.
+- The licence section says what it covers and what it does not: the scooter's Bluetooth protocol
+  and the manufacturer's firmware are not ours, so neither is ours to license.
+- Everything about the scooter's firmware and about patching it moved to the patcher's own
+  repository. What stays here is the app.
+- Gone: the section explaining how to clone a repository to somebody who already has it, the call
+  for an Apple developer plus the note about which details were redacted from the screenshots.
+
+---
 
 ## 1.0.7
 
