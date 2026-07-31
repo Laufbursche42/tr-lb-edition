@@ -934,6 +934,15 @@ function gpxFilename(ts) {
   return `teverun_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}.gpx`;
 }
 
+/* Elements start hidden through the .is-hidden class, never an inline style, because the content
+   security policy rejects a style attribute in the markup. Clearing an inline display therefore
+   does not reveal anything: the class has to go too. */
+function showEl(el, on) {
+  if (!el) return;
+  el.classList.toggle('is-hidden', !on);
+  el.style.display = on ? '' : 'none';
+}
+
 let _toastTimer = null;
 function showToast(msg, dur = 3000, variant = '') {
   const el = document.getElementById('toast');
@@ -1343,7 +1352,7 @@ function updateBLEUI(data) {
   if (gearTagEl) {
     gearTagEl.textContent = gt.text;
     gearTagEl.className = gt.show ? `hc-tag ${gt.cls}` : 'hc-tag';
-    gearTagEl.style.display = gt.show ? '' : 'none';
+    showEl(gearTagEl, gt.show);
   }
   const cur = data.current;
   const curEl = document.getElementById('current-val');
@@ -1629,7 +1638,7 @@ function addPointToRide(lat, lon, alt, ts, speed) {
 function updateRideUI() {
   const ride = state.currentRide;
   const stopRow = document.getElementById('dg-stop-row');
-  if (stopRow) stopRow.style.display = ride ? '' : 'none';
+  showEl(stopRow, !!ride);
   if (ride) {
     const elapsed = Date.now() - ride.startTime;
     setTxt('dg-dist', `${convDist(ride.dist).toFixed(2)} ${distUnit()}`);
@@ -3120,7 +3129,7 @@ function openFirmwarePage() {
   let v2 = false;
   try { v2 = (typeof LB !== 'undefined' && LB.isVer2 && LB.isVer2()); } catch (e) {}
   const v2n = document.getElementById('fw-ver2-note');
-  if (v2n) v2n.style.display = v2 ? '' : 'none';
+  showEl(v2n, v2);
   // Confirmed per visit, never remembered: a running flash keeps its tick so reopening the
   // page mid-update does not look like the consent was withdrawn.
   if (!fwState.running) {
@@ -3152,7 +3161,7 @@ window.__onAppUpdate = function(info) {
 
 function refreshUpdateUi() {
   const appAvail = !!(updState.app && updState.app.available);
-  const setShow = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
+  const setShow = (id, on) => showEl(document.getElementById(id), on);
   setShow('update-banners', appAvail);
   setShow('upd-app', appAvail);
   const appVer = document.getElementById('upd-app-ver'); if (appVer) appVer.textContent = updState.app.version ? ('(' + updState.app.version + ')') : '';
