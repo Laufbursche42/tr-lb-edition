@@ -12,7 +12,7 @@ import java.io.IOException;
  *
  * <p>Every file name the app handles already comes from a trusted source - the built-in country
  * catalog in {@link MapDownloadActivity}, BRouter tile names computed from coordinates in
- * {@link BikeRouter}, or a previously-stored selection - so traversal is not reachable in practice.
+ * {@link BikeRouter} or a previously-stored selection - so traversal is not reachable in practice.
  * These helpers add defence in depth: the resolved <em>canonical</em> path is verified to stay
  * inside the intended base directory before the file is used, so even a crafted name (".." segments
  * or an absolute path) can never escape it.
@@ -25,7 +25,7 @@ final class PathGuard {
      * Resolves {@code name} against {@code baseDir} and returns the file only if its canonical path
      * stays inside {@code baseDir}.
      *
-     * @throws IOException if {@code name} escapes {@code baseDir}, or the path cannot be canonicalized.
+     * @throws IOException if {@code name} escapes {@code baseDir} or the path cannot be canonicalized.
      */
     static File childOf(File baseDir, String name) throws IOException {
         return ensureInside(baseDir, new File(baseDir, name));
@@ -36,7 +36,7 @@ final class PathGuard {
      * {@link File} is built elsewhere (e.g. an absolute path from an intent extra) rather than from
      * a name under the base.
      *
-     * @throws IOException if {@code target} escapes {@code baseDir}, or the path cannot be canonicalized.
+     * @throws IOException if {@code target} escapes {@code baseDir} or the path cannot be canonicalized.
      */
     static File ensureInside(File baseDir, File target) throws IOException {
         String base = baseDir.getCanonicalPath();

@@ -6,12 +6,17 @@ package com.lb.edition;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.WindowManager;
 import android.webkit.GeolocationPermissions;
@@ -29,10 +34,13 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Host activity: a full-screen WebView that renders the offline dashboard
@@ -506,17 +514,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Read a bundled asset (e.g. a firmware under assets/firmware/) fully into memory. */
-    private byte[] readAsset(String path) throws Exception {
-        try (InputStream in = getAssets().open(path)) {
-            ByteArrayOutputStream out = new ByteArrayOutputStream(262144);
-            byte[] buf = new byte[8192];
-            int r;
-            while ((r = in.read(buf)) != -1) out.write(buf, 0, r);
-            return out.toByteArray();
-        }
-    }
-
     /** Minimal JSON string escaper for bridge error messages. */
     private static String jsonStr(String s) {
         if (s == null) return "\"\"";
@@ -634,7 +631,7 @@ public class MainActivity extends Activity {
             }
         }
 
-        /** @return JSON {"address","name"} of the last connected scooter, or "" if none stored. */
+        /** @return JSON {"address","name"} of the last connected scooter or "" if none stored. */
         @JavascriptInterface
         public String lastDevice() {
             try {
@@ -737,72 +734,6 @@ public class MainActivity extends Activity {
             });
         }
 
-        /**
-         * Patch a bundled VCU firmware and hand the result to the flash flow, exactly as if the user
-         * had picked it (sets {@code otaHexText} and pushes the metadata to {@code __onOtaFile}).
-         * fwId: "r5" (R5.4.19), "ali" (open ALI D3.4.12, convert only).
-         * For R5 the CORE direct BLE speed lock (cmd 0x1B) is ALWAYS applied; blinker and wheel are the
-         * two optional add-ons. {@code speedMode} is accepted for call compatibility but no longer
-         * selects a speed build - the lock is live over Bluetooth, not baked in. Returns the metadata
-         * JSON for the summary.
-         */
-        @JavascriptInterface
-        public String patchFirmware(String fwId, String speedMode, boolean blinker, boolean wheel, boolean kickstart) {
-            Log.i(TAG, "LB.patchFirmware(" + fwId + "," + speedMode + ",b=" + blinker + ",w=" + wheel
-                    + ",k=" + kickstart + ")");
-            try {
-                String asset;
-                boolean isHex;
-                if ("r5".equals(fwId)) { asset = "firmware/vcu_r5_4_19.hex"; isHex = true; }
-                else if ("ali".equals(fwId)) { asset = "firmware/vcu_ali_d3_4_12.bin"; isHex = false; }
-                else return "{\"ok\":false,\"error\":\"unknown firmware\"}";
-
-                byte[] raw = readAsset(asset);
-                FirmwarePatcher fp = isHex
-                        ? FirmwarePatcher.fromHex(new String(raw, StandardCharsets.ISO_8859_1))
-                        : FirmwarePatcher.fromAliDump(raw);
-
-                // Keep the AWIVCU_<mode>_<model>_<ver> file-name shape: the mode token goes in the
-                // "APP" slot and the model stays R5_4_19, so split("_")[2] == "R5" - the exact spot the
-                // original app's isComplyRules reads the model + major version (R5/R3). speedMode picks
-                // the R5 build: "orig" = stock, still locked, only the optional blinker fix (token EKFV);
-                // otherwise "live" = the Live-Toggle unlock: direct BLE speed lock + boot-lock + wheel +
-                // cruise (tokens LOCK + WHEEL). TURN is the only optional suffix (blinker). No timestamp.
-                String name;
-                if ("r5".equals(fwId)) {
-                    if ("orig".equals(speedMode)) {
-                        // Original: stays stock and locked; only the optional fixes may be applied. The
-                        // kickstart group patches bytes the CORE group places (its version stamp plus the
-                        // end marker its cave carries), so it cannot run here - the UI hides it in this
-                        // mode.
-                        if (blinker) fp.applyBlinker();
-                        name = "AWIVCU_EKFV_R5_4_19" + (blinker ? "_TURN" : "") + ".hex";
-                    } else {
-                        // Live-Toggle unlock: full feature set (BLE lock + boot-lock + wheel + cruise).
-                        fp.applyCore();
-                        fp.applyWheel();
-                        if (blinker) fp.applyBlinker();      // optional: indicator-blink fix
-                        if (kickstart) fp.applyKickstart();  // optional: force ZeroStart permanently
-                        name = "AWIVCU_LOCK_R5_4_19_WHEEL" + (blinker ? "_TURN" : "")
-                                + (kickstart ? "_ZS" : "") + ".hex";
-                    }
-                } else {
-                    // ALI is convert-only (already open); keep its canonical model token.
-                    name = "AWIVCU_ALI_D3_4_12.hex";
-                }
-
-                String hex = fp.buildHex();
-                otaHexText = hex;
-                otaFileName = name;
-                // Return the parsed metadata; the patcher page hands it to __onOtaFile after it opens
-                // the update page, so the reset inside openFirmwarePage cannot wipe the selection.
-                return OtaEngine.inspect(hex, name);
-            } catch (Throwable t) {
-                Log.e(TAG, "patchFirmware failed", t);
-                return "{\"ok\":false,\"error\":" + jsonStr(String.valueOf(t.getMessage())) + "}";
-            }
-        }
-
         /** Begin flashing the previously picked firmware file. Progress via __onOtaProgress/State/Log. */
         @JavascriptInterface
         public void otaStart() {
@@ -820,9 +751,9 @@ public class MainActivity extends Activity {
             }
         }
 
-        /** Drop the in-memory firmware blob after a flash completes or fails. The patched/picked image
-         *  only ever lives in these two String fields (never written to disk); clearing them means a new
-         *  flash always requires a fresh pick/patch, so no stale image lingers. */
+        /** Drop the in-memory firmware blob after a flash completes or fails. The picked image only ever
+         *  lives in these two String fields (never written to disk); clearing them means a new flash
+         *  always requires a fresh pick, so no stale image lingers. */
         @JavascriptInterface
         public void otaClear() {
             otaHexText = null;
@@ -991,8 +922,8 @@ public class MainActivity extends Activity {
         // ── App update ──
 
         /** Fetch the latest app release from GitHub and push it to window.__onAppUpdate. Network runs off
-         *  the main thread. Never throws. Firmware is NOT distributed here: the app ships the stock base
-         *  firmware and the in-app patcher builds the Laufbursche firmware locally. */
+         *  the main thread. Never throws. This checks for an app version only: firmware is not
+         *  distributed here. */
         @JavascriptInterface
         public void checkUpdates() {
             new Thread(() -> {
@@ -1027,19 +958,6 @@ public class MainActivity extends Activity {
                 final String r = result;
                 runJs("(function(){try{if(window.__onAppUpdate)window.__onAppUpdate(" + r + ");}catch(e){}})();");
             }).start();
-        }
-
-        /** The Laufbursche firmware build the in-app patcher stamps into an R5 build (for the picker label). */
-        @JavascriptInterface
-        public int localFirmwareBuild() {
-            return FirmwarePatcher.FW_BUILD;
-        }
-
-        /** Same build with the kickstart option ticked - it carries its own stamp (V36 -> V236) so the two
-         *  variants are told apart on the scooter. Read by the patcher UI so the text cannot go stale. */
-        @JavascriptInterface
-        public int localFirmwareKickBuild() {
-            return FirmwarePatcher.FW_BUILD_KICK;
         }
 
         /** Download the app APK into the public Downloads folder via the system DownloadManager (which
@@ -1285,6 +1203,153 @@ public class MainActivity extends Activity {
                     }
                 }
             });
+        }
+
+        /**
+         * Write GPX text into the phone's public Downloads folder. Synchronous so the page can
+         * report the real outcome instead of assuming one.
+         *
+         * @return JSON {@code {"ok":true,"name":"<file actually written>"}} or
+         * {@code {"ok":false,"name":"<requested>","error":"<code>"}} with code "downloads"
+         * (no access to the folder), "createfile", "writer" or "save".
+         */
+        @JavascriptInterface
+        public String saveGpxToDownloads(final String fileName, final String content) {
+            final String name = safeGpxName(fileName);
+            try {
+                Log.i(TAG, "LB.saveGpxToDownloads(" + name + ")");
+                if (content == null) return gpxResult(false, name, "save");
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    return saveGpxViaMediaStore(name, content);
+                }
+                return saveGpxToPublicDir(name, content);
+            } catch (Throwable t) {
+                Log.e(TAG, "saveGpxToDownloads failed", t);
+                return gpxResult(false, name, "save");
+            }
+        }
+    }
+
+    /** Downloads collection write, API 29+. Needs no storage permission. */
+    private String saveGpxViaMediaStore(String name, String content) {
+        ContentResolver cr = getContentResolver();
+        Uri item = null;
+        try {
+            ContentValues cv = new ContentValues();
+            cv.put(MediaStore.Downloads.DISPLAY_NAME, name);
+            cv.put(MediaStore.Downloads.MIME_TYPE, "application/gpx+xml");
+            cv.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+            // Pending keeps a half-written file invisible; MediaStore also de-duplicates the name.
+            cv.put(MediaStore.Downloads.IS_PENDING, 1);
+            item = cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+            if (item == null) return gpxResult(false, name, "createfile");
+
+            OutputStream out = cr.openOutputStream(item);
+            if (out == null) {
+                cr.delete(item, null, null);
+                return gpxResult(false, name, "writer");
+            }
+            try {
+                out.write(content.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+            } finally {
+                out.close();
+            }
+
+            ContentValues done = new ContentValues();
+            done.put(MediaStore.Downloads.IS_PENDING, 0);
+            cr.update(item, done, null, null);
+            return gpxResult(true, gpxDisplayName(cr, item, name), null);
+        } catch (Throwable t) {
+            Log.e(TAG, "saveGpx MediaStore write failed", t);
+            if (item != null) {
+                try {
+                    cr.delete(item, null, null);
+                } catch (Throwable ignored) {
+                }
+            }
+            return gpxResult(false, name, "save");
+        }
+    }
+
+    /** Downloads folder write, API 26 to 28, where WRITE_EXTERNAL_STORAGE still governs it. */
+    private String saveGpxToPublicDir(String name, String content) {
+        if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Fail honestly now and ask, so a second attempt can succeed.
+            runOnUiThread(() -> {
+                try {
+                    requestPermissions(
+                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQ_PERMS);
+                } catch (Throwable t) {
+                    Log.e(TAG, "storage permission request failed", t);
+                }
+            });
+            return gpxResult(false, name, "downloads");
+        }
+        try {
+            File dir = Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS);
+            if (dir == null || (!dir.isDirectory() && !dir.mkdirs())) {
+                return gpxResult(false, name, "downloads");
+            }
+            File f = gpxFreeFile(dir, name);
+            try (OutputStream out = new FileOutputStream(f)) {
+                out.write(content.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+            }
+            return gpxResult(true, f.getName(), null);
+        } catch (Throwable t) {
+            Log.e(TAG, "saveGpx public dir write failed", t);
+            return gpxResult(false, name, "save");
+        }
+    }
+
+    /** The name MediaStore settled on, which differs from the request when it de-duplicated. */
+    private String gpxDisplayName(ContentResolver cr, Uri uri, String fallback) {
+        try (Cursor c = cr.query(uri, new String[]{MediaStore.Downloads.DISPLAY_NAME},
+                null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                String s = c.getString(0);
+                if (s != null && !s.isEmpty()) return s;
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "saveGpx name lookup failed", t);
+        }
+        return fallback;
+    }
+
+    /** Never overwrite an existing export: ride.gpx becomes ride (1).gpx. */
+    private static File gpxFreeFile(File dir, String name) {
+        File f = new File(dir, name);
+        if (!f.exists()) return f;
+        int dot = name.lastIndexOf('.');
+        String stem = dot > 0 ? name.substring(0, dot) : name;
+        String ext = dot > 0 ? name.substring(dot) : "";
+        for (int i = 1; i < 1000; i++) {
+            f = new File(dir, stem + " (" + i + ")" + ext);
+            if (!f.exists()) return f;
+        }
+        return f;
+    }
+
+    /** Keep the page's name from escaping the Downloads folder or losing its extension. */
+    private static String safeGpxName(String raw) {
+        String s = raw == null ? "" : raw.trim().replaceAll("[\\\\/:*?\"<>|\\r\\n]", "_");
+        if (s.isEmpty()) s = "teverun";
+        if (!s.toLowerCase(Locale.US).endsWith(".gpx")) s = s + ".gpx";
+        return s;
+    }
+
+    private static String gpxResult(boolean ok, String name, String error) {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("ok", ok);
+            o.put("name", name == null ? "" : name);
+            if (error != null) o.put("error", error);
+            return o.toString();
+        } catch (Throwable t) {
+            return ok ? "{\"ok\":true}" : "{\"ok\":false}";
         }
     }
 

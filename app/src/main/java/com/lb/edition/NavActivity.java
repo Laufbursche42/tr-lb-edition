@@ -424,7 +424,7 @@ public class NavActivity extends Activity {
      * location but another downloaded map does, switch to that map - persist the choice and rebuild
      * the screen - so the correct country map loads automatically as the rider crosses a border,
      * with no manual "Use" tap. Overlapping maps that both cover the point keep the current one (no
-     * thrash), and switching is skipped during active turn-by-turn navigation so an in-progress
+     * thrash) and switching is skipped during active turn-by-turn navigation so an in-progress
      * session is never yanked out from under the rider.
      *
      * @return {@code true} if a switch was triggered (the activity is being recreated).
@@ -716,7 +716,7 @@ public class NavActivity extends Activity {
         updateProfileDesc();
 
         // POI toggle row - only shown when a POI database is present (hidden gracefully otherwise).
-        // Two toggles only (Camping / Charging): they always fit side by side, and each shows ALL
+        // Two toggles only (Camping / Charging): they always fit side by side and each shows ALL
         // sites of its kind. No socket sub-filter - roughly half of OSM charging stations carry no
         // socket:* tag at all, so a Schuko/Type2 filter would silently hide most real stations.
         // The socket type, when known, is shown on tap.
@@ -1052,7 +1052,7 @@ public class NavActivity extends Activity {
         mapDarkIcon.setContentDescription(mapDark ? "Dark map on" : "Dark map off");
     }
 
-    /** Toggle the dark-map render theme: persist it, update the icon, and re-render the tiles. */
+    /** Toggle the dark-map render theme: persist it, update the icon and re-render the tiles. */
     private void toggleMapDark() {
         mapDark = !mapDark;
         getSharedPreferences("nav", MODE_PRIVATE).edit().putBoolean("map_dark", mapDark).apply();
@@ -1089,7 +1089,7 @@ public class NavActivity extends Activity {
         voiceIcon.setContentDescription(voiceOn ? "Voice guidance on" : "Voice guidance off");
     }
 
-    /** Toggle voice guidance: persist it, update the icon, and silence any current utterance. */
+    /** Toggle voice guidance: persist it, update the icon and silence any current utterance. */
     private void toggleVoice() {
         voiceOn = !voiceOn;
         getSharedPreferences("nav", MODE_PRIVATE).edit().putBoolean("voice_on", voiceOn).apply();
@@ -1298,7 +1298,7 @@ public class NavActivity extends Activity {
                 "Destination set: %.5f, %.5f - tap Route", d.latitude, d.longitude));
     }
 
-    /** Fill a "lat, lon" input with the current GPS position, or toast if there is no fix yet. */
+    /** Fill a "lat, lon" input with the current GPS position or toast if there is no fix yet. */
     private void useCurrentLocation(EditText field) {
         if (field == null) return;
         if (lastLocation == null) {
@@ -1845,7 +1845,7 @@ public class NavActivity extends Activity {
         return card;
     }
 
-    /** Refresh the NEXT-TURN card: arrow glyph, instruction, distance, and remaining + ETA line. */
+    /** Refresh the NEXT-TURN card: arrow glyph, instruction, distance and remaining + ETA line. */
     private void updateNavCard(String instruction, double distToNext, double remaining) {
         if (navTurnText == null) return;
         navTurnArrow.setText(arrowFor(instruction));
@@ -2022,7 +2022,7 @@ public class NavActivity extends Activity {
 
         // Curated, human-readable detail view. We deliberately do NOT dump every raw OSM tag - many
         // are noise (wikidata refs, normalized_name, source, wheelchair, ...) that only confuse. We
-        // surface the handful of fields a rider cares about, and render the website as a clickable link.
+        // surface the handful of fields a rider cares about and render the website as a clickable link.
         StringBuilder html = new StringBuilder();
         html.append(String.format(Locale.US, "%.5f, %.5f", hit.poi.getLatitude(), hit.poi.getLongitude()));
 
@@ -2074,7 +2074,7 @@ public class NavActivity extends Activity {
         html.append("<br><b>").append(label).append("</b>: ").append(escapeHtml(value.trim()));
     }
 
-    /** First non-empty value among the given OSM tag keys (case-insensitive), or null. */
+    /** First non-empty value among the given OSM tag keys (case-insensitive) or null. */
     private static String tagValue(PointOfInterest poi, String... keys) {
         if (poi.getTags() == null) return null;
         for (String want : keys) {
@@ -2185,7 +2185,7 @@ public class NavActivity extends Activity {
     /**
      * Resolve free text to a point: "lat, lon" is parsed directly; anything else is geocoded via the
      * device {@link Geocoder} (backed by Google Play Services on most phones, so it needs internet for
-     * the address case). Calls back on the UI thread with the point, or null (with a toast) on failure.
+     * the address case). Calls back on the UI thread with the point or null (with a toast) on failure.
      */
     @SuppressWarnings("deprecation")   // getFromLocationName(String,int) is the only sync API below 33
     private void resolvePlace(String text, Consumer<LatLong> cb) {

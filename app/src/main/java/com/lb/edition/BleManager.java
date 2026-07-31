@@ -285,7 +285,7 @@ final class BleManager {
         pushState("disconnected");
     }
 
-    /** @return JSON {"address","name"} of the last successfully connected scooter, or "" if none. */
+    /** @return JSON {"address","name"} of the last successfully connected scooter or "" if none. */
     String lastDeviceJson() {
         try {
             SharedPreferences sp = appCtx.getSharedPreferences("lb", Context.MODE_PRIVATE);
@@ -558,7 +558,7 @@ final class BleManager {
         } else {
             // 0000FFxx family: pick by property, mirroring the ORIGINAL app EXACTLY
             // (mixins/bluetooths.js getBLEDeviceCharacteristics): iterate ALL characteristics and
-            // keep the LAST one carrying the notify property as the notify char, and the LAST
+            // keep the LAST one carrying the notify property as the notify char and the LAST
             // write-only (write property, no notify) characteristic as the write char. The original
             // ternary assigns a notify+write characteristic to notify only. Using the LAST match
             // (not the first) is essential on units that expose more than one notify characteristic
@@ -768,10 +768,10 @@ final class BleManager {
     /**
      * A full 0x18 settings write serialises the ENTIRE maintained state, so it is only safe once the
      * scooter's real config has been read from a 55 71 frame. Before that, every field the user did
-     * not explicitly change is a SettingsState default (wheel / pack voltage / pole-pairs, and zero
+     * not explicitly change is a SettingsState default (wheel / pack voltage / pole-pairs and zero
      * current limits); writing those to the VCU would mis-configure the controller. Refuse the write
      * until the first 55 71 arrived. In practice that frame lands within ~1 s of connecting, so this
-     * only guards the genuinely unsafe cases (a toggle before the read, or a unit that never reports).
+     * only guards the genuinely unsafe cases (a toggle before the read or a unit that never reports).
      */
     private boolean settingsReady() {
         if (settings.received71) return true;
@@ -792,53 +792,16 @@ final class BleManager {
                 if (o.has("atMode")) mode = 8;
                 else if (o.has("isSmart")) mode = 5;
             }
-            // Wheel + cruise fan out to EVERY gear (each keeps its own per-gear values), mirroring the
-            // web app: a wheel/cruise change must apply across all gears without disturbing another
-            // gear's settings. Every OTHER setting (speed/current per gear, modes) writes the active
-            // gear only. Detected in Java so the dashboard can keep calling LB.sendSetting({wheel/cruise}).
-            if (o != null && (o.has("wheel") || o.has("cruise"))) {
-                writeWheelCruiseAllGears();
-                return;
-            }
-            // Single write to the ACTIVE gear only - round-trips that gear's own per-gear values and
-            // applies the global wheel + cruise carried in the same frame. Never touches other gears,
-            // so per-gear settings are never overwritten across gears.
+            // ONE write, to the active gear only. Wheel and cruise are GLOBAL in the controller
+            // (0x2000029D and 0x200002D1, one byte each, not per gear), so one frame carrying the
+            // active gear's own values applies them. Writing every gear would push cached per-gear
+            // values back into gears the user never touched.
             enqueueWrite(CommandBuilder.sendSettingCode(settings, mode, settings.gear & 0xFF));
         } catch (Throwable t) {
             Log.e(TAG, "sendSetting failed", t);
         }
     }
 
-    /**
-     * Write the GLOBAL wheel + cruise into EVERY gear we have telemetry for, carrying each gear's OWN
-     * cached per-gear values (speed/current/assist) so ONLY wheel + cruise change and every gear keeps
-     * its other per-gear settings. The active gear is written last. Gears never seen this session are
-     * skipped (never overwritten with wrong data). Mirrors the web app's writeWheelCruiseAllGears.
-     */
-    void writeWheelCruiseAllGears() {
-        if (!settingsReady()) return;
-        try {
-            synchronized (settings) {
-                int cur = settings.gear & 0xFF;
-                // non-active gears first, active gear last
-                for (Map.Entry<Integer, int[]> e : settings.gearCache.entrySet()) {
-                    Integer g = e.getKey();
-                    if (g == null || (g & 0xFF) == cur) continue;
-                    int[] c = e.getValue();
-                    if (c != null) enqueueWrite(settings.gearFrameCached(g, c));
-                }
-                int[] cc = settings.gearCache.get(cur);
-                if (cc == null) {
-                    // active gear not cached yet (no 55 71 for it) - use the current maintained values
-                    cc = new int[]{settings.assistSpeedLimit, settings.fCurrent, settings.rCurrent,
-                            settings.eabsLevel, settings.fStartLevel, settings.rStartLevel};
-                }
-                enqueueWrite(settings.gearFrameCached(cur, cc));
-            }
-        } catch (Throwable t) {
-            Log.e(TAG, "writeWheelCruiseAllGears failed", t);
-        }
-    }
 
     /** mode: 0 = dual, 1 = rear-only, 2 = front-only (BLE_PROTOCOL §4). */
     void setMotorMode(int mode) {
@@ -933,7 +896,7 @@ final class BleManager {
     /**
      * Begin flashing {@code hexText} (raw Intel-HEX file text; {@code fileName} only selects the
      * VCU/BMS target). Pauses the keep-alive and live-push for the whole flash so nothing injects a
-     * 0xAA command into the OTA stream, hands the write/notify path to {@link OtaEngine}, and lets
+     * 0xAA command into the OTA stream, hands the write/notify path to {@link OtaEngine} and lets
      * any in-flight normal write drain first. Null/exception-safe. Requires a live connection.
      */
     void startOta(final String hexText, final String fileName) {

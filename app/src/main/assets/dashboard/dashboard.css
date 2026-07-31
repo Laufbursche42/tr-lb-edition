@@ -1,0 +1,854 @@
+/* Dashboard styling. Kept out of the document so the page can run under a
+   content security policy that allows styles from the app's own origin only. */
+/* ── Design Tokens ─────────────────────────────────────────── */
+:root {
+  --bg:       #0A0C10;
+  --card:     #111420;
+  --border:   #1C2035;
+  --text:     #E4EDF6;
+  --label:    #C6D2E2;
+  --value:    #BCEB39;
+  --ble:      #B8F020;
+  --gps:      #3DB8FF;
+  --good:     #1EE89A;
+  --btnfill:  #B8F020;
+  --warn:     #FFAA18;
+  --danger:   #FF5050;
+  --topbar-h: 52px;
+  --radius:   12px;
+  --gap:      10px;
+  /* Status-bar inset is applied NATIVELY (UiChrome pads the content view below the status
+     bar and consumes the window insets), so the WebView must NOT add it again - keep this 0
+     to avoid a doubled "huge bar" above the title bar. Kept as a token for inner offsets. */
+  --sat:      0px;
+
+  /* Type scale - the exact px sizes used across the UI, as reusable tokens. The big display
+     numbers (speed drums, hero, motor tiles) keep their own clamp() sizes and are not part of
+     this scale. Theme-independent, so defined here only. */
+  --fs-2xs:  10px;
+  --fs-xs:   11px;
+  --fs-sm:   12px;
+  --fs-md:   13px;
+  --fs-base: 14px;
+  --fs-lg:   15px;
+  --fs-xl:   16px;
+  --fs-2xl:  20px;
+  /* Font weights (500 medium, 600 semibold, 700 bold, 800 heavy) */
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+  --fw-heavy:    800;
+}
+[data-theme="light"] {
+  --bg:     #E8EDF5;
+  --card:   #FFFFFF;
+  --border: #CDD5E4;
+  --text:   #0A0D18;
+  --label:  #0A0D18;
+  --value:  #2FEBA2;
+  --ble:    #2A6A00;
+  --gps:    #005AA0;
+  --good:   #2FEBA2;
+  --btnfill: #2FEBA2;
+  --warn:   #A05800;
+  --danger: #CC2020;
+}
+
+/* ── Reset / Base ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  font-size: var(--fs-base); -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+}
+
+/* ── Layout Shell ──────────────────────────────────────────── */
+#app {
+  display: flex; flex-direction: column;
+  width: 100%; height: 100%;
+  max-width: 430px; margin: 0 auto;
+  position: relative;
+}
+
+/* ── Topbar ────────────────────────────────────────────────── */
+#topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  /* The status-bar inset is applied NATIVELY (UiChrome pads android.R.id.content below
+     the status bar). The title bar must NOT add another status-bar height or the two
+     would stack into an excess band. So the bar is exactly --topbar-h tall with no top
+     padding -> exactly ONE status-bar height total above it. */
+  height: var(--topbar-h); padding: 0 8px;
+  background: var(--card); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; position: relative; z-index: 10;
+}
+#topbar .tb-title {
+  font-size: var(--fs-xl); font-weight: var(--fw-bold); letter-spacing: .02em;
+  flex: 1 1 auto; min-width: 0; text-align: center; padding: 0 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#topbar .tb-left, #topbar .tb-right {
+  display: flex; align-items: center; gap: 4px;
+}
+/* Right-side icon group (connect / streaming / theme / settings) is PINNED and never
+   shrinks, so all four icons are always fully on screen on any phone width. The 4px
+   margin nudges the group slightly off the screen edge. */
+#topbar .tb-right { flex: 0 0 auto; margin-right: 4px; }
+/* Logo side shrinks instead: it takes only the width left over after the icons and
+   scales the logo down to fit (see .tb-logo max-width:100% + object-fit), so the
+   icons can never be pushed off-screen by a wide logo. */
+#topbar .tb-left { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.icon-btn {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px; border: none; background: transparent;
+  color: var(--text); cursor: pointer; font-size: var(--fs-2xl);
+  transition: background .15s;
+}
+.icon-btn:active { background: var(--border); }
+#ble-dot.ble-icon { width: 18px; height: 18px; display: inline-block; vertical-align: middle; pointer-events: none; }
+#ble-dot .bt-path { fill: var(--danger); transition: fill .2s; }
+#ble-dot.connected .bt-path { fill: var(--good); }
+
+/* ── Scroll Container ──────────────────────────────────────── */
+#scroller {
+  flex: 1 1 auto; min-height: 0;      /* min-height:0 -> container scrolls instead of growing */
+  overflow-y: auto; overflow-x: hidden;
+  padding: var(--gap);
+  padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px) + 12px);
+  display: flex; flex-direction: column; gap: var(--gap);
+  -webkit-overflow-scrolling: touch;
+}
+/* children must NOT shrink - otherwise the flex column squashes instead of scrolling */
+#scroller > * { flex-shrink: 0; }
+#scroller::-webkit-scrollbar { display: none; }
+
+/* ── Speed Drums ───────────────────────────────────────────── */
+#speed-row {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+.speed-drum {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 10px 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+}
+.speed-drum .sd-val {
+  font-size: clamp(42px, 13vw, 64px);
+  font-weight: var(--fw-heavy); line-height: 1;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+.speed-drum.ble-drum .sd-val { color: var(--ble); }
+.speed-drum.gps-drum .sd-val { color: var(--gps); }
+.speed-drum .sd-unit {
+  font-size: var(--fs-base); color: var(--label); margin-top: 4px;
+  font-weight: var(--fw-medium); letter-spacing: .04em;
+}
+
+/* ── Hero Metrics ──────────────────────────────────────────── */
+/* Hero cells and motor cells are the same kind of tile row, so they share one grid. */
+#hero-row, #motor-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--gap);
+}
+.hero-cell {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 8px 10px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.hero-cell .hc-val {
+  font-size: clamp(28px, 9vw, 38px); font-weight: var(--fw-heavy);
+  line-height: 1; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
+.hero-cell .hc-unit {
+  font-size: var(--fs-md); color: var(--label); margin-top: 3px; white-space: nowrap;
+}
+.hero-cell .hc-tag {
+  margin-top: 5px; padding: 2px 7px;
+  border-radius: 5px; font-size: var(--fs-2xs); font-weight: var(--fw-bold);
+  letter-spacing: .06em;
+}
+#soc-val { color: var(--good); }
+#gear-val { color: var(--warn); }
+#current-val { color: var(--text); }
+.gear-tag-eco   { background: #1EE89A22; color: var(--good); }
+.gear-tag-drive { background: #3DB8FF22; color: var(--gps); }
+.gear-tag-sport { background: #FF505022; color: var(--danger); }
+.gear-tag-na    { background: var(--border); color: var(--label); }
+
+/* ── Data Grid ─────────────────────────────────────────────── */
+/* Shared card surface for the flat panels that clip their rows at the corners. */
+#data-grid, #actions-section, #all-values {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.dg-row {
+  display: grid; grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.dg-row:last-child { border-bottom: none; }
+.dg-cell {
+  padding: 9px 12px; display: flex; align-items: center;
+  justify-content: space-between; gap: 6px;
+}
+.dg-cell:not(:last-child) { border-right: 1px solid var(--border); }
+.dg-label { color: var(--label); font-size: var(--fs-md); white-space: nowrap; }
+/* Longer labels (e.g. "Recuperation") may wrap / shrink so the full word stays readable. */
+.dg-label-wide { white-space: normal; font-size: var(--fs-sm); line-height: 1.15; }
+.dg-value {
+  font-weight: var(--fw-semibold); font-size: var(--fs-lg); color: var(--value);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+/* Groups a data-grid label with its inline "?" help button so they stay together on the left. */
+.dg-labwrap { display: flex; align-items: center; gap: 6px; min-width: 0; }
+
+/* ── Routes List ───────────────────────────────────────────── */
+#routes-section {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+}
+.section-hdr {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-size: var(--fs-base); font-weight: var(--fw-bold); color: var(--label);
+  letter-spacing: .08em; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+#routes-list { flex: 1; min-height: 0; overflow-y: auto; }
+#routes-list::-webkit-scrollbar { width: 3px; }
+#routes-list::-webkit-scrollbar-thumb { background: var(--border); }
+.route-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  gap: 8px; cursor: pointer;
+}
+.route-item:last-child { border-bottom: none; }
+.route-item:active { background: var(--border); }
+.route-info { flex: 1; min-width: 0; }
+.route-date { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+/* One small muted second line, under a route title and under a settings row label alike.
+   Stays above the spacing utilities so their margin shorthand keeps winning. */
+.route-stats, .settings-row-sublabel { font-size: var(--fs-xs); color: var(--label); margin-top: 2px; }
+.route-gpx-btn {
+  padding: 5px 10px; border-radius: 7px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--gps); font-size: var(--fs-xs); font-weight: var(--fw-semibold); cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.route-gpx-btn:active { background: var(--border); }
+.route-live-badge {
+  padding: 2px 7px; border-radius: 5px;
+  background: #B8F02022; color: var(--ble);
+  font-size: var(--fs-2xs); font-weight: var(--fw-bold); margin-left: 4px;
+}
+.ride-stop-btn {
+  width: 100%; padding: 10px; border: none; border-radius: 8px; cursor: pointer;
+  background: var(--danger); color: #fff;
+  font-size: var(--fs-md); font-weight: var(--fw-bold);
+  -webkit-tap-highlight-color: transparent;
+}
+.ride-stop-btn:active { opacity: .85; }
+.no-routes {
+  padding: 24px; text-align: center; color: var(--label);
+  font-size: var(--fs-md);
+}
+
+/* ── Actions Row ───────────────────────────────────────────── */
+/* #actions-section takes the shared card surface defined with #data-grid. */
+.action-btn-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+}
+.del-btn {
+  padding: 10px 4px; border: none; border-right: 1px solid var(--border);
+  background: transparent; color: var(--danger); font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold); cursor: pointer; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.del-btn:last-child { border-right: none; }
+.del-btn:active { background: #FF505015; }
+
+/* ── Settings Sheet ────────────────────────────────────────── */
+#settings-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,.45);
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s;
+}
+#settings-overlay.open { opacity: 1; pointer-events: all; }
+#settings-sheet {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(320px, 85vw); z-index: 101;
+  background: var(--card); border-left: 1px solid var(--border);
+  transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+  overflow-y: auto; padding-top: var(--sat);
+}
+#settings-sheet.open { transform: translateX(0); }
+
+.settings-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+}
+.settings-topbar h2 { font-size: var(--fs-xl); font-weight: var(--fw-bold); }
+#update-banners { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 0; }
+#update-banners:empty { display: none; }
+.update-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--ble);
+  background: color-mix(in srgb, var(--ble) 14%, transparent); color: var(--text);
+  font-size: var(--fs-md); line-height: 1.35; cursor: pointer; }
+.update-banner .ub-go { color: var(--ble); font-weight: var(--fw-semibold); white-space: nowrap; }
+.settings-group { padding: 12px 16px; }
+.settings-group-title {
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--label);
+  letter-spacing: .1em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--border); gap: 8px;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { font-size: var(--fs-md); font-weight: var(--fw-medium); }
+.settings-row-left { flex: 1; }
+
+/* Toggle Switch */
+.toggle-wrap { flex-shrink: 0; }
+.toggle-input { display: none; }
+.toggle-label {
+  display: block; width: 44px; height: 24px; border-radius: 12px;
+  background: var(--border); position: relative; cursor: pointer;
+  transition: background .2s;
+}
+.toggle-label::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+}
+.toggle-input:checked + .toggle-label { background: var(--good); }
+.toggle-input:checked + .toggle-label::after { transform: translateX(20px); }
+
+/* Host/Port Inputs */
+.settings-input-row {
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.settings-input-row:last-child { border-bottom: none; }
+.settings-input {
+  flex: 1; padding: 7px 10px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--text); font-size: var(--fs-md);
+}
+.settings-input:disabled { opacity: .4; }
+.settings-input-label { font-size: var(--fs-xs); color: var(--label); white-space: nowrap; }
+
+/* ── Toast ──────────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 11px 20px;
+  border-radius: 10px; font-size: var(--fs-md); font-weight: var(--fw-medium);
+  box-shadow: 0 4px 20px rgba(0,0,0,.5); z-index: 200;
+  transition: transform .25s cubic-bezier(.4,0,.2,1);
+  white-space: nowrap; max-width: 90vw;
+  text-overflow: ellipsis; overflow: hidden;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+#toast.err { background: var(--danger); color: #fff; }
+
+/* ── Confirm Dialog ─────────────────────────────────────────── */
+#confirm-overlay {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+#confirm-overlay.open { opacity: 1; pointer-events: all; }
+#confirm-box {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px;
+  width: min(300px, 88vw); text-align: center;
+}
+#confirm-box h3 { font-size: var(--fs-xl); font-weight: var(--fw-bold); margin-bottom: 8px; }
+#confirm-box p { font-size: var(--fs-md); color: var(--label); margin-bottom: 18px; overflow-wrap: anywhere; white-space: pre-line; }
+#confirm-box #confirm-warn { color: var(--danger); font-weight: var(--fw-heavy); margin-bottom: 14px; line-height: 1.45; }
+#confirm-box .confirm-btns { display: flex; gap: 10px; }
+#confirm-box .confirm-btns button {
+  flex: 1; padding: 12px; border-radius: 9px;
+  border: none; font-size: var(--fs-base); font-weight: var(--fw-bold); cursor: pointer;
+}
+#confirm-ok { background: var(--danger); color: #fff; }
+#confirm-cancel { background: var(--border); color: var(--text); }
+
+/* ── GPS Badge ──────────────────────────────────────────────── */
+.gps-badge {
+  font-size: var(--fs-2xs); padding: 1px 5px; border-radius: 4px;
+  font-weight: var(--fw-bold); margin-left: 4px;
+}
+.gps-badge.fix { background: #3DB8FF22; color: var(--gps); }
+.gps-badge.nofix { background: #FF505018; color: var(--danger); }
+
+/* ── Sub-Header ─────────────────────────────────────────────── */
+.sub-hdr {
+  padding: 4px 2px 2px; border: none; background: none;
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--label);
+  letter-spacing: .09em; text-transform: uppercase;
+}
+
+/* ── Motors ─────────────────────────────────────────────────── */
+/* #motor-row takes the three-column tile grid shared with #hero-row. */
+.motor-cell {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.mc-title { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--label); letter-spacing: .06em; }
+.mc-main {
+  font-size: clamp(22px, 7vw, 30px); font-weight: var(--fw-heavy); line-height: 1.05;
+  color: var(--value); font-variant-numeric: tabular-nums;
+}
+.mc-main .mc-unit { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--label); margin-left: 2px; }
+.mc-sub { font-size: var(--fs-md); color: var(--label); font-variant-numeric: tabular-nums; }
+
+/* Motor tiles span the full width; the quick toggle moved into the "Motors" heading row. */
+#motor-area { display: flex; gap: var(--gap); align-items: stretch; }
+#motor-area #motor-row { flex: 1 1 auto; min-width: 0; }
+/* Motor-mode quick toggle: a compact horizontal row of 4 buttons beside the "Motors" heading.
+   Wraps gracefully on very narrow screens. Reset the heading's uppercase/tracking for the labels. */
+#motor-quick {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px;
+  text-transform: none; letter-spacing: normal;
+}
+#motor-quick .mq-btn {
+  min-width: 40px; padding: 4px 8px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--bg); color: var(--text);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); line-height: 1.1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+#motor-quick .mq-btn:active { opacity: .7; }
+/* The active fills are the shared action-button variants (primary fill / good fill). */
+/* Not connected: whole control greyed and non-interactive */
+/* Greyed out while disconnected, but still clickable so a tap shows the "Connect the scooter
+   first" toast instead of doing nothing. The click handlers guard on the connection state. */
+#motor-quick.mq-disabled { opacity: .4; filter: grayscale(1); }
+
+/* ── All values ──────────────────────────────────────────────── */
+/* #all-values takes the shared card surface defined with #data-grid. */
+.av-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-bottom: 1px solid var(--border); gap: 8px;
+}
+.av-row:last-child { border-bottom: none; }
+.av-label { color: var(--label); font-size: var(--fs-base); flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.av-val { font-weight: var(--fw-semibold); font-size: var(--fs-lg); color: var(--value); font-variant-numeric: tabular-nums; text-align: right; flex: 0 0 auto; white-space: nowrap; }
+/* Subtle circular "?" info button per row; opens a shared explanation popup (event-delegated). */
+.av-help {
+  flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid var(--label); background: transparent; color: var(--label);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); line-height: 1; padding: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.av-help:hover, .av-help:active { background: var(--border); color: var(--text); }
+
+/* Same subtle circular "?" as .av-help, reused on every settings row (app + controller + per-gear).
+   Sits before the control so tapping it never toggles/edits the control. */
+.set-help {
+  flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid var(--label); background: transparent; color: var(--label);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); line-height: 1; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.set-help:hover, .set-help:active { background: var(--border); color: var(--text); }
+
+/* ── Modal popups ───────────────────────────────────────────
+   One theme-aware shell for the all-values help, the version info and the what-is-new
+   modal; each keeps only its own headings and paragraphs below. */
+#avhelp-overlay,
+#verinfo-overlay,
+#disclaimer-overlay,
+#whatsnew-overlay {
+  position: fixed; inset: 0; z-index: 210;
+  background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+#avhelp-overlay.open,
+#verinfo-overlay.open,
+#disclaimer-overlay.open,
+#whatsnew-overlay.open { opacity: 1; pointer-events: all; }
+#avhelp-box,
+#verinfo-box,
+#disclaimer-box,
+#whatsnew-box {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+  width: min(340px, 90vw); max-height: 80vh; overflow-y: auto; text-align: left;
+}
+#avhelp-close,
+#verinfo-close,
+#disclaimer-accept,
+#disclaimer-close,
+#whatsnew-close {
+  width: 100%; padding: 12px; border-radius: 9px; border: none;
+  font-size: var(--fs-base); font-weight: var(--fw-bold); cursor: pointer;
+  background: var(--border); color: var(--text);
+}
+#avhelp-box h3 { font-size: var(--fs-xl); font-weight: var(--fw-bold); margin-bottom: 10px; color: var(--text); }
+#avhelp-box p { font-size: var(--fs-md); line-height: 1.5; color: var(--label); margin-bottom: 18px; white-space: pre-line; }
+#verinfo-box h3,
+#disclaimer-box h3,
+#whatsnew-box h3 { font-size: var(--fs-xl); font-weight: var(--fw-bold); margin-bottom: 12px; color: var(--text); }
+#disclaimer-box p { font-size: var(--fs-md); line-height: 1.5; color: var(--label); margin-bottom: 12px; }
+#disclaimer-list { margin: 0 0 16px; padding-left: 18px; display: grid; gap: 8px; }
+#disclaimer-list li { color: var(--label); font-size: var(--fs-md); line-height: 1.5; }
+#disclaimer-list li b { color: var(--danger); }
+#disclaimer-consent-wrap { margin: 0 0 14px; color: var(--text); }
+#verinfo-box .verinfo-ver,
+#whatsnew-box .verinfo-ver {
+  font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--text); margin-bottom: 14px;
+  font-variant-numeric: tabular-nums;
+}
+#verinfo-box p { font-size: var(--fs-md); line-height: 1.5; color: var(--label); margin-bottom: 14px; }
+#verinfo-box .verinfo-muted { opacity: .75; font-style: italic; }
+#verinfo-box .verinfo-origin {
+  font-size: var(--fs-sm); line-height: 1.5; color: var(--label);
+  border-top: 1px solid var(--border); padding-top: 12px;
+}
+
+/* ── Routes button + sub-page ──────────────────────────────── */
+#btn-open-routes {
+  width: 100%; padding: 14px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-size: var(--fs-base); font-weight: var(--fw-semibold);
+  border-radius: var(--radius); cursor: pointer; text-align: center;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+#btn-open-routes:active { background: var(--border); }
+#routes-count-badge {
+  min-width: 20px; padding: 1px 7px; border-radius: 10px;
+  background: var(--btnfill); color: #0A0C10; font-size: var(--fs-xs); font-weight: var(--fw-bold);
+}
+#routes-count-badge:empty { display: none; }
+/* The routes list scrolls inside #routes-list, so this scroller stays clipped. */
+#routes-scroller {
+  flex: 1; min-height: 0; overflow: hidden; padding: var(--gap);
+  padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: var(--gap);
+}
+#btn-connect.connected { color: var(--good); }
+#ble-dot { pointer-events: none; }
+#btn-scooter-settings, #btn-connect-scooter, #btn-export-logs, #btn-error-reports, #btn-navigation, #btn-info, #btn-battery, #btn-firmware, #btn-whatsnew, #btn-version-info {
+  width: 100%; padding: 12px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font-size: var(--fs-base); font-weight: var(--fw-semibold);
+  border-radius: 9px; cursor: pointer; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+#btn-scooter-settings:active, #btn-connect-scooter:active, #btn-export-logs:active, #btn-error-reports:active, #btn-navigation:active, #btn-info:active, #btn-battery:active, #btn-firmware:active, #btn-whatsnew:active, #btn-version-info:active { background: var(--border); }
+/* #btn-stream-start (good fill) + #btn-stream-stop (neutral) are styled by the shared action-button base. */
+#stream-url { color: var(--text); background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px; font-family: monospace; }
+
+/* ── Sub-pages ──────────────────────────────────────────────
+   Every sub-page is the same full-screen sheet that slides in from the right, so one shell
+   carries all of them. #routes-scroller keeps its own block: it clips instead of scrolling. */
+#routes-page, #streaming-page,
+#connect-page, #scooter-page, #error-reports-page, #info-page, #battery-page, #firmware-page {
+  position: fixed; inset: 0; z-index: 120; background: var(--bg);
+  display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+}
+#routes-page.open, #streaming-page.open,
+#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #battery-page.open, #firmware-page.open { transform: translateX(0); }
+#streaming-scroller,
+#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #battery-scroller, #firmware-scroller {
+  flex: 1; min-height: 0; overflow-y: auto; padding: var(--gap);
+  display: flex; flex-direction: column; gap: 4px;
+  padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px) + 12px);
+}
+/* children must NOT shrink, otherwise the flex column squashes instead of scrolling */
+#routes-scroller > *, #streaming-scroller > *,
+#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > *, #battery-scroller > *, #firmware-scroller > * { flex-shrink: 0; }
+
+/* ── Battery Info page ── */
+.bat-health {
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 4px;
+  font-size: var(--fs-sm); line-height: 1.5;
+}
+.bat-health.ok { border-color: var(--good); background: color-mix(in srgb, var(--good) 12%, transparent); }
+.bat-health.bad { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.bat-health .bat-health-title { font-weight: var(--fw-semibold); margin-bottom: 4px; }
+.bat-health.ok .bat-health-title { color: var(--good); }
+.bat-health.bad .bat-health-title { color: var(--danger); }
+.bat-health ul { margin: 4px 0 0; padding-left: 18px; }
+.cell-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+.cell-tile {
+  border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; background: var(--card);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.cell-tile .cell-name { font-size: var(--fs-sm); color: var(--label); }
+.cell-tile .cell-volt { font-size: var(--fs-md); font-weight: var(--fw-semibold); font-family: monospace; }
+.cell-tile.cell-full .cell-volt { color: var(--good); }
+.cell-tile.cell-mid  .cell-volt { color: var(--warn); }
+.cell-tile.cell-low  .cell-volt { color: var(--danger); }
+.cell-tile.cell-bal { border-color: var(--ble); }
+.cell-tile .cell-bal-tag { font-size: var(--fs-sm); color: var(--ble); }
+
+/* Firmware update page */
+.fw-warn {
+  border: 1px solid var(--danger); border-radius: 10px; padding: 10px 12px; margin-bottom: 4px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent); font-size: var(--fs-sm); line-height: 1.5;
+}
+.fw-warn b { color: var(--danger); }
+#fw-fileinfo { font-size: var(--fs-sm); line-height: 1.6; margin-top: 8px; }
+#fw-fileinfo .fw-row { display: flex; justify-content: space-between; gap: 10px; }
+#fw-fileinfo .fw-k { color: var(--label); flex-shrink: 0; white-space: nowrap; }
+#fw-fileinfo .fw-row > span:last-child { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+.fw-checks { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.fw-check { display: flex; align-items: flex-start; gap: 8px; }
+.fw-check > span:last-child { flex: 1; }
+.fw-verdict { margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+.fw-verdict.ok  { background: color-mix(in srgb, var(--ble) 16%, transparent); color: var(--ble); }
+.fw-verdict.bad { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+/* Hidden until the compatibility check fails: the script switches it back to flex, which the
+   shared .consent-row already supplies. */
+#fw-override-wrap { display: none; margin: 4px 0 10px; color: var(--danger); }
+#fw-consent-wrap { margin: 4px 0 0; }
+.fw-badge { display: inline-block; min-width: 16px; text-align: center; padding: 1px 6px; border-radius: 999px; font-size: var(--fs-xs); font-weight: var(--fw-bold); }
+.fw-badge.ok { background: color-mix(in srgb, var(--ble) 22%, transparent); color: var(--ble); }
+.fw-badge.warn { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); }
+/* ── Action buttons (shared base) ────────────────────────────
+   ONE base for every full-tap "action" button: firmware pick/start/cancel, connect
+   scan/disconnect, streaming start/stop plus the per-gear/settings Save. It holds the shared look
+   (12px pad, 9px radius, hairline border, base/bold type, transparent tap highlight); the thin
+   variants below add only the colour + width differences (neutral / primary-fill / good-fill /
+   danger-outline). */
+#btn-fw-pick, #btn-fw-start, #btn-fw-cancel,
+#btn-scan, #btn-disconnect,
+#btn-stream-start, #btn-stream-stop,
+.gs-save-btn {
+  padding: 12px; border: 1px solid var(--border); border-radius: 9px;
+  background: var(--bg); color: var(--text);
+  font-size: var(--fs-base); font-weight: var(--fw-bold);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+/* Full-width action buttons (firmware / save); scan + stream sit in a flex row. */
+#btn-fw-pick, #btn-fw-start, #btn-fw-cancel, .gs-save-btn { width: 100%; }
+#btn-fw-pick, #btn-fw-start, #btn-fw-cancel { text-align: center; }
+/* Variant: primary fill (also the selected motor-mode button and the accept button of the
+   disclaimer, the one modal button that grants something rather than dismissing). */
+#btn-fw-start, #btn-scan, .gs-save-btn, #disclaimer-accept,
+#motor-quick .mq-btn.active {
+  background: var(--btnfill); color: #0A0C10; border-color: var(--btnfill);
+}
+/* Variant: good fill (start streaming, Smart on). Must stay after the primary fill: the Smart
+   button carries .mq-btn and .mq-smart at equal specificity, so the later rule decides. */
+#btn-stream-start,
+#motor-quick .mq-smart.active { background: var(--good); color: #06251a; border-color: var(--good); }
+/* Variant: neutral card (firmware pick) */
+#btn-fw-pick { background: var(--card); color: var(--text); }
+/* Variant: danger outline (cancel / disconnect) */
+#btn-fw-cancel, #btn-disconnect { background: var(--bg); color: var(--danger); border-color: var(--danger); }
+/* Disabled (firmware start, disclaimer accept before the box is ticked) */
+#btn-fw-start:disabled,
+#disclaimer-accept:disabled { background: var(--border); color: var(--label); border-color: var(--border); cursor: default; }
+/* Pressed (streaming fades a touch lighter) */
+#btn-fw-pick:active, #btn-fw-start:active, #btn-fw-cancel:active,
+#btn-scan:active, #btn-disconnect:active, .gs-save-btn:active { opacity: .75; }
+#btn-stream-start:active, #btn-stream-stop:active { opacity: .7; }
+.fw-bar { height: 12px; border-radius: 999px; background: var(--border); overflow: hidden; }
+#fw-bar-fill { height: 100%; width: 0; background: var(--ble); transition: width .25s ease; }
+#fw-progress-text { font-size: var(--fs-md); font-weight: var(--fw-semibold); text-align: center; margin: 6px 0; font-variant-numeric: tabular-nums; }
+#fw-phase { font-size: var(--fs-sm); color: var(--label); text-align: center; }
+#fw-log {
+  margin-top: 6px; font-family: monospace; font-size: var(--fs-xs); line-height: 1.6;
+  background: var(--card, var(--border)); border-radius: 8px; padding: 8px 10px;
+  max-height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+}
+
+/* Error report rows */
+.err-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 11px 12px; margin-bottom: 8px;
+}
+.err-item.sev-fault { border-color: var(--danger); }
+.err-item.sev-warn { border-color: var(--warn); }
+.err-item.sev-info { border-color: var(--border); }
+.err-item .err-dot {
+  width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex-shrink: 0;
+  background: var(--label);
+}
+.err-item.sev-fault .err-dot { background: var(--danger); }
+.err-item.sev-warn .err-dot { background: var(--warn); }
+.err-item .err-body { flex: 1; min-width: 0; }
+.err-item .err-title { font-size: var(--fs-base); font-weight: var(--fw-semibold); color: var(--text); }
+.err-item .err-sub { font-size: var(--fs-sm); color: var(--label); margin-top: 2px; }
+#err-empty {
+  text-align: center; color: var(--good); font-size: var(--fs-base); font-weight: var(--fw-semibold);
+  padding: 28px 12px;
+}
+
+/* Topbar logo - enlarged / prominent on the main dashboard (app name removed from header).
+   max-width:100% lets it use only the width left over by the pinned icon group and scale
+   down when that is tight; object-fit:contain keeps the aspect ratio (no horizontal squish)
+   when the width is clamped below the 44px-tall intrinsic size. SVG text stays 29/21. */
+.tb-logo { height: 44px; width: auto; max-width: 100%; object-fit: contain; display: block; }
+
+/* Connection state + scan list */
+.conn-state {
+  padding: 12px 14px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--card); margin-bottom: 10px; font-size: var(--fs-md);
+}
+.conn-state b { color: var(--good); }
+/* #btn-scan (primary fill) + #btn-disconnect (danger outline) are styled by the shared action-button base. */
+.scan-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: 9px;
+  background: var(--card); margin-bottom: 8px; cursor: pointer; gap: 8px;
+}
+.scan-item:active { background: var(--border); }
+.scan-name { font-size: var(--fs-base); font-weight: var(--fw-semibold); }
+.scan-addr { font-size: var(--fs-xs); color: var(--label); margin-top: 2px; font-family: monospace; }
+.scan-rssi { font-size: var(--fs-sm); color: var(--gps); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Segmented control (motor mode / cruise) */
+.seg {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  border: 1px solid var(--border); border-radius: 9px; overflow: hidden;
+}
+.seg button {
+  padding: 9px 6px; border: none; background: var(--bg);
+  color: var(--text); font-size: var(--fs-sm); font-weight: var(--fw-bold); cursor: pointer;
+  border-right: 1px solid var(--border);
+  -webkit-tap-highlight-color: transparent;
+}
+.seg button:last-child { border-right: none; }
+.seg button.active { background: var(--btnfill); color: #0A0C10; }
+/* Locked scooter: cruise cannot be set, so grey the control out instead of taking a write the
+   controller would discard. Matches .set-ctrl:disabled. */
+.seg.seg-disabled { opacity: 0.55; }
+.seg.seg-disabled button { cursor: default; }
+
+/* Scooter-settings numeric / select inputs */
+.set-ctrl {
+  width: 92px; flex: 0 0 auto; text-align: right;
+  padding: 7px 10px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font-size: var(--fs-md);
+}
+select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; }
+.set-ctrl:disabled { opacity: 0.55; }
+
+/* .gs-save-btn (per-gear "Save gear" + global "Save settings"; primary fill, full width)
+   is styled by the shared action-button base above. */
+
+/* ── Small utilities (replace repeated inline styles; value-identical, layout-neutral) ── */
+/* Fixed-width spacer that balances the back arrow so the sub-page title stays centred. */
+.tb-spacer { width: 40px; }
+/* Spacing under a settings sub-label / button description (was inline margin:6px 0 10px). */
+.note-gap { margin: 6px 0 10px; }
+  /* Model gating: the settings UI works on every Teverun scooter. Fighter-Mini-only features carry
+     .fighter-only and hide only when a known non-Fighter model is connected (so they stay visible by
+     default and when disconnected). The Tetra (unsupported) additionally hides all settings groups. */
+  #model-banner { padding: 8px 2px 2px; font-size: var(--fs-md); color: var(--label); }
+  #model-banner .model-line { margin-bottom: 6px; }
+  #model-name { font-weight: var(--fw-semibold); color: var(--text); }
+  #model-unsupported { display: none; color: var(--danger); font-weight: var(--fw-semibold); }
+  body.is-tetra #model-unsupported { display: inline; }
+  #model-pick-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #model-pick-row .model-pick-label { color: var(--label); }
+  #model-select { flex: 1 1 auto; min-width: 150px; padding: 7px 8px; border-radius: 8px;
+                  background: var(--card); color: var(--text); border: 1px solid var(--border); font-size: var(--fs-md); }
+  #model-manual-note { display: none; margin-top: 5px; font-size: var(--fs-sm); color: var(--label); }
+  body.model-manual #model-manual-note { display: block; }
+  body.is-other .fighter-only, body.is-tetra .fighter-only { display: none !important; }
+  body.is-tetra #settings-sheet .settings-group { display: none !important; }
+
+  /* Draggable dashboard navigation banner (bottom, low profile). Fed by window.__onNav. */
+  #nav-banner { position: fixed; left: 8px; right: 8px; bottom: 12px; z-index: 950;
+    display: none; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--radius);
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+    box-shadow: 0 4px 16px rgba(0,0,0,.35); touch-action: none; user-select: none;
+    -webkit-user-select: none; cursor: grab; }
+  #nav-arrow { font-size: 24px; line-height: 1; color: #2FA0EB; flex: 0 0 auto; }
+  #nav-texts { flex: 1 1 auto; min-width: 0; }
+  #nav-turn { font-weight: var(--fw-semibold); font-size: var(--fs-base); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #nav-sub { font-size: var(--fs-xs); color: var(--label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #nav-dist { font-weight: var(--fw-bold); font-size: var(--fs-xl); color: #2FA0EB; flex: 0 0 auto; }
+  #nav-end { flex: 0 0 auto; width: 28px; height: 28px; border: none; border-radius: 8px;
+    background: var(--danger); color: #fff; font-size: var(--fs-base); line-height: 28px; text-align: center;
+    cursor: pointer; padding: 0; }
+
+/* ── Utilities that replace the former inline style attributes ────────────── */
+.is-hidden.is-hidden { display: none; }
+/* A tick box the rider has to set before a risky step: the disclaimer, the firmware page. */
+.consent-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: var(--fs-sm); line-height: 1.5; cursor: pointer;
+}
+.consent-row input { margin-top: 2px; flex: 0 0 auto; }
+.has-top-rule.has-top-rule { border-top: 1px solid var(--border); }
+.no-bottom-rule.no-bottom-rule { border-bottom: none; }
+.pt-4.pt-4 { padding-top: 4px; }
+.pt-6.pt-6 { padding-top: 6px; }
+.mt-8.mt-8 { margin-top: 8px; }
+.mt-10.mt-10 { margin-top: 10px; }
+.mt-12.mt-12 { margin-top: 12px; }
+.mt-14.mt-14 { margin-top: 14px; }
+.mb-6.mb-6 { margin-bottom: 6px; }
+.mb-8.mb-8 { margin-bottom: 8px; }
+.mb-10.mb-10 { margin-bottom: 10px; }
+.m-6-0-0.m-6-0-0 { margin: 6px 0 0; }
+.m-6-0-2.m-6-0-2 { margin: 6px 0 2px; }
+.m-8-0-0.m-8-0-0 { margin: 8px 0 0; }
+.m-10-0.m-10-0 { margin: 10px 0; }
+.m-10-0-6.m-10-0-6 { margin: 10px 0 6px; }
+.lh-15.lh-15 { line-height: 1.5; }
+.grow.grow { flex: 1; }
+.row-8.row-8 { display: flex; gap: 8px; }
+.row-center-6.row-center-6 { display: flex; align-items: center; gap: 6px; }
+.row-center-8.row-center-8 { display: flex; align-items: center; gap: 8px; }
+.col-stretch.col-stretch { flex-direction: column; align-items: stretch; gap: 8px; }
+.one-col.one-col { grid-template-columns: 1fr; }
+.span-all.span-all { grid-column: 1 / -1; }
+.icon-16.icon-16 { height: 16px; flex-shrink: 0; }
+.icon-inline.icon-inline { vertical-align: -2px; fill: currentColor; }
+.mono-break.mono-break { font-family: monospace; word-break: break-all; }
+.text-ble.text-ble { color: var(--ble); }
+.text-label.text-label { color: var(--label); }
+.note-md.note-md { color: var(--label); font-size: var(--fs-md); }
+.label-strong.label-strong { color: var(--text); font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+.footnote.footnote { margin-top: 16px; opacity: .55; font-size: var(--fs-sm); }
+.link-ble.link-ble { color: var(--ble); text-decoration: underline; cursor: pointer; }
+.ble-callout.ble-callout { border-color: var(--ble); background: color-mix(in srgb, var(--ble) 12%, transparent); }
+.text-input.text-input {
+  flex: 1; min-width: 0; padding: 7px 9px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  font-family: monospace; font-size: var(--fs-md);
+}
+.debug-banner.debug-banner {
+  display: none; position: fixed; top: 0; left: 0; right: 0;
+  background: #c0392b; color: #fff; text-align: center; z-index: 9999;
+  font-size: var(--fs-sm); font-weight: var(--fw-bold); padding: 4px 8px;
+  letter-spacing: .3px;
+}
+
+/* ── Language switch and the what-is-new modal ─────────────────────────────── */
+.lang-switch { display: flex; gap: 4px; flex-shrink: 0; }
+.lang-switch button {
+  padding: 5px 9px; border-radius: 7px; border: 1px solid var(--border);
+  background: transparent; color: var(--label);
+  font-family: monospace; font-size: var(--fs-sm); font-weight: var(--fw-bold);
+  letter-spacing: .06em;
+}
+.lang-switch button[aria-pressed="true"] {
+  background: var(--accent); border-color: var(--accent); color: var(--bg);
+}
+#whatsnew-list { margin: 12px 0 16px; padding-left: 18px; display: grid; gap: 8px; }
+#whatsnew-list li { color: var(--label); font-size: var(--fs-md); line-height: 1.5; }
+#whatsnew-list li b { color: var(--text); }

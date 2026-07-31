@@ -32,7 +32,7 @@ import java.nio.ByteBuffer;
 
 /**
  * Foreground service: MediaProjection captures the screen into a GL texture, ScreenGlEncoder
- * re-draws it at a CONSTANT 30 fps and H.264-encodes it, and the frames are pushed straight
+ * re-draws it at a CONSTANT 30 fps and H.264-encodes it and the frames are pushed straight
  * into RootEncoder's SrtClient. The constant redraw is what keeps the stream alive at a real
  * bitrate even when the screen is a still image.
  */

@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * gets throttled / killed on screen-off).
  *
  * <p>One download at a time. Progress is exposed to {@link MapDownloadActivity} through static
- * observable state plus an optional {@link Listener}, and to the user through an ongoing progress
+ * observable state plus an optional {@link Listener} and to the user through an ongoing progress
  * notification with a Cancel action. A partial wake lock and a high-perf Wi-Fi lock are held for the
  * duration so the OS keeps the CPU and radio alive while the screen is off.
  */

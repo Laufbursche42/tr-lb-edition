@@ -86,7 +86,7 @@ public final class DebugLog {
         }
     }
 
-    /** @return the log file (creating the dir), or null if unavailable. */
+    /** @return the log file (creating the dir) or null if unavailable. */
     public File getLogFile() {
         try {
             if (ctx == null) return null;

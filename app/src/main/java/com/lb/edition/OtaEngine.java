@@ -240,7 +240,7 @@ final class OtaEngine {
         // UART forwards them, which overran it after a few packets (the VCU then stopped answering).
 
         if (ver2) {
-            // ver2: no bootloader-prepare; the 06 e2 handshake selects the node, and its 06 ea "01 aa"
+            // ver2: no bootloader-prepare; the 06 e2 handshake selects the node and its 06 ea "01 aa"
             // ack drives START. No 1500 ms wait.
             if (fileType < 0 || fileCode < 0) { fail("ver2 file has no node header (07AAA555)"); return; }
             sendHandshake();
@@ -383,7 +383,7 @@ final class OtaEngine {
 
     /**
      * Pre-flight inspection for the UI (no BLE, no side effects): parse the file, run the integrity
-     * CRC16 and read the trailer, and report metadata as JSON {@code {ok,name,sizeBytes,packets,
+     * CRC16 and read the trailer and report metadata as JSON {@code {ok,name,sizeBytes,packets,
      * fileVer,fileVerMajor,firstAddr,fileCrc,calcCrc,crcOk,targetIsVcu}}. The dashboard combines this
      * with the connected device's state for the compatibility gate. The filename target rule matches
      * the flasher (AWE* = BMS, else VCU); {@code firstAddr} is the 24-bit flash offset (from

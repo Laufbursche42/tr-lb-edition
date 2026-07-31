@@ -60,7 +60,7 @@ final class NavUi {
     /**
      * Builds the fixed-height top app bar so it matches the dashboard sub-page headers
      * (telemetry.html {@code #topbar} / {@code .tb-title}): a dark bar, a left back arrow that
-     * finishes the activity, and a CENTRED bold title at the dashboard's weight/size/colour
+     * finishes the activity and a CENTRED bold title at the dashboard's weight/size/colour
      * (16sp / bold / {@code --text}). When {@code onMaps} is non-null a right-hand "Maps" text
      * button is kept; otherwise a same-width spacer keeps the title perfectly centred.
      */
@@ -106,7 +106,7 @@ final class NavUi {
         tv.setPadding(dp(a, 4), 0, dp(a, 4), 0);
         bar.addView(tv);
 
-        // Right: the "Maps" action (kept), or a same-width spacer so the title stays centred.
+        // Right: the "Maps" action (kept) or a same-width spacer so the title stays centred.
         if (onMaps != null) {
             TextView maps = new TextView(a);
             maps.setText("Maps");

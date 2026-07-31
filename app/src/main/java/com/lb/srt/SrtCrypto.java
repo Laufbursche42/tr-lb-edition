@@ -45,7 +45,7 @@ public final class SrtCrypto {
     /**
      * Encrypts the given plaintext with the hardware-backed key.
      *
-     * @return "k1:" + Base64(iv[12] + AES-GCM ciphertext+tag), or null on failure.
+     * @return "k1:" + Base64(iv[12] + AES-GCM ciphertext+tag) or null on failure.
      */
     public static String encrypt(String plain) {
         try {
@@ -66,7 +66,7 @@ public final class SrtCrypto {
     /**
      * Decrypts a value produced by {@link #encrypt(String)}.
      *
-     * @return plaintext, or null if the input is not "k1:" prefixed or on failure.
+     * @return plaintext or null if the input is not "k1:" prefixed or on failure.
      */
     public static String decrypt(String stored) {
         try {

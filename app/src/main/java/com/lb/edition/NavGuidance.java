@@ -26,7 +26,7 @@ final class NavGuidance {
         double nearestDist;    // metres to that nearest point
         boolean offRoute;      // nearestDist > OFF_ROUTE_METERS
         boolean arrive;        // the next "maneuver" is the destination (or the final maneuver)
-        int mi;                // index into maneuverIdx[] of the next maneuver, or -1 for arrive
+        int mi;                // index into maneuverIdx[] of the next maneuver or -1 for arrive
         int maneuverKey;       // stable per-maneuver key for the once-each voice guards
         String nextText;       // instruction text for the next maneuver
         double distToNextM;    // metres to the next maneuver

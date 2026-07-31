@@ -9,7 +9,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * Splits incoming BLE notification payloads into 20-byte frames, validates CRC-8, and decodes the
+ * Splits incoming BLE notification payloads into 20-byte frames, validates CRC-8 and decodes the
  * Teverun telemetry frames (VCU -> phone) into a live-data model (BLE_PROTOCOL §2). The model is
  * serialised to JSON with the field names from BRIDGE.md / §2.6 (plus the short aliases the
  * dashboard's existing parseBLE() already reads, so telemetry.html works unmodified).
@@ -96,7 +96,7 @@ final class FrameParser {
     }
 
     /**
-     * Split a notification into 20-byte frames, validate each CRC-8, and decode. A single
+     * Split a notification into 20-byte frames, validate each CRC-8 and decode. A single
      * notification can carry several concatenated 20-byte frames.
      */
     void onNotify(byte[] value) {
@@ -364,7 +364,7 @@ final class FrameParser {
             // Has the scooter reported its real config yet (a 55 71 frame arrived)? The R5.4.19 VCU
             // streams 55 71 periodically, so this is normally true within ~1-2 s of connecting. The UI
             // uses it to explain why a settings/gear write is not possible yet instead of failing
-            // silently (a write before this would serialise SettingsState defaults, and the VCU applies
+            // silently (a write before this would serialise SettingsState defaults and the VCU applies
             // them unvalidated - verified in the firmware 0x18 handler).
             o.put("settingsReady", settings.received71);
             // Settings-derived scalars (from the maintained 55 71 state) - also feed the scooter
@@ -555,7 +555,7 @@ final class FrameParser {
 
     private static String yesNo(boolean v) { return v ? "Yes" : "No"; }
 
-    /** 1-based indices of the set bits in an LSB-first bit array, or "none". */
+    /** 1-based indices of the set bits in an LSB-first bit array or "none". */
     private static String activeBits(int[] b) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < b.length; i++) {

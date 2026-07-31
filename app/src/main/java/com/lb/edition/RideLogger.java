@@ -42,7 +42,7 @@ import java.util.Set;
  *   <li>{@link #onConnected()} begins a potential session (state reset, not yet armed; no writing).
  *   <li>{@link #onLiveData(String)} keeps the latest telemetry snapshot; the FIRST time logging is
  *       enabled, the link is connected and speed &gt; 0 the ride arms: it records the start time,
- *       creates the ride file, starts {@link RideLoggerService}, and writes the first sample (t=0).
+ *       creates the ride file, starts {@link RideLoggerService} and writes the first sample (t=0).
  *   <li>While armed a 60 s timer (main looper {@link Handler}) appends the latest snapshot, so
  *       samples land at t=0, 60 s, 120 s … measured from first movement.
  *   <li>{@link #onDisconnected()} - or turning the toggle off mid-ride - finalizes the ride
@@ -264,7 +264,7 @@ public final class RideLogger {
 
     /**
      * Build an export file for the given ride {@code id} ("csv" or "json") under
-     * {@code cacheDir/exports} and return it, or null if the ride is unknown / the export fails.
+     * {@code cacheDir/exports} and return it or null if the ride is unknown / the export fails.
      * MainActivity launches the share sheet on the returned file.
      */
     public synchronized File exportRide(String id, String format) {
@@ -515,7 +515,7 @@ public final class RideLogger {
         return n;
     }
 
-    /** @return the {@code <startEpochMs>} parsed from a {@code ride-<epoch>.ndjson} file name, or 0. */
+    /** @return the {@code <startEpochMs>} parsed from a {@code ride-<epoch>.ndjson} file name or 0. */
     private static long rideIdOf(File f) {
         try {
             String n = f.getName();

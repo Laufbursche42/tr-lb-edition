@@ -43,7 +43,7 @@ import org.mapsforge.map.reader.MapFile;
  * <p>Lists EU countries and downloads the ready-made Mapsforge {@code .map} offline vector map for
  * each - directly over HTTPS with a progress bar - into
  * {@code getExternalFilesDir("nav")/maps/<country>.map}. No adb, no manual data steps. Shows the
- * downloaded size, lets the user pick the ACTIVE map used by {@link NavActivity}, and delete maps.
+ * downloaded size, lets the user pick the ACTIVE map used by {@link NavActivity} and delete maps.
  *
  * <p>Source mirror: the Mapsforge download mirror at hs-esslingen.de (per-country v5 europe maps).
  * All data © OpenStreetMap contributors (ODbL).
@@ -344,7 +344,7 @@ public class MapDownloadActivity extends Activity {
         return root;
     }
 
-    /** One country card: name, status, progress bar, and action buttons. */
+    /** One country card: name, status, progress bar and action buttons. */
     private final class Row {
         final String display;
         final String base;
