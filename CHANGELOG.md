@@ -14,6 +14,33 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.2
+
+The main screen is now laid out for reading at speed. How it looks is yours to set.
+
+### The main screen fits on one screen
+
+Everything a rider reads while moving, speed, battery, gear, current, the motors and the quick switches, is scaled to fill exactly one screen. Nothing that matters at speed needs a scroll any more. The detail sections start below the bottom edge and are still reached by swiping up.
+
+### Pack current now reads the way a rider thinks
+
+Current drawn from the pack shows as a negative number in red, recuperation as a positive number in green. The number itself is unchanged, only the sign follows the rider's point of view instead of the controller's.
+
+### Eight switches under the motor tiles
+
+Front, Rear, Both and Smart moved out of the heading into their own row. A second row was added for kick start, ABS, eco and cruise control. Each one writes to the scooter the moment it is tapped, carrying only the setting that was touched. Each mirrors what the scooter actually reports. Cruise control greys out while the scooter is in its road-legal state, because the controller refuses that write and a button that silently does nothing is worse than one that says why.
+
+### Display settings
+
+A new entry under Display opens colour settings kept separately for dark and light mode: the tile colour, the page background and one brightness slider that dims the text and every coloured readout together. Riders on an OLED screen can set the background to pure black, which switches those pixels off instead of lighting them dimly.
+
+### Smaller things
+
+- A ride that is recording now shows one floating marker with distance, time and a stop button. It starts above the motor tiles and can be dragged anywhere on the screen; where it is put is remembered.
+- Each motor tile carries a single value with its unit underneath. The currents moved into a second row of tiles rather than crowding the first.
+- Park replaces the gear number itself instead of adding a small marker beneath it.
+- The turn-signal indicators had left and right the wrong way round.
+
 ## 1.1.0
 
 A series step rather than a patch: a second language, terms that have to be accepted before the

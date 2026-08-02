@@ -39,6 +39,12 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
   <!-- ── Scrollable Content ─────────────────────────── -->
   <div id="scroller">
 
+    <!-- Everything down to the drive-mode toggles is the "fold": it is scaled by fitFold() to
+         fill exactly one screen, so a rider never has to scroll for the live values. The
+         sections after the fold start below the bottom edge and are reached by swiping up. -->
+    <div id="fold">
+     <div id="fold-inner">
+
     <!-- Speed Drums -->
     <div id="speed-row">
       <div class="speed-drum ble-drum">
@@ -68,37 +74,69 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       </div>
     </div>
 
-    <!-- Motors (dual motor: rear + front). The quick motor-mode toggle sits in the heading row. -->
+    <!-- Motors (dual motor: rear + front). One value per tile: the temperatures and the power in
+         the first row, the currents in the second. -->
     <div class="section-hdr sub-hdr">
       <span data-i18n="dash.motors.section">Motors</span>
-      <!-- Quick motor-mode toggle (mirrors the settings-sheet #motor-mode-seg codes).
-           Disabled (greyed, non-interactive) until the scooter is connected. -->
-      <div id="motor-quick" class="mq-disabled" role="group" aria-label="Motor mode quick toggle" data-i18n-aria="dash.motors.quick.group">
-        <button type="button" class="mq-btn" data-mm="2" aria-label="Front motor only" data-i18n-aria="dash.motors.mode.front.aria" data-i18n="dash.motors.mode.front">Front</button>
-        <button type="button" class="mq-btn" data-mm="1" aria-label="Rear motor only" data-i18n-aria="dash.motors.mode.rear.aria" data-i18n="dash.motors.mode.rear">Rear</button>
-        <button type="button" class="mq-btn" data-mm="0" aria-label="Both motors" data-i18n-aria="dash.motors.mode.both.aria" data-i18n="dash.motors.mode.both">Both</button>
-        <button type="button" class="mq-btn mq-smart" aria-label="Toggle Smart (TCS)" data-i18n-aria="dash.motors.mode.smart.aria" data-i18n="dash.motors.mode.smart">Smart</button>
-      </div>
     </div>
     <div id="motor-area">
       <div id="motor-row">
         <div class="motor-cell">
           <div class="mc-title" data-i18n="dash.motor.rear.title">REAR</div>
-          <div class="mc-main"><span id="mr-temp">-</span><span class="mc-unit" data-i18n="dash.motor.rear.temp.unit">°C</span></div>
-          <div class="mc-sub"><span id="mr-cur">-</span> <span data-i18n="dash.motor.rear.current.unit">A</span></div>
+          <div class="mc-main"><span id="mr-temp">-</span></div>
+          <div class="mc-unit" data-i18n="dash.motor.rear.temp.unit">°C</div>
         </div>
         <div class="motor-cell">
           <div class="mc-title" data-i18n="dash.motor.front.title">FRONT</div>
-          <div class="mc-main"><span id="mf-temp">-</span><span class="mc-unit" data-i18n="dash.motor.front.temp.unit">°C</span></div>
-          <div class="mc-sub"><span id="mf-cur">-</span> <span data-i18n="dash.motor.front.current.unit">A</span></div>
+          <div class="mc-main"><span id="mf-temp">-</span></div>
+          <div class="mc-unit" data-i18n="dash.motor.front.temp.unit">°C</div>
         </div>
         <div class="motor-cell">
           <div class="mc-title" data-i18n="dash.motor.power.title">POWER</div>
-          <div class="mc-main"><span id="m-power">-</span><span class="mc-unit" data-i18n="dash.motor.power.unit">kW</span></div>
-          <div class="mc-sub"><span id="m-total-cur">-</span> <span data-i18n="dash.motor.current.total.unit">A total</span></div>
+          <div class="mc-main"><span id="m-power">-</span></div>
+          <div class="mc-unit" data-i18n="dash.motor.power.unit">kW</div>
+        </div>
+      </div>
+      <div id="motor-row-2">
+        <div class="motor-cell">
+          <div class="mc-title" data-i18n="dash.motor.rear.title">REAR</div>
+          <div class="mc-main"><span id="mr-cur">-</span></div>
+          <div class="mc-unit" data-i18n="dash.motor.rear.current.unit">A</div>
+        </div>
+        <div class="motor-cell">
+          <div class="mc-title" data-i18n="dash.motor.front.title">FRONT</div>
+          <div class="mc-main"><span id="mf-cur">-</span></div>
+          <div class="mc-unit" data-i18n="dash.motor.front.current.unit">A</div>
+        </div>
+        <div class="motor-cell">
+          <div class="mc-title" data-i18n="dash.motor.current.total.title">TOTAL</div>
+          <div class="mc-main"><span id="m-total-cur">-</span></div>
+          <div class="mc-unit" data-i18n="dash.motor.rear.current.unit">A</div>
         </div>
       </div>
     </div>
+
+    <!-- Quick motor-mode toggle (mirrors the settings-sheet #motor-mode-seg codes).
+         Disabled (greyed, non-interactive) until the scooter is connected. -->
+    <div id="motor-quick" class="mq-disabled" role="group" aria-label="Motor mode quick toggle" data-i18n-aria="dash.motors.quick.group">
+      <button type="button" class="mq-btn" data-mm="2" aria-label="Front motor only" data-i18n-aria="dash.motors.mode.front.aria" data-i18n="dash.motors.mode.front">Front</button>
+      <button type="button" class="mq-btn" data-mm="1" aria-label="Rear motor only" data-i18n-aria="dash.motors.mode.rear.aria" data-i18n="dash.motors.mode.rear">Rear</button>
+      <button type="button" class="mq-btn" data-mm="0" aria-label="Both motors" data-i18n-aria="dash.motors.mode.both.aria" data-i18n="dash.motors.mode.both">Both</button>
+      <button type="button" class="mq-btn mq-smart" aria-label="Toggle Smart (TCS)" data-i18n-aria="dash.motors.mode.smart.aria" data-i18n="dash.motors.mode.smart">Smart</button>
+    </div>
+
+    <!-- Quick drive-mode toggles. Same controller keys as the scooter-settings sheet, but written
+         immediately instead of on Save. Greyed out until the scooter is connected. -->
+    <div id="drive-quick" class="dq-disabled" role="group" aria-label="Drive mode quick toggles" data-i18n-aria="dash.drive.quick.group">
+      <button type="button" class="dq-btn" data-dq="startMode" aria-label="Toggle kick start" data-i18n-aria="dash.drive.quick.kickstart.aria" data-i18n="dash.drive.quick.kickstart">Kickstart</button>
+      <button type="button" class="dq-btn" data-dq="abs" aria-label="Toggle ABS" data-i18n-aria="dash.drive.quick.abs.aria" data-i18n="dash.drive.quick.abs">ABS</button>
+      <button type="button" class="dq-btn" data-dq="ecoMode" aria-label="Toggle eco mode" data-i18n-aria="dash.drive.quick.eco.aria" data-i18n="dash.drive.quick.eco">Eco</button>
+      <button type="button" class="dq-btn" data-dq="cruise" aria-label="Toggle cruise control" data-i18n-aria="dash.drive.quick.cruise.aria" data-i18n="dash.drive.quick.cruise">Cruise</button>
+    </div>
+
+     </div>
+    </div>
+    <!-- end of fold -->
 
     <!-- Data Grid -->
     <div class="section-hdr sub-hdr" data-i18n="dash.grid.vehicle.section">Vehicle &amp; battery</div>
@@ -218,6 +256,19 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
   <button type="button" id="nav-end" aria-label="End navigation" data-i18n-aria="routes.turn.end.label" data-i18n="routes.turn.end.icon">✕</button>
 </div>
 
+<!-- Ride banner: the single thing that shows on the main screen while a ride records. It floats
+     over the fold and starts just above the "Motors" heading, and the rider can drag it anywhere.
+     Deliberately a sibling of #app, not a child of the fold: a transformed ancestor would become
+     the containing block for a fixed element and the banner would ride along with the scaling. -->
+<div id="ride-banner">
+  <span id="rb-dot" aria-hidden="true"></span>
+  <div id="rb-texts">
+    <div id="rb-dist">-</div>
+    <div id="rb-time">-</div>
+  </div>
+  <button type="button" id="rb-stop" aria-label="Stop ride" data-i18n-aria="dash.ride.stop" data-i18n="dash.ride.stop">Stop ride</button>
+</div>
+
 <!-- ── Settings Overlay ────────────────────────────── -->
 <div id="settings-overlay"></div>
 <div id="settings-sheet">
@@ -334,6 +385,7 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
         <label class="toggle-label" for="toggle-fullscreen"></label>
       </div>
     </div>
+    <button id="btn-open-display" class="settings-btn mt-10"><span data-i18n="settings.display.colors.action">&#127912; Display settings</span></button>
   </div>
 
   <!-- Debug logging -->
@@ -712,6 +764,67 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
   </div>
 </div>
 
+<!-- ── Display settings page ──────────────────────── -->
+<!-- Tile colour, page background and text brightness, kept separately for the dark and the light
+     theme. The background picker is what OLED riders reach for: set it to pure black and the
+     unlit pixels really switch off. -->
+<div id="display-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-display-back" aria-label="Back" data-i18n-aria="info.nav.back">&#8592;</button>
+    </div>
+    <span class="tb-title" data-i18n="display.title">Display settings</span>
+    <div class="tb-right"><span class="tb-spacer"></span></div>
+  </div>
+  <div id="display-scroller">
+    <div class="settings-row-sublabel mb-10" data-i18n="display.hint">
+      Colours are stored per theme: what you set here applies to the theme you are editing, the other one keeps its own values.
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title" data-i18n="display.dark.title">Dark mode</div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label" data-i18n="display.tile.color">Tile colour</div>
+          <div class="settings-row-sublabel" data-i18n="display.tile.oled">Pure black switches OLED pixels off here too</div>
+        </div>
+        <input type="color" class="color-ctrl" id="dsp-dark-card">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label" data-i18n="display.bg.color">Background</div>
+          <div class="settings-row-sublabel" data-i18n="display.bg.oled">Pure black switches OLED pixels off</div>
+        </div>
+        <input type="color" class="color-ctrl" id="dsp-dark-bg">
+      </div>
+      <div class="settings-row col-stretch">
+        <div class="settings-row-label" data-i18n="display.text.brightness">Text brightness</div>
+        <div class="settings-row-sublabel" data-i18n="display.brightness.hint">Applies to the text and to every coloured readout</div>
+        <input type="range" class="range-ctrl" id="dsp-dark-lum" min="0" max="100" step="1">
+      </div>
+      <button type="button" id="btn-dsp-reset-dark" class="settings-btn mt-10" data-i18n="display.reset.dark">Reset dark mode</button>
+    </div>
+
+    <div class="settings-group has-top-rule">
+      <div class="settings-group-title" data-i18n="display.light.title">Light mode</div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.tile.color">Tile colour</div></div>
+        <input type="color" class="color-ctrl" id="dsp-light-card">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.bg.color">Background</div></div>
+        <input type="color" class="color-ctrl" id="dsp-light-bg">
+      </div>
+      <div class="settings-row col-stretch">
+        <div class="settings-row-label" data-i18n="display.text.contrast">Text contrast</div>
+        <div class="settings-row-sublabel" data-i18n="display.brightness.hint">Applies to the text and to every coloured readout</div>
+        <input type="range" class="range-ctrl" id="dsp-light-lum" min="0" max="100" step="1">
+      </div>
+      <button type="button" id="btn-dsp-reset-light" class="settings-btn mt-10" data-i18n="display.reset.light">Reset light mode</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Firmware update page ───────────────────────── -->
 <div id="firmware-page">
   <div id="topbar">
@@ -772,7 +885,6 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <h3 id="verinfo-title" data-i18n="fw.verinfo.title">Version Info &amp; Disclaimer</h3>
     <div class="verinfo-ver"><span data-i18n="fw.verinfo.appversion.label">App version:</span> <span id="verinfo-ver">-</span></div>
     <p id="verinfo-disclaimer" data-i18n="fw.verinfo.disclaimer">This is not an official Teverun app. The developer (Laufbursche) is not affiliated with, endorsed by or connected to Teverun. Teverun is a trademark of its respective owner.</p>
-    <p id="verinfo-thanks" data-i18n="fw.verinfo.thanks">Special thanks to <span class="link-ble" onclick="openExt('https://spooonky.github.io/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware/')">Spoonkey's Webpatcher</span>, the research the Laufbursche firmware builds on (<span class="link-ble" onclick="openExt('https://github.com/Spooonky/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware/blob/main/Readme.md')">README</span>; that project ships no license file).</p>
     <p id="verinfo-license" data-i18n="fw.verinfo.license">Laufbursche Edition is source-available under the PolyForm Noncommercial License 1.0.0 with Additional Terms. Read the <span class="link-ble" onclick="openExt('https://github.com/Laufbursche42/tr-lb-edition/blob/main/README.md')">GitHub README</span> and <span class="link-ble" onclick="openExt('https://github.com/Laufbursche42/tr-lb-edition/blob/main/license.md')">License</span>.</p>
     <p id="verinfo-osm" data-i18n="fw.verinfo.map.attribution">Offline maps and POI data (camping / charging) are &copy; OpenStreetMap contributors, licensed under the ODbL 1.0.</p>
     <p><span class="link-ble" id="verinfo-disclaimer-link" data-i18n="disclaimer.read.link">Read the liability disclaimer</span></p>
@@ -976,6 +1088,148 @@ const state = {
   confirmCb: null,
 };
 
+/* ── Display settings (per-theme colours) ─────────────────────
+   Tile colour, page background and text brightness, stored separately for dark and light. The
+   values are written as inline custom properties on :root, which outrank both the :root and the
+   [data-theme="light"] blocks in the stylesheet, so applyDisplay() has to run again on every
+   theme switch to swap in the other theme's set. */
+
+const DISPLAY_KEY = 'lb_display_custom';
+const DISPLAY_DEFAULTS = {
+  dark:  { card: '#111420', bg: '#0A0C10', lum: 90 },
+  light: { card: '#ffffff', bg: '#e8edf5', lum: 100 }
+};
+
+function loadDisplayCfg() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(DISPLAY_KEY) || 'null'); } catch (e) {}
+  const out = { dark: Object.assign({}, DISPLAY_DEFAULTS.dark), light: Object.assign({}, DISPLAY_DEFAULTS.light) };
+  if (saved) {
+    ['dark', 'light'].forEach(k => { if (saved[k]) Object.assign(out[k], saved[k]); });
+  }
+  return out;
+}
+
+function saveDisplayCfg(cfg) {
+  try { localStorage.setItem(DISPLAY_KEY, JSON.stringify(cfg)); } catch (e) {}
+}
+
+/* Text and label colours are derived from the brightness slider rather than picked, so a rider
+   cannot land on text that is invisible against their own background. Hue and saturation stay at
+   the theme's own values; only lightness moves. */
+function displayTextColors(theme, lum) {
+  const v = Math.max(0, Math.min(100, Number(lum)));
+  if (theme === 'dark') {
+    return { text: `hsl(210 57% ${(60 + v * 0.37).toFixed(1)}%)`, label: `hsl(210 35% ${(50 + v * 0.35).toFixed(1)}%)` };
+  }
+  // Light mode: higher means darker text, i.e. more contrast against a bright background.
+  const l = (40 - v * 0.33).toFixed(1);
+  return { text: `hsl(226 43% ${l}%)`, label: `hsl(226 43% ${l}%)` };
+}
+
+/* The coloured readouts. The slider dims these the same way the brightness slider dims the plain
+   text, so a night rider can take the glare out of the whole screen and not just the white parts.
+   Hue and saturation are kept; only lightness moves towards the background. */
+const DISPLAY_ACCENTS = {
+  dark:  { value: '#BCEB39', ble: '#B8F020', gps: '#3DB8FF', good: '#1EE89A', btnfill: '#B8F020', warn: '#FFAA18', danger: '#FF5050' },
+  light: { value: '#2FEBA2', ble: '#2A6A00', gps: '#005AA0', good: '#2FEBA2', btnfill: '#2FEBA2', warn: '#A05800', danger: '#CC2020' }
+};
+
+function hexToHsl(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  const l = (mx + mn) / 2;
+  let h = 0, s = 0;
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (mx === r) h = 60 * (((g - b) / d) % 6);
+    else if (mx === g) h = 60 * ((b - r) / d + 2);
+    else h = 60 * ((r - g) / d + 4);
+    if (h < 0) h += 360;
+  }
+  return { h: h, s: s * 100, l: l * 100 };
+}
+
+function applyDisplay() {
+  const cfg = loadDisplayCfg();
+  const theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const c = cfg[theme];
+  const root = document.documentElement;
+  root.style.setProperty('--card', c.card);
+  root.style.setProperty('--bg', c.bg);
+  const t = displayTextColors(theme, c.lum);
+  root.style.setProperty('--text', t.text);
+  root.style.setProperty('--label', t.label);
+
+  // The same slider dims the coloured readouts: one brightness control for the whole screen.
+  // 100 leaves the palette exactly as designed; lower values pull every coloured readout towards
+  // the background, dark mode downwards and light mode upwards.
+  const a = Math.max(0, Math.min(100, Number(c.lum)));
+  const k = 0.35 + 0.65 * (a / 100);
+  const base = DISPLAY_ACCENTS[theme];
+  Object.keys(base).forEach(name => {
+    const hsl = hexToHsl(base[name]);
+    if (!hsl) return;
+    const l = theme === 'dark' ? hsl.l * k : 100 - (100 - hsl.l) * k;
+    root.style.setProperty('--' + name, `hsl(${hsl.h.toFixed(0)} ${hsl.s.toFixed(0)}% ${l.toFixed(1)}%)`);
+  });
+}
+
+function initDisplayPage() {
+  const cfg = loadDisplayCfg();
+  const bind = (theme, key, id, isRange) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = isRange ? String(cfg[theme][key]) : cfg[theme][key];
+    el.addEventListener('input', () => {
+      const now = loadDisplayCfg();
+      now[theme][key] = isRange ? Number(el.value) : el.value;
+      saveDisplayCfg(now);
+      applyDisplay();          // live preview, but only for the theme currently on screen
+    });
+  };
+  bind('dark',  'card', 'dsp-dark-card',  false);
+  bind('dark',  'bg',   'dsp-dark-bg',    false);
+  bind('dark',  'lum',  'dsp-dark-lum',   true);
+  bind('light', 'card', 'dsp-light-card', false);
+  bind('light', 'bg',   'dsp-light-bg',   false);
+  bind('light', 'lum',  'dsp-light-lum',  true);
+
+  const reset = (theme) => {
+    const now = loadDisplayCfg();
+    now[theme] = Object.assign({}, DISPLAY_DEFAULTS[theme]);
+    saveDisplayCfg(now);
+    applyDisplay();
+    refreshDisplayControls();
+  };
+  const rd = document.getElementById('btn-dsp-reset-dark');
+  if (rd) rd.addEventListener('click', () => reset('dark'));
+  const rl = document.getElementById('btn-dsp-reset-light');
+  if (rl) rl.addEventListener('click', () => reset('light'));
+}
+
+function refreshDisplayControls() {
+  const cfg = loadDisplayCfg();
+  const put = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  put('dsp-dark-card',  cfg.dark.card);
+  put('dsp-dark-bg',    cfg.dark.bg);
+  put('dsp-dark-lum',   String(cfg.dark.lum));
+  put('dsp-light-card', cfg.light.card);
+  put('dsp-light-bg',   cfg.light.bg);
+  put('dsp-light-lum',  String(cfg.light.lum));
+}
+
+function openDisplayPage() {
+  refreshDisplayControls();
+  document.getElementById('display-page').classList.add('open');
+}
+function closeDisplayPage() {
+  document.getElementById('display-page').classList.remove('open');
+}
+
 /* ── Theme ────────────────────────────────────────────────── */
 
 function applyTheme(dark) {
@@ -990,6 +1244,9 @@ function applyTheme(dark) {
   btn.innerHTML = dark ? '&#9728;' : '&#9790;';
   document.getElementById('toggle-dark').checked = dark;
   storage.set('lb_theme', dark ? 'dark' : 'light');
+  // The rider's own colours are inline properties on :root and therefore outrank the stylesheet's
+  // theme block, so the other theme's set has to be written now that the theme has changed.
+  try { applyDisplay(); } catch (e) {}
 }
 
 function initTheme() {
@@ -1345,20 +1602,26 @@ function updateBLEUI(data) {
 
   // Hero
   setTxt('soc-val', Math.round(data.soc));
-  setTxt('gear-val', data.gear);
   const bit = (v) => v === true || v === 1 || v === '1';
-  const gt = gearTag(bit(data.park), Array.isArray(data.systemStatus) && bit(data.systemStatus[5]));
+  const isPark = bit(data.park);
+  // Park takes over the gear number itself rather than adding a small marker beneath it, so the
+  // state is readable at a glance while riding.
+  setTxt('gear-val', isPark ? t('msg.gear.tag.park') : data.gear);
+  const gt = gearTag(false, Array.isArray(data.systemStatus) && bit(data.systemStatus[5]));
   const gearTagEl = document.getElementById('gear-tag');
   if (gearTagEl) {
     gearTagEl.textContent = gt.text;
     gearTagEl.className = gt.show ? `hc-tag ${gt.cls}` : 'hc-tag';
     showEl(gearTagEl, gt.show);
   }
+  // Signed from the rider's point of view: current drawn from the pack reads negative and red,
+  // recuperation reads positive and green. The controller reports the opposite sign, hence the flip.
   const cur = data.current;
   const curEl = document.getElementById('current-val');
   if (curEl) {
-    curEl.textContent = cur >= 0 ? `+${cur.toFixed(1)}` : cur.toFixed(1);
-    curEl.style.color = cur < 0 ? 'var(--good)' : 'var(--text)';
+    const shown = -cur;
+    curEl.textContent = shown > 0 ? `+${shown.toFixed(1)}` : shown.toFixed(1);
+    curEl.style.color = cur > 0 ? 'var(--danger)' : cur < 0 ? 'var(--good)' : 'var(--text)';
   }
 
   // Motors (dual motor)
@@ -1407,6 +1670,7 @@ function tickBLE() {
   // Keep the main-screen motor-mode quick toggle mirroring the scooter (~2x/s), including
   // its connected/disconnected enabled state.
   reflectMotorModeMain();
+  reflectDriveQuick();
   // Accumulate per-gear/assist values and keep the gear editor live (without clobbering edits).
   updateGearCache();
   maybeLiveRefreshGearEditor();
@@ -1639,10 +1903,13 @@ function updateRideUI() {
   const ride = state.currentRide;
   const stopRow = document.getElementById('dg-stop-row');
   showEl(stopRow, !!ride);
+  showRideBanner(!!ride);
   if (ride) {
     const elapsed = Date.now() - ride.startTime;
     setTxt('dg-dist', `${convDist(ride.dist).toFixed(2)} ${distUnit()}`);
     setTxt('dg-time', formatDuration(elapsed));
+    setTxt('rb-dist', `${convDist(ride.dist).toFixed(2)} ${distUnit()}`);
+    setTxt('rb-time', formatDuration(elapsed));
     // Real trip average = GPS distance / elapsed time (the scooter's own avgSpeed resets to 0 when
     // stopped, so we compute our own). Guard divide-by-zero -> 0.
     const avgKmh = elapsed > 0 ? (ride.dist / (elapsed / 3600000)) : 0;
@@ -2136,6 +2403,8 @@ function applyLang() {
   }
   renderWhatsNewList();
   renderDisclaimerList();
+  // Label lengths just changed, so the fold has to be measured again.
+  try { scheduleFitFold(); } catch (e) {}
 }
 
 function setLang(next) {
@@ -3460,6 +3729,79 @@ function initNavBanner() {
   b.addEventListener('pointercancel', drop);
 }
 
+/* ── Ride banner ──────────────────────────────────────────────
+   The one indicator on the main screen while a ride records. Floats over the fold, starts just
+   above the "Motors" heading and can be dragged anywhere; the dragged spot is remembered. */
+
+const RIDE_BANNER_KEY = 'lb_ride_banner_pos';
+
+/* Park it above the "Motors" heading. Only used until the rider drags it somewhere else. */
+function placeRideBannerDefault(b) {
+  const hdr = document.querySelector('#fold-inner .section-hdr');
+  const h = b.offsetHeight || 44;
+  let top = 8;
+  if (hdr) {
+    const r = hdr.getBoundingClientRect();
+    top = Math.max(8, r.top - h - 6);
+  }
+  b.style.left = '8px'; b.style.right = '8px';
+  b.style.top = top + 'px'; b.style.bottom = 'auto'; b.style.width = '';
+}
+
+function showRideBanner(on) {
+  const b = document.getElementById('ride-banner');
+  if (!b) return;
+  const was = b.classList.contains('open');
+  b.classList.toggle('open', !!on);
+  if (on && !was) {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(RIDE_BANNER_KEY) || 'null'); } catch (e) {}
+    if (saved && typeof saved.left === 'number' && typeof saved.top === 'number') {
+      b.style.left = saved.left + 'px'; b.style.top = saved.top + 'px';
+      b.style.right = 'auto'; b.style.bottom = 'auto';
+      if (typeof saved.width === 'number') b.style.width = saved.width + 'px';
+    } else {
+      // offsetHeight is only real once the element is displayed, so measure after the class flip.
+      placeRideBannerDefault(b);
+    }
+  }
+}
+
+function initRideBanner() {
+  const b = document.getElementById('ride-banner');
+  if (!b) return;
+  const stop = document.getElementById('rb-stop');
+  if (stop) stop.addEventListener('click', (e) => { e.stopPropagation(); stopLiveRide(); });
+
+  let drag = null;
+  b.addEventListener('pointerdown', (e) => {
+    if (e.target && e.target.id === 'rb-stop') return;
+    const r = b.getBoundingClientRect();
+    b.style.width = r.width + 'px';
+    b.style.left = r.left + 'px'; b.style.top = r.top + 'px';
+    b.style.right = 'auto'; b.style.bottom = 'auto';
+    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    try { b.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  b.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const w = b.offsetWidth, h = b.offsetHeight;
+    const left = Math.max(4, Math.min(e.clientX - drag.dx, window.innerWidth - w - 4));
+    const top = Math.max(4, Math.min(e.clientY - drag.dy, window.innerHeight - h - 4));
+    b.style.left = left + 'px'; b.style.top = top + 'px';
+  });
+  const drop = () => {
+    if (!drag) return; drag = null;
+    try {
+      localStorage.setItem(RIDE_BANNER_KEY, JSON.stringify({
+        left: parseFloat(b.style.left), top: parseFloat(b.style.top), width: b.offsetWidth
+      }));
+    } catch (e) {}
+  };
+  b.addEventListener('pointerup', drop);
+  b.addEventListener('pointercancel', drop);
+}
+
 window.__onOtaState = function(sArg) {
   let s = sArg;
   try { if (typeof sArg === 'string') s = JSON.parse(sArg); } catch (e) { return; }
@@ -3817,6 +4159,143 @@ function reflectMotorModeMain() {
   if (smartBtn) smartBtn.classList.toggle('active', connected && liveSmartOn());
 }
 
+/* ── Main-screen drive-mode quick toggles ─────────────────────
+   Kick start / ABS / Eco / Cruise, the same controller keys the scooter-settings sheet writes,
+   but sent straight away instead of on Save. Cruise is auto-or-off here; the settings sheet keeps
+   the third (manual) mode. */
+
+/* Live values of the four keys, with the same status-bit fallbacks prefillScooterSettings uses. */
+function liveDriveFlags() {
+  const d = liveRaw();
+  const sys = Array.isArray(d.systemStatus) ? d.systemStatus : [];
+  const rc  = Array.isArray(d.rControlStatus) ? d.rControlStatus : [];
+  const b = v => v === true || v === 1 || v === '1';
+  let start = pick(d, ['startMode']); if (start == null) start = b(rc[6]);
+  let abs   = pick(d, ['abs']);       if (abs   == null) abs   = b(rc[3]);
+  let eco   = pick(d, ['ecoMode']);   if (eco   == null) eco   = b(sys[0]);
+  let cr    = pick(d, ['cruise']);
+  if (cr == null) { cr = ((b(rc[2]) ? 1 : 0) << 1) | (b(rc[1]) ? 1 : 0); if (cr > 2) cr = 0; }
+  return { startMode: b(start), abs: b(abs), ecoMode: b(eco), cruise: parseInt(cr, 10) || 0 };
+}
+
+/* Cruise is write-protected by the firmware while the Fighter Mini is locked (eKFV), same rule the
+   settings sheet applies to its cruise segment. */
+function driveCruiseLocked() {
+  return fighterFeatures() && liveRaw().vcuUnlock === 0;
+}
+
+function toggleDriveQuick(key) {
+  if (typeof LB === 'undefined' || !LB.sendSetting) { showToast(t('msg.app.only.in.app')); return; }
+  if (!state.bleConnected) { showToast(t('msg2.toast.connect_scooter_first')); return; }
+  const f = liveDriveFlags();
+  let payload;
+  if (key === 'cruise') {
+    if (driveCruiseLocked()) { showToast(t('msg2.settings.cruise.locked_title'), 3000, 'err'); return; }
+    payload = { cruise: f.cruise === 0 ? 1 : 0 };   // auto when off, off when auto or manual
+  } else {
+    payload = {}; payload[key] = !f[key];
+  }
+  try { LB.sendSetting(JSON.stringify(payload)); }
+  catch (e) { showToast(tf('msg2.toast.error', { e: e })); }
+}
+
+/* Mirror the scooter state onto the four buttons (called every tickBLE). */
+function reflectDriveQuick() {
+  const wrap = document.getElementById('drive-quick');
+  if (!wrap) return;
+  const connected = !!state.bleConnected;
+  wrap.classList.toggle('dq-disabled', !connected);
+  const f = liveDriveFlags();
+  const on = { startMode: f.startMode, abs: f.abs, ecoMode: f.ecoMode, cruise: f.cruise !== 0 };
+  wrap.querySelectorAll('.dq-btn[data-dq]').forEach(btn => {
+    const k = btn.dataset.dq;
+    btn.classList.toggle('active', connected && !!on[k]);
+    if (k === 'cruise') {
+      const locked = connected && driveCruiseLocked();
+      btn.classList.toggle('dq-locked', locked);
+      btn.title = locked ? t('msg2.settings.cruise.locked_title') : '';
+    }
+  });
+}
+
+/* ── First-screen fold ────────────────────────────────────────
+   Scale the fold so it fills exactly the visible height of the scroller: the rider sees speed,
+   battery, gear, current, motors and the quick toggles without scrolling, and everything after
+   it begins below the bottom edge.
+
+   The inner block is laid out at 100/scale percent width and then scaled from its top-left, so
+   the scaled result is exactly the scroller width. Height feeds back into width through text
+   wrapping, so the factor is computed twice; the second pass is what makes narrow phones land
+   on the right value. */
+
+const FOLD_MIN_SCALE = 0.55;   // below this the labels stop being readable, so allow a scroll instead
+const FOLD_MAX_SCALE = 1.5;    // above this the tiles look inflated on a tall screen
+const FOLD_BOTTOM_GAP = 5;     // breathing room between the last button row and the screen edge
+
+let _foldScale = 0;            // last applied factor, 0 = never fitted
+
+function fitFold() {
+  const scroller = document.getElementById('scroller');
+  const fold = document.getElementById('fold');
+  const inner = document.getElementById('fold-inner');
+  if (!scroller || !fold || !inner) return;
+
+  const cs = getComputedStyle(scroller);
+  // clientHeight includes the padding box; the fold starts below the top padding and its bottom
+  // edge is meant to sit on the screen edge, so only the top padding comes off.
+  const avail = scroller.clientHeight - parseFloat(cs.paddingTop || '0') - FOLD_BOTTOM_GAP;
+  if (!(avail > 0)) return;
+
+  // offsetHeight is the LAYOUT height and ignores the transform, so the factor can be recomputed
+  // without first removing the one already applied.
+  let scale = _foldScale || 1;
+  for (let pass = 0; pass < 2; pass++) {
+    inner.style.width = (100 / scale) + '%';
+    const natural = inner.offsetHeight;
+    if (!(natural > 0)) return;
+    scale = Math.max(FOLD_MIN_SCALE, Math.min(FOLD_MAX_SCALE, avail / natural));
+  }
+
+  // Already there: rewriting the same values would resize the observed children again, and a
+  // factor that lands either side of a text-wrap boundary could then oscillate forever.
+  if (Math.abs(scale - _foldScale) < 0.005) {
+    inner.style.width = (100 / _foldScale) + '%';
+    return;
+  }
+  _foldScale = scale;
+  inner.style.width = (100 / scale) + '%';
+  inner.style.transform = 'scale(' + scale + ')';
+  // Never shorter than the screen: when the factor runs into the upper cap the scaled block
+  // stops short of the bottom edge, and the next section's heading would peek in. Claiming the
+  // full height keeps everything after the fold below the edge either way.
+  fold.style.height = Math.round(Math.max(avail, inner.offsetHeight * scale)) + 'px';
+}
+
+/* Re-fit whenever the viewport or the fold's own content changes (a gear tag appearing, a
+   longer translation, rotation, the keyboard opening). Coalesced into one animation frame so a
+   burst of mutations costs one measurement. */
+let _foldPending = false;
+function scheduleFitFold() {
+  if (_foldPending) return;
+  _foldPending = true;
+  requestAnimationFrame(() => { _foldPending = false; try { fitFold(); } catch (e) {} });
+}
+
+function initFold() {
+  scheduleFitFold();
+  window.addEventListener('resize', scheduleFitFold);
+  window.addEventListener('orientationchange', scheduleFitFold);
+  if (window.ResizeObserver) {
+    const inner = document.getElementById('fold-inner');
+    const scroller = document.getElementById('scroller');
+    // Observe the CHILDREN, not #fold-inner itself: observing an element whose own size the
+    // callback changes is a feedback loop.
+    const ro = new ResizeObserver(scheduleFitFold);
+    if (inner) Array.prototype.forEach.call(inner.children, el => ro.observe(el));
+    if (scroller) ro.observe(scroller);
+  }
+}
+
 /* ── Event Wiring ─────────────────────────────────────────── */
 
 function wireEvents() {
@@ -3897,6 +4376,12 @@ function wireEvents() {
   });
   document.getElementById('btn-battery-back').addEventListener('click', closeBatteryPage);
 
+  document.getElementById('btn-open-display').addEventListener('click', () => {
+    closeSettings();
+    openDisplayPage();
+  });
+  document.getElementById('btn-display-back').addEventListener('click', closeDisplayPage);
+
   document.getElementById('btn-copy-btname').addEventListener('click', copyBtName);
   document.getElementById('btn-copy-serial').addEventListener('click', copySerial);
   // Change identity (cmd 0x1f): Set writes the full edited FIN. Prefilled with the current FIN.
@@ -3940,6 +4425,11 @@ function wireEvents() {
   });
   const mqSmart = document.querySelector('#motor-quick .mq-smart');
   if (mqSmart) mqSmart.addEventListener('click', toggleSmartMain);
+
+  // Main-screen drive-mode quick toggles: kick start / ABS / eco / cruise.
+  document.querySelectorAll('#drive-quick .dq-btn[data-dq]').forEach(btn => {
+    btn.addEventListener('click', () => toggleDriveQuick(btn.dataset.dq));
+  });
 
   // Hidden gesture: triple-tap the VCU speed tile to toggle the FIN speed lock (add/remove "DE").
   const vcuTile = document.querySelector('#speed-row .ble-drum');
@@ -4113,6 +4603,9 @@ function init() {
   recoverStuckRides();
   renderRoutes();
   initNavBanner();
+  initRideBanner();
+  initDisplayPage();
+  initFold();      // after initLang, so the first measurement sees the rider's own label lengths
 
   // Start BLE polling
   tickBLE();

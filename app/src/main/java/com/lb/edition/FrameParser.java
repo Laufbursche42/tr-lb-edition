@@ -508,8 +508,10 @@ final class FrameParser {
             a.put(nv("Park", yesNo(flag(ecuStatus1, 7) || flag(ecuStatus2, 7))));          // ecuStatus1[7]/ecuStatus2[7]
             a.put(nv("Cruise Active", yesNo(flag(ecuStatus2, 0))));                        // ecuStatus2[0]
             a.put(nv("Headlight", onOff(flag(ecuStatus2, 4))));                            // ecuStatus2[4]
-            a.put(nv("Turn Signal L", onOff(flag(ecuStatus2, 5))));                        // ecuStatus2[5]
-            a.put(nv("Turn Signal R", onOff(flag(ecuStatus2, 6))));                        // ecuStatus2[6]
+            // Sides confirmed against the original app's own icons: it binds bit 6 to a left
+            // arrow and bit 5 to a right arrow, so these two were the wrong way round before.
+            a.put(nv("Turn Signal L", onOff(flag(ecuStatus2, 6))));                        // ecuStatus2[6]
+            a.put(nv("Turn Signal R", onOff(flag(ecuStatus2, 5))));                        // ecuStatus2[5]
             a.put(nv("Front ECU 1", activeBits(frontEcuStatus1)));                         // 55 72 t[2]
             a.put(nv("Front ECU 2", activeBits(frontEcuStatus2)));                         // 55 72 t[3]
             a.put(nv("System Status 3", activeBits(systemStatus3)));                       // 55 72 t[18]

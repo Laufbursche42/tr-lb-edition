@@ -124,6 +124,20 @@ html, body {
 #scroller > * { flex-shrink: 0; }
 #scroller::-webkit-scrollbar { display: none; }
 
+/* ── First-screen fold ─────────────────────────────────────── */
+/* The fold holds the live values a rider reads while moving, and fitFold() scales it so it
+   fills exactly the visible height. #fold gets its height in px from the script; the inner
+   block is laid out at 100/scale percent width and then scaled from the top-left corner, so
+   the scaled result is exactly one screen wide and never overflows sideways.
+   Without the script the transform stays unset and the block simply renders at natural size,
+   which is the pre-fold behaviour. */
+#fold { overflow: hidden; }
+#fold-inner {
+  display: flex; flex-direction: column; gap: var(--gap);
+  transform-origin: top left; width: 100%;
+}
+#fold-inner > * { flex-shrink: 0; }
+
 /* ── Speed Drums ───────────────────────────────────────────── */
 #speed-row {
   display: grid; grid-template-columns: 1fr 1fr;
@@ -150,7 +164,7 @@ html, body {
 
 /* ── Hero Metrics ──────────────────────────────────────────── */
 /* Hero cells and motor cells are the same kind of tile row, so they share one grid. */
-#hero-row, #motor-row {
+#hero-row, #motor-row, #motor-row-2 {
   display: grid; grid-template-columns: 1fr 1fr 1fr;
   gap: var(--gap);
 }
@@ -410,23 +424,21 @@ html, body {
   font-size: clamp(22px, 7vw, 30px); font-weight: var(--fw-heavy); line-height: 1.05;
   color: var(--value); font-variant-numeric: tabular-nums;
 }
-.mc-main .mc-unit { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--label); margin-left: 2px; }
-.mc-sub { font-size: var(--fs-md); color: var(--label); font-variant-numeric: tabular-nums; }
+/* Own line under the value, centred like the title and the value above it. */
+.mc-unit { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--label); }
 
-/* Motor tiles span the full width; the quick toggle moved into the "Motors" heading row. */
-#motor-area { display: flex; gap: var(--gap); align-items: stretch; }
-#motor-area #motor-row { flex: 1 1 auto; min-width: 0; }
-/* Motor-mode quick toggle: a compact horizontal row of 4 buttons beside the "Motors" heading.
-   Wraps gracefully on very narrow screens. Reset the heading's uppercase/tracking for the labels. */
-#motor-quick {
-  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px;
-  text-transform: none; letter-spacing: normal;
-}
+/* Two stacked tile rows: temperatures and power above, currents below. */
+#motor-area { display: flex; flex-direction: column; gap: var(--gap); }
+/* Motor-mode quick toggle: its own full-width row under the motor tiles, four equal buttons,
+   same shape as the drive-mode row below it. */
+#motor-quick { display: flex; gap: var(--gap); container-type: inline-size; }
 #motor-quick .mq-btn {
-  min-width: 40px; padding: 4px 8px; border: 1px solid var(--border);
-  border-radius: 8px; background: var(--bg); color: var(--text);
+  flex: 1 1 0; min-width: 0; padding: 8px 1px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--card); color: var(--label);
   font-size: var(--fs-xs); font-weight: var(--fw-bold); line-height: 1.1; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
+  white-space: nowrap;
+  font-size: clamp(7px, 3.4cqi, 12px);   /* same reasoning as .dq-btn below */
   -webkit-tap-highlight-color: transparent;
 }
 #motor-quick .mq-btn:active { opacity: .7; }
@@ -435,6 +447,28 @@ html, body {
 /* Greyed out while disconnected, but still clickable so a tap shows the "Connect the scooter
    first" toast instead of doing nothing. The click handlers guard on the connection state. */
 #motor-quick.mq-disabled { opacity: .4; filter: grayscale(1); }
+
+/* Drive-mode quick toggles under the motor tiles: four equal-width buttons on one row. */
+/* No margin-top: #fold-inner already spaces its children by --gap, so an extra margin would
+   double the distance to the motor-mode row above. */
+#drive-quick { display: flex; gap: var(--gap); container-type: inline-size; }
+#drive-quick .dq-btn {
+  flex: 1 1 0; min-width: 0; padding: 8px 1px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--card); color: var(--label);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); line-height: 1.1; cursor: pointer;
+  white-space: nowrap;
+  /* Sized from the row's own width, not in fixed px: fitFold() lays the fold out at
+     100/scale percent width, so a fixed size would grow relative to the buttons whenever the
+     fold scales up and would cut "Kickstart" off. cqi keeps the ratio constant at any scale.
+     The plain px line above stays as the fallback if container units are unavailable. */
+  font-size: clamp(7px, 3.4cqi, 12px);
+  -webkit-tap-highlight-color: transparent;
+}
+#drive-quick .dq-btn:active { opacity: .7; }
+/* Cruise while the scooter is locked: the firmware refuses the write, so mark it as unavailable. */
+#drive-quick .dq-btn.dq-locked { opacity: .45; }
+#drive-quick.dq-disabled { opacity: .4; filter: grayscale(1); }
 
 /* ── All values ──────────────────────────────────────────────── */
 /* #all-values takes the shared card surface defined with #data-grid. */
@@ -543,12 +577,16 @@ html, body {
 }
 #btn-connect.connected { color: var(--good); }
 #ble-dot { pointer-events: none; }
+/* The settings action button. .settings-btn is the reusable form; the id list is the same
+   declaration for the buttons that predate the class. New buttons take the class. */
+.settings-btn,
 #btn-scooter-settings, #btn-connect-scooter, #btn-export-logs, #btn-error-reports, #btn-navigation, #btn-info, #btn-battery, #btn-firmware, #btn-whatsnew, #btn-version-info {
   width: 100%; padding: 12px; border: 1px solid var(--border);
   background: var(--bg); color: var(--text); font-size: var(--fs-base); font-weight: var(--fw-semibold);
   border-radius: 9px; cursor: pointer; text-align: center;
   -webkit-tap-highlight-color: transparent;
 }
+.settings-btn:active,
 #btn-scooter-settings:active, #btn-connect-scooter:active, #btn-export-logs:active, #btn-error-reports:active, #btn-navigation:active, #btn-info:active, #btn-battery:active, #btn-firmware:active, #btn-whatsnew:active, #btn-version-info:active { background: var(--border); }
 /* #btn-stream-start (good fill) + #btn-stream-stop (neutral) are styled by the shared action-button base. */
 #stream-url { color: var(--text); background: var(--bg); border: 1px solid var(--border);
@@ -558,22 +596,22 @@ html, body {
    Every sub-page is the same full-screen sheet that slides in from the right, so one shell
    carries all of them. #routes-scroller keeps its own block: it clips instead of scrolling. */
 #routes-page, #streaming-page,
-#connect-page, #scooter-page, #error-reports-page, #info-page, #battery-page, #firmware-page {
+#connect-page, #scooter-page, #error-reports-page, #info-page, #battery-page, #firmware-page, #display-page {
   position: fixed; inset: 0; z-index: 120; background: var(--bg);
   display: flex; flex-direction: column;
   transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
 }
 #routes-page.open, #streaming-page.open,
-#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #battery-page.open, #firmware-page.open { transform: translateX(0); }
+#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #battery-page.open, #firmware-page.open, #display-page.open { transform: translateX(0); }
 #streaming-scroller,
-#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #battery-scroller, #firmware-scroller {
+#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #battery-scroller, #firmware-scroller, #display-scroller {
   flex: 1; min-height: 0; overflow-y: auto; padding: var(--gap);
   display: flex; flex-direction: column; gap: 4px;
   padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px) + 12px);
 }
 /* children must NOT shrink, otherwise the flex column squashes instead of scrolling */
 #routes-scroller > *, #streaming-scroller > *,
-#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > *, #battery-scroller > *, #firmware-scroller > * { flex-shrink: 0; }
+#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > *, #battery-scroller > *, #firmware-scroller > *, #display-scroller > * { flex-shrink: 0; }
 
 /* ── Battery Info page ── */
 .bat-health {
@@ -643,7 +681,7 @@ html, body {
 /* Variant: primary fill (also the selected motor-mode button and the accept button of the
    disclaimer, the one modal button that grants something rather than dismissing). */
 #btn-fw-start, #btn-scan, .gs-save-btn, #disclaimer-accept,
-#motor-quick .mq-btn.active {
+#motor-quick .mq-btn.active, #drive-quick .dq-btn.active {
   background: var(--btnfill); color: #0A0C10; border-color: var(--btnfill);
 }
 /* Variant: good fill (start streaming, Smart on). Must stay after the primary fill: the Smart
@@ -784,6 +822,26 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
     background: var(--danger); color: #fff; font-size: var(--fs-base); line-height: 28px; text-align: center;
     cursor: pointer; padding: 0; }
 
+/* ── Ride banner ──────────────────────────────────────────────────────────── */
+/* Same floating, draggable shape as the nav banner, one layer below it so the two never fight
+   for the same spot. The script places it above the "Motors" heading the first time it shows. */
+  #ride-banner { position: fixed; left: 8px; right: 8px; top: 8px; z-index: 940;
+    display: none; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--radius);
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+    box-shadow: 0 4px 16px rgba(0,0,0,.35); touch-action: none; user-select: none;
+    -webkit-user-select: none; cursor: grab; }
+  #ride-banner.open { display: flex; }
+  #rb-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--danger); animation: rb-pulse 1.6s ease-in-out infinite; }
+  @keyframes rb-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+  #rb-texts { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 10px; }
+  #rb-dist { font-weight: var(--fw-bold); font-size: var(--fs-xl); font-variant-numeric: tabular-nums; }
+  #rb-time { font-size: var(--fs-md); color: var(--label); font-variant-numeric: tabular-nums; }
+  #rb-stop { flex: 0 0 auto; border: 1px solid var(--danger); border-radius: 8px;
+    background: transparent; color: var(--danger); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+    padding: 5px 9px; white-space: nowrap; cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { #rb-dot { animation: none; } }
+
 /* ── Utilities that replace the former inline style attributes ────────────── */
 .is-hidden.is-hidden { display: none; }
 /* A tick box the rider has to set before a risky step: the disclaimer, the firmware page. */
@@ -852,3 +910,10 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 #whatsnew-list { margin: 12px 0 16px; padding-left: 18px; display: grid; gap: 8px; }
 #whatsnew-list li { color: var(--label); font-size: var(--fs-md); line-height: 1.5; }
 #whatsnew-list li b { color: var(--text); }
+
+/* ── Display settings page ── */
+.color-ctrl {
+  flex: 0 0 auto; width: 56px; height: 32px; padding: 2px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+}
+.range-ctrl { width: 100%; accent-color: var(--btnfill); height: 28px; cursor: pointer; }
