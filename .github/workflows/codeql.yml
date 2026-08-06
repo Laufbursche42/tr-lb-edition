@@ -1,0 +1,70 @@
+name: CodeQL
+
+# Deep Java security analysis (injection, unsafe deserialization, crypto misuse,
+# WebView/JS-bridge issues, ...), on top of the Android Lint + SpotBugs/FindSecBugs
+# SAST that already runs in ci.yml. Runs automatically on GitHub once this repo is
+# pushed - nothing else to set up.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'screenshots/**'
+      - 'LICENSE'
+      - '.gitattributes'
+      - '.gitignore'
+      - 'firmware/**'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'screenshots/**'
+      - 'LICENSE'
+      - '.gitattributes'
+      - '.gitignore'
+      - 'firmware/**'
+  schedule:
+    - cron: '41 6 * * 1'   # weekly, Monday 06:41 UTC
+
+jobs:
+  analyze:
+    name: Analyze Java
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle (enables the Gradle build/dependency cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: java-kotlin
+          queries: security-extended
+
+      # CodeQL needs to observe a real compile for a compiled language, so the
+      # build step sits between init and analyze rather than being autobuilt.
+      - name: Build debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:java-kotlin"
