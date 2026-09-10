@@ -14,6 +14,17 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.4
+
+### The exports now open in LEAT
+
+The ride exports match what the desktop tool [LEAT](https://github.com/Laufbursche42/leat) expects, without LEAT needing to guess:
+
+- Every logged sample additionally carries the canonical names LEAT's KPI bar is wired to: `realSpeed`, `VolPack`, `fMotorTemp` and `rMotorTemp`. `realSpeed` stays km/h even while the app displays mph. The existing keys are unchanged.
+- The JSON export is a bare array of samples. The wrapper object with `meta` and `samples` is gone, because LEAT refuses it.
+- The CSV export no longer starts with a UTF-8 BOM, which hid the `ts` column from LEAT and bent the time axis, and no longer carries a `tsISO` column, which LEAT would read as a meaningless constant series.
+- The GPX export writes `<speed>` in metres per second as the GPX convention wants, instead of km/h.
+
 ## 1.1.2
 
 The main screen is now laid out for reading at speed. How it looks is yours to set.

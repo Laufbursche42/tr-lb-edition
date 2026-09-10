@@ -2074,7 +2074,7 @@ function buildGPXString(route) {
     lines.push(`      <trkpt lat="${pt.lat}" lon="${pt.lon}">`);
     lines.push(`        <ele>${pt.alt}</ele>`);
     lines.push(`        <time>${fmtDateTime(pt.ts)}</time>`);
-    lines.push(`        <extensions><speed>${pt.speed}</speed></extensions>`);
+    lines.push(`        <extensions><speed>${(pt.speed / 3.6).toFixed(2)}</speed></extensions>`);
     lines.push('      </trkpt>');
   }
   lines.push('    </trkseg>');

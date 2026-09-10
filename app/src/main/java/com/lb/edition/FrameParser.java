@@ -415,6 +415,13 @@ final class FrameParser {
             o.put("rssi", rssi);
             o.put("btName", btName);
 
+            // LEAT canonical keys (leat internal/ride/stats.go is hard-wired to these names).
+            // realSpeed must be km/h; with unitMiles set, speed above is already mph.
+            o.put("realSpeed", round1(settings.unitMiles ? speed * 1.6093439 : speed));
+            o.put("VolPack", round1(packVoltage));
+            o.put("fMotorTemp", frontMotorTemp);
+            o.put("rMotorTemp", rearMotorTemp);
+
             // Battery detail table
             o.put("top", buildTop());
             o.put("bottom", buildBottom());

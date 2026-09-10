@@ -284,7 +284,7 @@ public final class RideLogger {
             File out = PathGuard.childOf(outDir, "ride-" + safe + (csv ? ".csv" : ".json"));
             List<JSONObject> samples = readSamples(src);
             if (csv) writeCsv(samples, out);
-            else writeJson(samples, parseLongSafe(safe), out);
+            else writeJson(samples, out);
             return (out.isFile() && out.length() > 0) ? out : null;
         } catch (Throwable t) {
             Log.e(TAG, "exportRide failed", t);
@@ -313,18 +313,15 @@ public final class RideLogger {
 
     // ── JSON export ──
 
-    private void writeJson(List<JSONObject> samples, long id, File out) {
+    // The export is a bare top-level array: LEAT (internal/ride/ride.go) reads .json only in
+    // that shape and aborts on a wrapper object such as {"meta":...,"samples":[...]}.
+    private void writeJson(List<JSONObject> samples, File out) {
         Writer w = null;
         try {
-            JSONObject meta = metaFrom(samples, id);
-            meta.put("fin", finOf(samples));
             JSONArray arr = new JSONArray();
             for (JSONObject o : samples) arr.put(o);
-            JSONObject root = new JSONObject();
-            root.put("meta", meta);
-            root.put("samples", arr);
             w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(out, false), "UTF-8"));
-            w.write(root.toString());
+            w.write(arr.toString());
             w.flush();
         } catch (Throwable t) {
             Log.e(TAG, "writeJson failed", t);
@@ -356,10 +353,11 @@ public final class RideLogger {
         for (String n : names) if (!scalarKeys.contains(n)) nameCols.add(n);
         Set<String> nameColSet = new HashSet<>(nameCols);
 
-        // Column order: ts, tsISO, headline scalars (when present), then the rest alphabetically.
+        // Column order: ts, headline scalars (when present), then the rest alphabetically.
+        // No tsISO column: LEAT reads every numeric column as a series and would turn the
+        // ISO string into a meaningless constant one.
         List<String> cols = new ArrayList<>();
         cols.add("ts");
-        cols.add("tsISO");
         Set<String> placed = new HashSet<>();
         placed.add("ts");
         for (String h : CSV_HEADLINE) {
@@ -389,11 +387,10 @@ public final class RideLogger {
         }
 
         // try-with-resources guarantees the writer (and its underlying stream) is always closed.
-        // The UTF-8 BOM is written as the U+FEFF character (it encodes to EF BB BF) so spreadsheets
-        // render the degree sign and other units correctly.
+        // No UTF-8 BOM: LEAT matches the ts column against the raw first bytes, so a BOM breaks
+        // its time axis.
         try (Writer w = new BufferedWriter(
                 new OutputStreamWriter(new FileOutputStream(out, false), "UTF-8"))) {
-            w.write('\uFEFF');
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < cols.size(); i++) {
                 if (i > 0) sb.append(',');
@@ -415,7 +412,6 @@ public final class RideLogger {
                     String col = cols.get(i);
                     String cell;
                     if ("ts".equals(col)) cell = ts > 0 ? Long.toString(ts) : "";
-                    else if ("tsISO".equals(col)) cell = ts > 0 ? isoOf(ts) : "";
                     else if (nameColSet.contains(col)) cell = nvals.containsKey(col) ? nvals.get(col) : "";
                     else if (cellIdx.containsKey(col)) {
                         JSONArray cm = o.optJSONArray("cellMv");
@@ -436,7 +432,7 @@ public final class RideLogger {
 
     // ── Metadata derivation ──
 
-    /** Metadata for one ride, derived from its samples (no "fin" - export adds that). */
+    /** Metadata for one ride, derived from its samples (feeds the rides list, not the export). */
     private static JSONObject metaFrom(List<JSONObject> samples, long id) {
         long start = 0, end = 0;
         double firstMile = Double.NaN, lastMile = Double.NaN;
@@ -470,15 +466,6 @@ public final class RideLogger {
         } catch (JSONException ignored) {
         }
         return meta;
-    }
-
-    private static String finOf(List<JSONObject> samples) {
-        String fin = "";
-        for (JSONObject o : samples) {
-            String bn = o.optString("btName", "");
-            if (bn != null && !bn.isEmpty()) fin = bn;
-        }
-        return fin;
     }
 
     // ── File / parsing helpers ──
@@ -590,14 +577,6 @@ public final class RideLogger {
         return "\"" + s.replace("\"", "\"\"") + "\"";
     }
 
-    private static String isoOf(long ms) {
-        try {
-            return java.time.Instant.ofEpochMilli(ms).toString();
-        } catch (Throwable t) {
-            return "";
-        }
-    }
-
     /** Road speed of a snapshot; "speed" is the only key FrameParser emits for it. */
     private static double speedOf(String json) {
         try {
@@ -617,14 +596,6 @@ public final class RideLogger {
             if (c < '0' || c > '9') return null;
         }
         return s;
-    }
-
-    private static long parseLongSafe(String s) {
-        try {
-            return Long.parseLong(s.trim());
-        } catch (Throwable t) {
-            return 0L;
-        }
     }
 
     private static double round2(double v) {
