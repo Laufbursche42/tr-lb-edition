@@ -262,7 +262,7 @@ final class BleManager {
             parser.isVer2 = deviceName != null && deviceName.startsWith("T2");
             // Expose the BLE name to the dashboard as soon as it is known (forms the FIN prefix).
             parser.btName = deviceName == null ? "" : deviceName;
-            Log.i(TAG, "connect() -> " + desiredAddress + " name=" + deviceName);
+            Log.i(TAG, "connect() -> " + logSafe(desiredAddress) + " name=" + logSafe(deviceName));
             pushState("connecting");
             gatt = dev.connectGatt(appCtx, false, gattCallback, BluetoothDevice.TRANSPORT_LE);
         } catch (Throwable t) {
@@ -1011,5 +1011,10 @@ final class BleManager {
     void shutdown() {
         stopScan();
         disconnect();
+    }
+
+    /** Replace CR/LF so a BLE name or address cannot forge or split a log line. */
+    private static String logSafe(String s) {
+        return s == null ? "null" : s.replace("\r", " ").replace("\n", " ");
     }
 }

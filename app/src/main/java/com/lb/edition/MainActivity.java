@@ -421,10 +421,10 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Strip control chars so untrusted values (BLE names, JS bridge args, URLs) cannot forge or
-     *  split log lines. */
+    /** Replace CR/LF so untrusted values (BLE names, JS bridge args, URLs) cannot forge or split
+     *  a log line. */
     private static String logSafe(String s) {
-        return s == null ? "null" : s.replaceAll("\\p{Cntrl}", " ");
+        return s == null ? "null" : s.replace("\r", " ").replace("\n", " ");
     }
 
     /** Only allow HTTPS from the project's GitHub release/API hosts. Blocks a tampered update URL

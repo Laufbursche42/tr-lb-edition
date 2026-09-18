@@ -304,7 +304,7 @@ public final class RideLogger {
             File f = PathGuard.childOf(ridesDir(), "ride-" + safe + ".ndjson");
             if (!f.isFile()) return;
             if (!f.delete()) {
-                Log.w(TAG, "deleteRide: could not delete " + f.getName());
+                Log.w(TAG, "deleteRide: could not delete " + logSafe(f.getName()));
             }
         } catch (Throwable t) {
             Log.e(TAG, "deleteRide failed", t);
@@ -600,5 +600,10 @@ public final class RideLogger {
 
     private static double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
+    }
+
+    /** Replace CR/LF so a file name derived from JS-bridge input cannot forge or split a log line. */
+    private static String logSafe(String s) {
+        return s == null ? "null" : s.replace("\r", " ").replace("\n", " ");
     }
 }

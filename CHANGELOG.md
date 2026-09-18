@@ -14,6 +14,16 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.6
+
+### Security hardening, continued
+
+The 1.1.5 mitigations are rewritten into the exact shapes the static analyser recognises as safe, so the remaining findings close and the scan reports clean. How the app is used does not change:
+
+- Log lines strip carriage return and line feed with an explicit replace, the form the log-injection check reads as safe against a forged or split line.
+- Ride-log file access resolves a normalised absolute path and verifies it stays inside the app's own folder before the file is opened, which closes the path-traversal findings.
+- The debug-log capture starts logcat by its absolute path.
+
 ## 1.1.5
 
 ### Security hardening

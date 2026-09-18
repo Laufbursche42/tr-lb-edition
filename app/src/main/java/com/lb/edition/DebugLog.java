@@ -174,7 +174,7 @@ public final class DebugLog {
         try {
             // Filter to this process only, "time" verbose format (date + time + level + tag).
             p = Runtime.getRuntime().exec(new String[]{
-                    "logcat", "-v", "time", "--pid=" + android.os.Process.myPid()});
+                    "/system/bin/logcat", "-v", "time", "--pid=" + android.os.Process.myPid()});
             synchronized (lock) {
                 proc = p;
             }
