@@ -79,7 +79,7 @@ public class StreamService extends Service implements ConnectChecker, ScreenGlEn
         if (ss >= 0 && at > ss) s = s.substring(0, ss + 2) + "[redacted]@" + s.substring(at + 1);
         int q = s.indexOf('?');
         if (q >= 0) s = s.substring(0, q) + "?[redacted]";
-        return s;
+        return s.replaceAll("\\p{Cntrl}", " ");   // never let a crafted URL forge/split log lines
     }
 
     @Override

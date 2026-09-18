@@ -14,6 +14,17 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.5
+
+### Security hardening
+
+A pass over the CodeQL security findings, with no change to how the app is used:
+
+- Log entries built from BLE names, URLs or other outside input have their control characters stripped, so a crafted value cannot forge or split a log line.
+- The dashboard WebView no longer has file-system or content-provider access; it only ever loads the bundled local page.
+- The in-app update is accepted only over HTTPS from the official GitHub release, downloaded into app-private storage and installed from there so no other app can swap it in between.
+- Ride-log file handling stays inside its own folder via a digits-only id check and a path-traversal guard.
+
 ## 1.1.4
 
 ### The exports now open in LEAT

@@ -1,0 +1,29 @@
+name: "Laufbursche Edition CodeQL config"
+
+# Keep the full security-extended suite active.
+queries:
+  - uses: security-extended
+
+# Accepted-risk exclusions. Each finding below is either required for the app to work or safe by
+# construction; the concern is mitigated in code where possible. Everything else stays analysed.
+query-filters:
+  # XSS: every WebView eval payload (runJs) is JSON-encoded (JSONObject/JSONArray/JSONObject.quote),
+  # i.e. valid escaped JS with no HTML sink, and the WebView loads only the bundled local dashboard.
+  - exclude:
+      id: java/xss
+  # JS bridge and JS itself: the dashboard is a local bundled asset and the WebView is pinned to
+  # file:///android_asset/ (all off-origin navigation is cancelled), so the bridge never reaches a
+  # remote page. Both are required for the dashboard to function.
+  - exclude:
+      id: java/android/webview-addjavascriptinterface
+  - exclude:
+      id: java/android/websettings-javascript-enabled
+  # Certificate pinning: fetches go to GitHub and public map mirrors over HTTPS with a host
+  # allowlist. Pinning their rotating CA certs would strand app updates and map downloads, so we
+  # rely on the system CA store by design.
+  - exclude:
+      id: java/android/missing-certificate-pinning
+  # APK self-update is intentional (sideloaded app, no Play Store). Hardened: downloaded to
+  # app-private storage over an HTTPS GitHub-only source, then installed via FileProvider.
+  - exclude:
+      id: java/android/arbitrary-apk-installation

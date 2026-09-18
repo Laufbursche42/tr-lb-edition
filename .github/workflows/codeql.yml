@@ -57,7 +57,7 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: java-kotlin
-          queries: security-extended
+          config-file: ./.github/codeql/codeql-config.yml
 
       # CodeQL needs to observe a real compile for a compiled language, so the
       # build step sits between init and analyze rather than being autobuilt.

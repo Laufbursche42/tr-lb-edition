@@ -20,8 +20,7 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
-      "<b>The ride exports now open in LEAT.</b> The desktop tool LEAT reads the app's NDJSON, JSON, CSV and GPX exports as they are: the JSON export is a plain array of samples, the CSV lost its hidden byte-order mark and its tsISO column and the GPX speed is written in metres per second as the standard wants.",
-      "<b>Canonical field names in every sample.</b> Each logged sample additionally carries realSpeed, VolPack, fMotorTemp and rMotorTemp, so LEAT's top speed, minimum voltage and motor temperature figures fill in. realSpeed stays km/h even while the app displays mph. Nothing existing was renamed.",
+      "<b>Security hardening.</b> A pass over the security findings, with nothing changed in how the app is used: log entries built from outside input have their control characters stripped, the dashboard view no longer has file-system access and the app update is accepted only over HTTPS from the official GitHub release, installed from app-private storage so no other app can swap it in.",
     ],
 
     'disclaimer.points': [
@@ -682,8 +681,7 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
-      "<b>Die Fahrt-Exporte öffnen jetzt in LEAT.</b> Das Desktop-Werkzeug LEAT liest die NDJSON-, JSON-, CSV- und GPX-Exporte der App so wie sie sind: der JSON-Export ist ein reines Array aus Samples, die CSV hat ihre versteckte Byte-Order-Markierung sowie die tsISO-Spalte verloren und die GPX-Geschwindigkeit steht in Metern pro Sekunde, wie es der Standard will.",
-      "<b>Kanonische Feldnamen in jedem Sample.</b> Jedes aufgezeichnete Sample trägt zusätzlich realSpeed, VolPack, fMotorTemp und rMotorTemp, damit in LEAT Höchstgeschwindigkeit, Minimalspannung und Motortemperatur gefüllt sind. realSpeed bleibt km/h, auch wenn die App mph anzeigt. Kein bestehender Name wurde geändert.",
+      "<b>Sicherheits-Härtung.</b> Ein Durchgang durch die Sicherheits-Findings, ohne Änderung an der Bedienung: Log-Einträge aus fremder Eingabe werden von Steuerzeichen bereinigt, die Dashboard-Ansicht hat keinen Dateisystem-Zugriff mehr und das App-Update wird nur noch per HTTPS aus dem offiziellen GitHub-Release akzeptiert und aus dem app-privaten Speicher installiert, damit keine andere App es austauschen kann.",
     ],
 
     'disclaimer.points': [

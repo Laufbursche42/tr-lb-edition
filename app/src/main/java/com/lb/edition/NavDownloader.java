@@ -72,6 +72,10 @@ final class NavDownloader {
         // two different files into a corrupt result. Restart cleanly instead.
         if (have > 0 && validator == null) { part.delete(); meta.delete(); have = 0; }
 
+        // System CA, no mirror pinning (certs rotate). Refuse plaintext.
+        if (url == null || !url.regionMatches(true, 0, "https://", 0, 8)) {
+            throw new IOException("refusing non-HTTPS map URL");
+        }
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(30000);
         c.setReadTimeout(60000);

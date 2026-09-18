@@ -143,8 +143,9 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
-        s.setAllowFileAccess(true);
-        s.setAllowContentAccess(true);
+        // Bundled-asset dashboard only; both off (android_asset still loads).
+        s.setAllowFileAccess(false);
+        s.setAllowContentAccess(false);
         // The dashboard is a self-contained bundled asset page; it never needs to read other local
         // files or make cross-origin requests FROM the file:// origin. Keeping these OFF means that
         // even if a scripting bug ever landed on the page, it could not fetch("file:///...") to exfil
@@ -311,7 +312,7 @@ public class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQ_PERMS) {
             for (int i = 0; i < permissions.length; i++) {
-                Log.i(TAG, "perm " + permissions[i] + " -> " + grantResults[i]);
+                Log.i(TAG, "perm " + logSafe(permissions[i]) + " -> " + grantResults[i]);
             }
         }
     }
@@ -351,12 +352,13 @@ public class MainActivity extends Activity {
 
     // ── Update helpers (used by the LB.checkUpdates / downloadAndInstallApk bridge) ──
 
-    /** Enqueue the APK download into the public Downloads folder via DownloadManager (visible file +
-     *  progress notification) then opens the installer once it completes. Runs on the UI thread. */
+    /** Enqueue the APK download into app-private external storage via DownloadManager (progress
+     *  notification) then open the installer once it completes. Runs on the UI thread. */
     private static final String APK_UPDATE_NAME = "laufbursche-edition-update.apk";
 
     private void startApkDownload(String url) {
         try {
+            if (!isTrustedGithubHttps(url)) { toast("Update source not trusted"); return; }
             final android.app.DownloadManager dm =
                     (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             if (dm == null) { toast("Download service unavailable"); return; }
@@ -367,10 +369,10 @@ public class MainActivity extends Activity {
             req.setMimeType("application/vnd.android.package-archive");
             req.setNotificationVisibility(
                     android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            req.setDestinationInExternalPublicDir(
-                    android.os.Environment.DIRECTORY_DOWNLOADS, APK_UPDATE_NAME);
+            // App-private dir: no other app can swap the APK before we install it.
+            req.setDestinationInExternalFilesDir(this, null, "updates/" + APK_UPDATE_NAME);
             final long id = dm.enqueue(req);
-            toast("Downloading update to your Downloads folder...");
+            toast("Downloading update...");
             pollApkDownload(dm, id, 0);
         } catch (Throwable t) {
             Log.e(TAG, "startApkDownload failed", t);
@@ -396,23 +398,19 @@ public class MainActivity extends Activity {
                 () -> pollApkDownload(dm, id, tries + 1), 500);
     }
 
-    /** Launch the package installer for the finished download (with a FileProvider fallback URI). */
+    /** Launch the package installer on the APK we downloaded into app-private storage. */
     private void installDownloadedApk(android.app.DownloadManager dm, long id) {
         try {
-            Uri uri = dm.getUriForDownloadedFile(id);
-            if (uri == null) {
-                File f = new File(android.os.Environment.getExternalStoragePublicDirectory(
-                        android.os.Environment.DIRECTORY_DOWNLOADS), APK_UPDATE_NAME);
-                if (f.exists()) uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", f);
-            }
-            if (uri == null) { toast("Downloaded to your Downloads folder - open it there to install"); return; }
+            File f = new File(getExternalFilesDir(null), "updates/" + APK_UPDATE_NAME);
+            if (!f.isFile() || f.length() == 0) { toast("Update download not found"); return; }
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", f);
             Intent i = new Intent(Intent.ACTION_VIEW);
             i.setDataAndType(uri, "application/vnd.android.package-archive");
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(i);
         } catch (Throwable t) {
             Log.e(TAG, "install after download failed", t);
-            toast("Downloaded to your Downloads folder - open it there to install");
+            toast("Update download failed to open");
         }
     }
 
@@ -420,6 +418,28 @@ public class MainActivity extends Activity {
         try {
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
         } catch (Throwable ignored) {
+        }
+    }
+
+    /** Strip control chars so untrusted values (BLE names, JS bridge args, URLs) cannot forge or
+     *  split log lines. */
+    private static String logSafe(String s) {
+        return s == null ? "null" : s.replaceAll("\\p{Cntrl}", " ");
+    }
+
+    /** Only allow HTTPS from the project's GitHub release/API hosts. Blocks a tampered update URL
+     *  from pointing the installer or an in-app fetch at an attacker-controlled host. */
+    private static boolean isTrustedGithubHttps(String url) {
+        try {
+            java.net.URL u = new java.net.URL(url);
+            if (!"https".equalsIgnoreCase(u.getProtocol())) return false;
+            String h = u.getHost() == null ? "" : u.getHost().toLowerCase(java.util.Locale.ROOT);
+            return h.equals("github.com") || h.equals("api.github.com")
+                    || h.equals("codeload.github.com")
+                    || h.equals("objects.githubusercontent.com")
+                    || h.endsWith(".githubusercontent.com");
+        } catch (Throwable t) {
+            return false;
         }
     }
 
@@ -461,6 +481,7 @@ public class MainActivity extends Activity {
 
     /** Simple HTTP(S) GET into memory (used for the small release JSON and the firmware/APK files). */
     private byte[] httpGetBytes(String urlStr) throws Exception {
+        if (!isTrustedGithubHttps(urlStr)) throw new java.io.IOException("untrusted URL host: not a GitHub HTTPS URL");
         java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(urlStr).openConnection();
         try {
             c.setRequestProperty("User-Agent", "lb-edition");
@@ -603,7 +624,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void connect(String addr) {
             try {
-                Log.i(TAG, "LB.connect(" + addr + ")");
+                Log.i(TAG, "LB.connect(" + logSafe(addr) + ")");
                 if (ble != null) ble.connect(addr);
             } catch (Throwable t) {
                 Log.e(TAG, "connect bridge failed", t);
@@ -614,7 +635,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void connect(String addr, String name) {
             try {
-                Log.i(TAG, "LB.connect(" + addr + ", " + name + ")");
+                Log.i(TAG, "LB.connect(" + logSafe(addr) + ", " + logSafe(name) + ")");
                 if (ble != null) ble.connect(addr, name);
             } catch (Throwable t) {
                 Log.e(TAG, "connect bridge failed", t);
@@ -644,7 +665,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void sendSetting(String json) {
             try {
-                Log.i(TAG, "LB.sendSetting(" + json + ")");
+                Log.i(TAG, "LB.sendSetting(" + logSafe(json) + ")");
                 if (ble != null) ble.sendSetting(json);
             } catch (Throwable t) {
                 Log.e(TAG, "sendSetting bridge failed", t);
@@ -697,7 +718,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setBleName(String name) {
             try {
-                Log.i(TAG, "LB.setBleName(" + name + ")");
+                Log.i(TAG, "LB.setBleName(" + logSafe(name) + ")");
                 if (ble != null) ble.setBleName(name);
             } catch (Throwable t) {
                 Log.e(TAG, "setBleName bridge failed", t);
@@ -800,7 +821,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void sendGearSetting(int gear, String json) {
             try {
-                Log.i(TAG, "LB.sendGearSetting(gear=" + gear + ", " + json + ")");
+                Log.i(TAG, "LB.sendGearSetting(gear=" + gear + ", " + logSafe(json) + ")");
                 if (ble != null) ble.sendGearSetting(gear, json);
             } catch (Throwable t) {
                 Log.e(TAG, "sendGearSetting bridge failed", t);
@@ -838,7 +859,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void startStream(String url) {
-            Log.i(TAG, "LB.startStream(" + url + ")");
+            Log.i(TAG, "LB.startStream(" + logSafe(url) + ")");
             try {
                 if (url == null || url.trim().isEmpty()) {
                     Log.w(TAG, "startStream: empty url, ignoring");
@@ -898,7 +919,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void log(String s) {
-            Log.i(TAG, "LB.log: " + s);
+            Log.i(TAG, "LB.log: " + logSafe(s));
             try {
                 if (debugLog != null && debugLog.isEnabled()) debugLog.append(s);
             } catch (Throwable ignored) {
@@ -1133,7 +1154,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void deleteRide(String id) {
             try {
-                Log.i(TAG, "LB.deleteRide(" + id + ")");
+                Log.i(TAG, "LB.deleteRide(" + logSafe(id) + ")");
                 if (rideLogger != null) rideLogger.deleteRide(id);
             } catch (Throwable t) {
                 Log.e(TAG, "deleteRide bridge failed", t);
@@ -1155,7 +1176,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void openUrl(final String url) {
             try {
-                Log.i(TAG, "LB.openUrl(" + url + ")");
+                Log.i(TAG, "LB.openUrl(" + logSafe(url) + ")");
                 if (url == null) return;
                 final String u = url.trim();
                 if (!u.startsWith("http://") && !u.startsWith("https://")) return;
@@ -1176,7 +1197,7 @@ public class MainActivity extends Activity {
         /** Export a ride ("csv"/"json") and share it via the system chooser. No-op if id is unknown. */
         @JavascriptInterface
         public void exportRide(final String id, final String format) {
-            Log.i(TAG, "LB.exportRide(" + id + ", " + format + ")");
+            Log.i(TAG, "LB.exportRide(" + logSafe(id) + ", " + logSafe(format) + ")");
             runOnUiThread(() -> {
                 try {
                     File f = rideLogger != null ? rideLogger.exportRide(id, format) : null;
@@ -1217,7 +1238,7 @@ public class MainActivity extends Activity {
         public String saveGpxToDownloads(final String fileName, final String content) {
             final String name = safeGpxName(fileName);
             try {
-                Log.i(TAG, "LB.saveGpxToDownloads(" + name + ")");
+                Log.i(TAG, "LB.saveGpxToDownloads(" + logSafe(name) + ")");
                 if (content == null) return gpxResult(false, name, "save");
                 return saveGpxViaMediaStore(name, content);
             } catch (Throwable t) {
