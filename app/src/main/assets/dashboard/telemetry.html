@@ -1271,7 +1271,7 @@ function parseBLE(raw) {
       soh:      num(d.soh),
       volt:     num(d.volt),
       poleVolt: num(d.poleVolt),
-      current:  num(d.current),
+      current:  (d.current == null ? null : num(d.current)),
       gear:     typeof d.gear === 'number' ? d.gear : (parseInt(d.gear) || 0),
       rearCurrent:  num(d.rearCurrent),
       frontCurrent: num(d.frontCurrent),
@@ -1619,9 +1619,12 @@ function updateBLEUI(data) {
   const cur = data.current;
   const curEl = document.getElementById('current-val');
   if (curEl) {
-    const shown = -cur;
-    curEl.textContent = shown > 0 ? `+${shown.toFixed(1)}` : shown.toFixed(1);
-    curEl.style.color = cur > 0 ? 'var(--danger)' : cur < 0 ? 'var(--good)' : 'var(--text)';
+    if (cur == null || !isFinite(cur)) { curEl.textContent = '-'; curEl.style.color = 'var(--text)'; }   // Blade Mini reports no pack current
+    else {
+      const shown = -cur;
+      curEl.textContent = shown > 0 ? `+${shown.toFixed(1)}` : shown.toFixed(1);
+      curEl.style.color = cur > 0 ? 'var(--danger)' : cur < 0 ? 'var(--good)' : 'var(--text)';
+    }
   }
 
   // Motors (dual motor)

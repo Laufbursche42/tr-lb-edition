@@ -14,6 +14,12 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.8
+
+### Blade Mini current tile no longer shows a bogus value
+
+The current tile read +1000 A in green on the Blade Mini. That model does not report a pack current in its battery frame, so the app read the empty field as a huge regeneration figure. The tile now shows "-" when the scooter reports no current, instead of a made-up number.
+
 ## 1.1.7
 
 ### Correct battery voltage on Blade Mini and Fighter Mini

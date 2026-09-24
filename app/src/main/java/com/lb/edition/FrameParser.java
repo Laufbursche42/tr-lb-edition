@@ -55,6 +55,7 @@ final class FrameParser {
 
     // Battery detail (surfaced through top[] / bottom[])
     private double packCurrent;
+    private boolean haveCurrent;
     private final double[] batTemp = new double[7];   // 55 52 t[10..16]: cell0-2 / MOS0-1 / BMS-PCB0-1
     private int maxCellTemp, minCellTemp;
     private int maxCellV, minCellV, capacity;
@@ -183,6 +184,7 @@ final class FrameParser {
         packVoltage = smartV > 0 ? smartV : (wholeV >= 20 && wholeV <= 120 ? wholeV : packVoltage);
         double poleV = u16(t, 4) * 0.1;   // IVCU pole; implausible on the Minis (t[4:5] is the whole-volt pack there)
         poleVoltage = poleV >= 20 ? poleV : 0;
+        haveCurrent = u16(t, 6) != 0;             // Blade Mini leaves t[6:7]=0: current not reported
         packCurrent = u16(t, 6) * 0.1 - 1000;     // < 0 => regeneration
         SOC = u8(t, 8);
         soh = u8(t, 9);                            // raw*0.01*100 == raw
@@ -409,7 +411,7 @@ final class FrameParser {
             o.put("soc", SOC);
             o.put("volt", round1(packVoltage));
             o.put("poleVolt", round1(poleVoltage));
-            o.put("current", round1(packCurrent));
+            o.put("current", haveCurrent ? Double.valueOf(round1(packCurrent)) : JSONObject.NULL);
             o.put("rearCurrent", round1(rearMotorCurrent));
             o.put("frontCurrent", round1(frontMotorCurrent));
             o.put("rTemp", rearMotorTemp);
@@ -454,7 +456,7 @@ final class FrameParser {
         if (have52) {
             a.put(nv("System Voltage", round1(packVoltage) + " V"));   // 55 52 t[2..3]
             a.put(nv("Pole Voltage", round1(poleVoltage) + " V"));     // 55 52 t[4..5]
-            a.put(nv("Current", round1(packCurrent) + " A"));          // 55 52 t[6..7] (<0 = regen)
+            a.put(nv("Current", haveCurrent ? round1(packCurrent) + " A" : "-"));   // 55 52 t[6..7] (<0 = regen); Blade Mini reports none
             a.put(nv("SOC", SOC + " %"));                              // 55 52 t[8]
             a.put(nv("SOH", soh + " %"));                              // 55 52 t[9]
             a.put(nv("CELL MAX TEMP", maxCellTemp + " °C"));           // 55 52 t[17]
