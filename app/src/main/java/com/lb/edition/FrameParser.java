@@ -178,8 +178,11 @@ final class FrameParser {
     // ── frame decoders ──
 
     private synchronized void parse52(int[] t) {
-        packVoltage = u16(t, 2) * 0.1;
-        poleVoltage = u16(t, 4) * 0.1;
+        // Fighter Mini: smart-BMS volt in t[2:3] (0.1V). Blade Mini leaves it 0, sends whole-volt pack in t[4:5].
+        double smartV = u16(t, 2) * 0.1, wholeV = u16(t, 4);
+        packVoltage = smartV > 0 ? smartV : (wholeV >= 20 && wholeV <= 120 ? wholeV : packVoltage);
+        double poleV = u16(t, 4) * 0.1;   // IVCU pole; implausible on the Minis (t[4:5] is the whole-volt pack there)
+        poleVoltage = poleV >= 20 ? poleV : 0;
         packCurrent = u16(t, 6) * 0.1 - 1000;     // < 0 => regeneration
         SOC = u8(t, 8);
         soh = u8(t, 9);                            // raw*0.01*100 == raw

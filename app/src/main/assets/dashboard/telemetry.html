@@ -1636,7 +1636,7 @@ function updateBLEUI(data) {
 
   // Grid
   setTxt('dg-volt', `${data.volt.toFixed(1)} V`);
-  setTxt('dg-pole', `${data.poleVolt.toFixed(1)} V`);
+  setTxt('dg-pole', data.poleVolt > 0 ? `${data.poleVolt.toFixed(1)} V` : '-');
   setTxt('dg-soh', `${Math.round(data.soh)} %`);
   setTxt('dg-fb', data.fb.toFixed(1));
   setTxt('dg-total', `${Math.round(convDist(data.totalMile))} ${distUnit()}`);

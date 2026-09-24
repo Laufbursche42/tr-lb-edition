@@ -14,6 +14,16 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.7
+
+### Correct battery voltage on Blade Mini and Fighter Mini
+
+The voltage tile sat at 0.0 V on the Blade Mini because it read a field that model leaves empty. The app now takes the live pack voltage from the byte each model actually uses:
+
+- Blade Mini reports its live pack voltage in whole volts in a different field than the Fighter Mini. The app reads that field now, so the tile shows the real voltage (around 52 V, dropping under load) instead of 0.0 V.
+- Fighter Mini keeps its smart-BMS voltage. If neither field is filled the app falls back to the nominal pack voltage, so the tile is never stuck at zero.
+- The pole-voltage tile no longer shows a bogus reading on the Blade Mini; it shows "-" when the scooter reports no separate pole voltage.
+
 ## 1.1.6
 
 ### Security hardening, continued
