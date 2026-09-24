@@ -14,6 +14,14 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.10
+
+### Model-aware unlock, and a tidier Blade Mini dashboard
+
+- The speed-tile triple-tap now switches on the connected scooter, decided at connect: a Fighter Mini uses its direct (0x1B) unlock, a Blade Mini on firmware 3.4.6 de-restricts through its per-gear speed (German gears 2/3/4), and a Blade Mini on any other firmware shows the "Firmware 3.4.6 required for Blade Mini Ultra" message instead of the misleading "Fighter Mini only" toast.
+- With the current tile hidden on the Blade Mini, the two remaining hero tiles now fill the row instead of leaving a gap.
+- The in-app "What is new" now describes these Blade Mini changes.
+
 ## 1.1.9
 
 ### Blade Mini: a clear message when firmware 3.4.6 is needed

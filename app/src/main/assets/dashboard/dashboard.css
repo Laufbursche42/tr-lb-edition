@@ -903,6 +903,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 }
 /* Blade Mini reports no pack current: drop the current tile entirely instead of showing a bogus value. */
 .is-bmini #current-cell { display: none; }
+/* current tile gone on the Blade Mini: the two remaining hero tiles fill the row instead of leaving a gap. */
+.is-bmini #hero-row { grid-template-columns: 1fr 1fr; }
 
 /* ── Language switch and the what-is-new modal ─────────────────────────────── */
 .lang-switch { display: flex; gap: 4px; flex-shrink: 0; }

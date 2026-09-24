@@ -3094,18 +3094,32 @@ function onVcuTileTap() {
   _finTapTimer = setTimeout(() => { _finTapCount = 0; }, 700);
 }
 function toggleFinLock() {
-  if (!fighterFeatures()) { showToast(t('msg2.lock.toast.fighter_only'), 3000, 'err'); return; }
-  if (typeof LB === 'undefined' || !LB.setLock) { showToast(t('msg.app.only.in.app')); return; }
+  if (typeof LB === 'undefined') { showToast(t('msg.app.only.in.app')); return; }
   if (!state.bleConnected) { showToast(t('msg2.toast.connect_scooter_first'), 3000, 'err'); return; }
+  // Switch on the scooter (already known at connect): Blade Mini uses per-gear speed, Fighter Mini uses 0x1B.
+  if (isBladeMini()) {
+    if (bminiFwBlocked()) { showToast(t('dash.bmini.fw.required'), 6000, 'err'); return; }
+    bminiToggleDerestrict();
+    return;
+  }
+  if (!fighterFeatures()) { showToast(t('msg2.lock.toast.fighter_only'), 3000, 'err'); return; }
+  if (!LB.setLock) { showToast(t('msg.app.only.in.app')); return; }
   const d = liveRaw();
   const known = (d.vcuUnlock === 0 || d.vcuUnlock === 1);
   if (!known) { showToast(t('msg2.lock.toast.state_unknown'), 3500, 'err'); return; }
   const locked = (d.vcuUnlock === 0);
-  // locked -> unlock (setLock true); unlocked -> lock (setLock false). LB.setLock(unlocked).
   try {
     LB.setLock(locked);
     showToast(locked ? t('msg2.lock.toast.unlocking') : t('msg2.lock.toast.locking'), 3000);
   } catch (e) { showToast(tf('msg2.toast.error', { e: e })); }
+}
+// Blade Mini de-restrict: per-gear speed high = unlocked (55 71 t[10] > 30); tap toggles it on German gears 2/3/4.
+function bminiToggleDerestrict() {
+  if (!LB.sendGearSetting) { showToast(t('msg.app.only.in.app')); return; }
+  const unlocked = (liveRaw().assistSpeedLimit | 0) > 30;
+  const speeds = unlocked ? [10, 15, 21] : [45, 60, 80];
+  [2, 3, 4].forEach((g, i) => { try { LB.sendGearSetting(g, JSON.stringify({ speedLimit: speeds[i] })); } catch (e) {} });
+  showToast(unlocked ? t('msg2.lock.toast.locking') : t('msg2.lock.toast.unlocking'), 3000);
 }
 
 // Copy the Bluetooth advertised name (from live BLE data) to the Android clipboard.

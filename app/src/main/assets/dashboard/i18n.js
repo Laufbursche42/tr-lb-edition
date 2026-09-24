@@ -20,7 +20,8 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
-      "<b>Security hardening.</b> A pass over the security findings, with nothing changed in how the app is used: log entries built from outside input have their control characters stripped, the dashboard view no longer has file-system access and the app update is accepted only over HTTPS from the official GitHub release, installed from app-private storage so no other app can swap it in.",
+      "<b>Blade Mini &amp; Fighter Mini: correct battery voltage.</b> The voltage tile read 0.0 V on a Blade Mini because it used a field that model leaves empty; the app now reads the right byte per model. The current tile, which the Blade Mini does not report, is hidden for it and the remaining tiles fill the space.",
+      "<b>Model-aware unlock.</b> The speed-tile triple-tap now does the right thing for the connected scooter: the Fighter Mini keeps its direct unlock, a Blade Mini on firmware 3.4.6 de-restricts through its per-gear speed, and a Blade Mini on any other firmware (e.g. 3.4.8) shows 'Firmware 3.4.6 required for Blade Mini Ultra' instead of doing nothing.",
     ],
 
     'disclaimer.points': [
@@ -682,7 +683,8 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
-      "<b>Sicherheits-Härtung.</b> Ein Durchgang durch die Sicherheits-Findings, ohne Änderung an der Bedienung: Log-Einträge aus fremder Eingabe werden von Steuerzeichen bereinigt, die Dashboard-Ansicht hat keinen Dateisystem-Zugriff mehr und das App-Update wird nur noch per HTTPS aus dem offiziellen GitHub-Release akzeptiert und aus dem app-privaten Speicher installiert, damit keine andere App es austauschen kann.",
+      "<b>Blade Mini und Fighter Mini: korrekte Batteriespannung.</b> Beim Blade Mini stand die Spannung auf 0.0V, weil ein bei diesem Modell leeres Feld gelesen wurde; jetzt liest die App pro Modell das richtige Byte. Die Strom-Kachel, die der Blade Mini nicht meldet, ist bei ihm ausgeblendet und die restlichen Kacheln füllen den Platz.",
+      "<b>Entsperren jetzt modellabhängig.</b> Der Dreifach-Tipp auf die Tempo-Kachel tut das Richtige für den verbundenen Roller: der Fighter Mini per direktem Entsperren, ein Blade Mini auf Firmware 3.4.6 über die Per-Gang-Geschwindigkeit, ein Blade Mini auf anderer Firmware (z.B. 3.4.8) zeigt 'Firmware 3.4.6 benötigt für Blade Mini Ultra' statt nichts zu tun.",
     ],
 
     'disclaimer.points': [
