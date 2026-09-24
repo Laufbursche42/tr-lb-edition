@@ -14,6 +14,12 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.9
+
+### Blade Mini: a clear message when firmware 3.4.6 is needed
+
+A Blade Mini only unlocks (via per-gear speed) on firmware 3.4.6; 3.4.8 ignores every setting write. The app now recognises a Blade Mini running any firmware other than 3.4.6 and shows a prominent banner, "Firmware 3.4.6 required for Blade Mini Ultra". A de-restrict attempt is then refused with the same message instead of silently doing nothing. A Fighter (which can also run 3.4.x) is unaffected, because the check gates on the model as well. The current tile, which the Blade Mini does not report, is hidden for that model instead of showing a placeholder.
+
 ## 1.1.8
 
 ### Blade Mini current tile no longer shows a bogus value

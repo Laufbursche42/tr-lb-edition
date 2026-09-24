@@ -20,6 +20,7 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
 <body>
 <!-- Debug-mode banner: visible only while native debug logging is recording. -->
 <div class="debug-banner" id="debug-banner" data-i18n="dash.debug.banner">&#9888; DEBUG MODE ON: recording logs</div>
+<div class="fw-req-banner is-hidden" id="bmini-fw-banner" data-i18n="dash.bmini.fw.required">&#9888; Firmware 3.4.6 required for Blade Mini Ultra</div>
 <div id="app">
 
   <!-- ── Topbar ─────────────────────────────────────── -->
@@ -68,7 +69,7 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
         <div class="hc-unit" data-i18n="dash.hero.gear.label">Gear</div>
         <div class="hc-tag is-hidden" id="gear-tag"></div>
       </div>
-      <div class="hero-cell">
+      <div class="hero-cell" id="current-cell">
         <div class="hc-val" id="current-val">-</div>
         <div class="hc-unit" data-i18n="dash.hero.current.unit">A Current</div>
       </div>
@@ -1626,6 +1627,7 @@ function updateBLEUI(data) {
       curEl.style.color = cur > 0 ? 'var(--danger)' : cur < 0 ? 'var(--good)' : 'var(--text)';
     }
   }
+  try { showEl(document.getElementById('bmini-fw-banner'), bminiFwBlocked()); } catch (e) {}   // Blade Mini on non-3.4.6: needs 3.4.6 to unlock
 
   // Motors (dual motor)
   setTxt('mr-temp', data.rTemp.toFixed(0));
@@ -2791,9 +2793,10 @@ function applyModelUi(btName) {
   const ov = _modelOverride ? MODEL_OPTIONS.find(o => o.id === _modelOverride) : null;
   const isFighter = ov ? ov.cat === 'fighter' : auto.isFighter;
   const isTetra   = ov ? ov.cat === 'tetra'   : auto.isTetra;
+  const isBmini   = ov ? ov.id === 'bmini'    : auto.name === 'BLADE MINI';
   const known     = ov ? true : auto.known;
   const dispName  = ov ? t(ov.key) : (auto.known ? auto.name : (btName ? t('msg.model.unknown') : '-'));
-  const key = dispName + '|' + isFighter + '|' + isTetra + '|' + (ov ? 'm' : 'a');
+  const key = dispName + '|' + isFighter + '|' + isTetra + '|' + isBmini + '|' + (ov ? 'm' : 'a');
   if (key === _lastModelKey) return;   // only touch the DOM when the effective model changes
   _lastModelKey = key;
   const cl = document.body.classList;
@@ -2803,6 +2806,7 @@ function applyModelUi(btName) {
   // hide only then - so they stay visible by default / when disconnected (the app's primary
   // audience is Fighter Mini owners, who patch offline).
   cl.toggle('is-other', known && !isFighter && !isTetra);
+  cl.toggle('is-bmini', isBmini);
   cl.toggle('model-manual', !!ov);
   const nameEl = document.getElementById('model-name');
   if (nameEl) nameEl.textContent = dispName;
@@ -2816,6 +2820,17 @@ function applyModelUi(btName) {
 function fighterFeatures() {
   const c = document.body.classList;
   return !c.contains('is-other') && !c.contains('is-tetra');
+}
+// True when the connected/selected model is a Blade Mini (any variant BME/BMP/BMU incl. Ultra).
+function isBladeMini() {
+  if (_modelOverride) return _modelOverride === 'bmini';
+  return detectModel(liveRaw().btName || '').name === 'BLADE MINI';
+}
+// Blade Mini de-restrict (per-gear speed) only works on firmware 3.4.6; 3.4.8 ignores every BLE write.
+// A Fighter IVCU can also run 3.4.x, so this MUST gate on the model too, never on the firmware alone.
+function bminiFwBlocked() {
+  const sw = (liveRaw().swVer || '') + '';
+  return isBladeMini() && sw !== '' && sw !== '3.4.6';
 }
 
 function pick(d, keys) {
@@ -4090,6 +4105,7 @@ function wireGearEditor() {
   if (save) save.addEventListener('click', () => {
     if (typeof LB === 'undefined' || !LB.sendGearSetting) { showToast(t('msg.app.only.in.app')); return; }
     if (!state.bleConnected) { showToast(t('msg2.toast.connect_scooter_first')); return; }
+    if (bminiFwBlocked()) { showToast(t('dash.bmini.fw.required'), 6000, 'err'); return; }   // 3.4.8 ignores the write
     const gear = gsSelectedGear || activeGear() || 1;
     const numOrNull = id => { const el = document.getElementById(id); const v = parseInt(el && el.value, 10); return isNaN(v) ? null : v; };
     const o = {};
