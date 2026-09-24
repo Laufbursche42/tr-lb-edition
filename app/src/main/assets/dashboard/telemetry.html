@@ -311,6 +311,25 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <div class="settings-row-sublabel note-gap" data-i18n="settings.scooter.navigation.hint">Open the navigation screen</div>
   </div>
 
+  <!-- Blade Mini de-restrict speed: the per-gear values the triple-tap writes on unlock (ESC gears 2/3/4).
+       Blade-Mini-only (bmini-only); the Fighter's lock is a different mechanism entirely. -->
+  <div class="settings-group bmini-only has-top-rule">
+    <div class="settings-group-title" data-i18n="settings.bmini.group.title">Blade Mini unlock speed</div>
+    <div class="settings-row-sublabel note-gap" data-i18n="settings.bmini.hint">Per-gear speed the triple-tap writes when de-restricting (gears 1/2/3). 45 / 60 / 80 opens fully; lower values cap the top speed. Firmware 3.4.6 only.</div>
+    <div class="settings-row">
+      <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g1.label">Gear 1</div></div>
+      <input class="set-ctrl" id="bmini-g1" type="number" min="1" max="100" step="1" inputmode="numeric">
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g2.label">Gear 2</div></div>
+      <input class="set-ctrl" id="bmini-g2" type="number" min="1" max="100" step="1" inputmode="numeric">
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g3.label">Gear 3 (top)</div></div>
+      <input class="set-ctrl" id="bmini-g3" type="number" min="1" max="100" step="1" inputmode="numeric">
+    </div>
+  </div>
+
   <!-- GPS: the recording settings and the recordings they produce belong together. -->
   <div class="settings-group has-top-rule">
     <div class="settings-group-title" data-i18n="settings.gps.group.title">GPS recording</div>
@@ -1589,14 +1608,20 @@ function updateBLEUI(data) {
   // 55 71 lock byte (data.vcuUnlock: 0 = LOCKED, 1 = UNLOCKED) on TESTLOCK firmware; falls back to the
   // FIN "TDE" heuristic only when the byte is absent (-1 / old fw). Triple-tap the VCU tile to toggle.
   {
-    // The lock tile colour is a Fighter-Mini-eKFV concept. Only colour it for the Fighter Mini (or the
-    // unknown/disconnected default); on other models keep it neutral.
+    // Speed tile turns red when de-restricted. Blade Mini and Fighter detect that state differently,
+    // so each gets its own branch; other models stay neutral.
     const spEl = document.getElementById('ble-speed');
-    const finU = ((liveRaw().btName || '') + '').toUpperCase();
-    const known = (data.vcuUnlock === 0 || data.vcuUnlock === 1);
-    const locked = (data.vcuUnlock === 0);
-    const unlocked = known ? !locked : (finU && !finU.includes('TDE'));
-    if (spEl) spEl.style.color = (fighterFeatures() && unlocked) ? 'var(--danger)' : '';
+    let unlocked = false, colour = false;
+    if (isBladeMini()) {
+      unlocked = (liveRaw().assistSpeedLimit | 0) > 30;   // Blade: per-gear speed a[10] high = de-restricted
+      colour = true;
+    } else if (fighterFeatures()) {
+      const finU = ((liveRaw().btName || '') + '').toUpperCase();   // Fighter: 55 71 lock byte, FIN "TDE" fallback
+      const known = (data.vcuUnlock === 0 || data.vcuUnlock === 1);
+      unlocked = known ? (data.vcuUnlock === 1) : (finU && !finU.includes('TDE'));
+      colour = true;
+    }
+    if (spEl) spEl.style.color = (colour && unlocked) ? 'var(--danger)' : '';
   }
   setTxt('dg-avg', `${convSpeed(data.avgSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
   setTxt('dg-max', `${convSpeed(data.maxSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
@@ -3114,12 +3139,41 @@ function toggleFinLock() {
   } catch (e) { showToast(tf('msg2.toast.error', { e: e })); }
 }
 // Blade Mini de-restrict: per-gear speed high = unlocked (55 71 t[10] > 30); tap toggles it on German gears 2/3/4.
+// Unlock values are user-set (settings block); lock restores the eKFV-legal cap and stays fixed at 10/15/21.
+const BMINI_UNLOCK_DEFAULTS = [45, 60, 80];
+function bminiUnlockSpeeds() {
+  return [1, 2, 3].map((n, i) => {
+    let v = parseInt(storage.get('lb_bmini_g' + n), 10);
+    if (!isFinite(v)) v = BMINI_UNLOCK_DEFAULTS[i];
+    return Math.min(Math.max(v, 1), 100);
+  });
+}
 function bminiToggleDerestrict() {
   if (!LB.sendGearSetting) { showToast(t('msg.app.only.in.app')); return; }
   const unlocked = (liveRaw().assistSpeedLimit | 0) > 30;
-  const speeds = unlocked ? [10, 15, 21] : [45, 60, 80];
+  const speeds = unlocked ? [10, 15, 21] : bminiUnlockSpeeds();
   [2, 3, 4].forEach((g, i) => { try { LB.sendGearSetting(g, JSON.stringify({ speedLimit: speeds[i] })); } catch (e) {} });
   showToast(unlocked ? t('msg2.lock.toast.locking') : t('msg2.lock.toast.unlocking'), 3000);
+}
+// The Blade-Mini unlock-speed inputs: fill from storage, persist on change. Local-only, never streamed.
+let _bminiSpeedsWired = false;
+function wireBminiSpeeds() {
+  const cur = bminiUnlockSpeeds();
+  [1, 2, 3].forEach((n, i) => {
+    const el = document.getElementById('bmini-g' + n);
+    if (!el) return;
+    el.value = cur[i];
+    if (!_bminiSpeedsWired) {
+      el.addEventListener('change', () => {
+        let v = parseInt(el.value, 10);
+        if (!isFinite(v)) v = BMINI_UNLOCK_DEFAULTS[i];
+        v = Math.min(Math.max(v, 1), 100);
+        el.value = v;
+        storage.set('lb_bmini_g' + n, String(v));
+      });
+    }
+  });
+  _bminiSpeedsWired = true;
 }
 
 // Copy the Bluetooth advertised name (from live BLE data) to the Android clipboard.
@@ -4633,6 +4687,7 @@ function init() {
   wireEvents();
   loadModelOverride();
   populateModelSelect();
+  wireBminiSpeeds();
   recoverStuckRides();
   renderRoutes();
   initNavBanner();

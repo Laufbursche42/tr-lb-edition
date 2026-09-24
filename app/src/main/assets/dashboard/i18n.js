@@ -22,6 +22,7 @@ window.I18N = {
     'whatsnew.points': [
       "<b>Blade Mini &amp; Fighter Mini: correct battery voltage.</b> The voltage tile read 0.0 V on a Blade Mini because it used a field that model leaves empty; the app now reads the right byte per model. The current tile, which the Blade Mini does not report, is hidden for it and the remaining tiles fill the space.",
       "<b>Model-aware unlock.</b> The speed-tile triple-tap now does the right thing for the connected scooter: the Fighter Mini keeps its direct unlock, a Blade Mini on firmware 3.4.6 de-restricts through its per-gear speed, and a Blade Mini on any other firmware (e.g. 3.4.8) shows 'Firmware 3.4.6 required for Blade Mini Ultra' instead of doing nothing.",
+      "<b>Set the Blade Mini unlock speed.</b> The triple-tap no longer always opens to the top speed. Under Settings (shown for the Blade Mini) you set the per-gear speed it writes, so you can cap it lower. The speed number now also turns red while the Blade Mini is de-restricted, as it already does on the Fighter Mini.",
     ],
 
     'disclaimer.points': [
@@ -643,6 +644,11 @@ window.I18N = {
     "settings.firmware.update.hint": "Flash an IVCU .hex over Bluetooth (scooter must be connected)",
     "settings.gps.autotrack.hint": "Records a GPS ride after ~20 m; stops when the scooter disconnects",
     "settings.gps.autotrack.label": "Auto-track rides",
+    "settings.bmini.group.title": "Blade Mini unlock speed",
+    "settings.bmini.hint": "Per-gear speed the triple-tap writes when de-restricting (gears 1/2/3). 45 / 60 / 80 opens fully; lower values cap the top speed. Firmware 3.4.6 only.",
+    "settings.bmini.g1.label": "Gear 1",
+    "settings.bmini.g2.label": "Gear 2",
+    "settings.bmini.g3.label": "Gear 3 (top)",
     "settings.gps.group.title": "GPS recording",
     "settings.gps.interval.label": "Interval",
     "settings.gps.interval.option.10s": "10 s",
@@ -685,6 +691,7 @@ window.I18N = {
     'whatsnew.points': [
       "<b>Blade Mini und Fighter Mini: korrekte Batteriespannung.</b> Beim Blade Mini stand die Spannung auf 0.0V, weil ein bei diesem Modell leeres Feld gelesen wurde; jetzt liest die App pro Modell das richtige Byte. Die Strom-Kachel, die der Blade Mini nicht meldet, ist bei ihm ausgeblendet und die restlichen Kacheln füllen den Platz.",
       "<b>Entsperren jetzt modellabhängig.</b> Der Dreifach-Tipp auf die Tempo-Kachel tut das Richtige für den verbundenen Roller: der Fighter Mini per direktem Entsperren, ein Blade Mini auf Firmware 3.4.6 über die Per-Gang-Geschwindigkeit, ein Blade Mini auf anderer Firmware (z.B. 3.4.8) zeigt 'Firmware 3.4.6 benötigt für Blade Mini Ultra' statt nichts zu tun.",
+      "<b>Blade-Mini-Entsperrtempo einstellbar.</b> Der Dreifach-Tipp macht nicht mehr zwangsläufig auf das Höchsttempo auf. In den Einstellungen (beim Blade Mini sichtbar) legst du den Wert pro Gang fest, den er schreibt, und kannst so niedriger begrenzen. Die Tempo-Zahl wird beim Blade Mini jetzt außerdem rot, solange entdrosselt ist, wie schon beim Fighter Mini.",
     ],
 
     'disclaimer.points': [
@@ -1306,6 +1313,11 @@ window.I18N = {
     "settings.firmware.update.hint": "Eine IVCU .hex über Bluetooth flashen (Scooter muss verbunden sein)",
     "settings.gps.autotrack.hint": "Zeichnet eine GPS-Fahrt nach ~20 m auf; stoppt, wenn der Scooter die Verbindung trennt",
     "settings.gps.autotrack.label": "Fahrten automatisch aufzeichnen",
+    "settings.bmini.group.title": "Blade Mini Entsperr-Tempo",
+    "settings.bmini.hint": "Der Wert pro Gang, den der Dreifach-Tipp beim Entsperren schreibt (Gänge 1/2/3). 45 / 60 / 80 macht voll auf; kleinere Werte begrenzen das Tempo. Nur Firmware 3.4.6.",
+    "settings.bmini.g1.label": "Gang 1",
+    "settings.bmini.g2.label": "Gang 2",
+    "settings.bmini.g3.label": "Gang 3 (oben)",
     "settings.gps.group.title": "GPS-Aufzeichnung",
     "settings.gps.interval.label": "Intervall",
     "settings.gps.interval.option.10s": "10 s",

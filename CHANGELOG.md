@@ -14,6 +14,13 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.11
+
+### A settable Blade Mini unlock speed, and the speed tile goes red when de-restricted
+
+- The Blade Mini triple-tap no longer always opens to the top speed. A "Blade Mini unlock speed" block in the settings (shown only for that model) sets the per-gear speed the de-restrict writes to German gears 2/3/4, defaulting to the full 45/60/80. Lower the values to cap the top speed; the numbers are the same ones the web unlock tool uses. Locking still restores the eKFV-legal 10/15/21 and is not user-editable. Only firmware 3.4.6 accepts these writes.
+- The speed number now turns red while a Blade Mini is de-restricted, driven by the Blade's own state (per-gear speed high), not the Fighter's lock byte. The Fighter Mini keeps its existing red-when-unlocked colour unchanged.
+
 ## 1.1.10
 
 ### Model-aware unlock, and a tidier Blade Mini dashboard
