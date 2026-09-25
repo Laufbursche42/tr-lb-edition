@@ -14,6 +14,12 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.15
+
+### Blade Mini: the speed number goes red in every tuned gear, not just the first
+
+The red "de-restricted" colour used a threshold of 30, so a gear tuned to a value between the eKFV-legal cap and 30 (a moderate 25-28, say) stayed green while a higher first gear went red. The tile now turns red whenever the active gear's per-gear speed is above the eKFV cap of 22 - so every gear set above legal shows red, whatever value you pick. The same threshold now decides lock/unlock for the triple-tap.
+
 ## 1.1.14
 
 ### Blade Mini unlock-speed field moved into Scooter Settings, and the red stays red

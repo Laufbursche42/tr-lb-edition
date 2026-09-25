@@ -22,7 +22,7 @@ window.I18N = {
     'whatsnew.points': [
       "<b>Blade Mini &amp; Fighter Mini: correct battery voltage.</b> The Blade Mini voltage tile now matches the scooter's own display - it reads the whole-volt pack voltage the controller reports, instead of a battery-frame field that read 0.0 V or under-reported (e.g. 46 V for a real 56 V). The Fighter Mini keeps its precise smart-BMS reading. The current tile, which the Blade Mini does not report, is hidden for it and the remaining tiles fill the space.",
       "<b>Model-aware unlock.</b> The speed-tile triple-tap now does the right thing for the connected scooter: the Fighter Mini keeps its direct unlock, a Blade Mini on firmware 3.4.6 de-restricts through its per-gear speed, and a Blade Mini on any other firmware (e.g. 3.4.8) shows 'Firmware 3.4.6 required for Blade Mini Ultra' instead of doing nothing.",
-      "<b>Set the Blade Mini unlock speed.</b> The triple-tap no longer always opens to the top speed. Open Scooter Settings (the block shows for the Blade Mini) and set the per-gear speed it writes, so you can cap it lower. The speed number turns red while the Blade Mini is de-restricted and stays red through the tuning state, as on the Fighter Mini.",
+      "<b>Set the Blade Mini unlock speed.</b> The triple-tap no longer always opens to the top speed. Open Scooter Settings (the block shows for the Blade Mini) and set the per-gear speed it writes, so you can cap it lower. The speed number turns red in every gear you tune above the legal cap and stays red through the tuning state, as on the Fighter Mini.",
     ],
 
     'disclaimer.points': [
@@ -691,7 +691,7 @@ window.I18N = {
     'whatsnew.points': [
       "<b>Blade Mini und Fighter Mini: korrekte Batteriespannung.</b> Die Spannungskachel des Blade Mini stimmt jetzt mit dem Display des Rollers überein: sie liest die Ganzvolt-Packspannung, die der Controller meldet, statt eines Batteriefelds, das 0.0V anzeigte oder zu wenig meldete (z.B. 46V bei echten 56V). Der Fighter Mini behält seine genaue Smart-BMS-Anzeige. Die Strom-Kachel, die der Blade Mini nicht meldet, ist bei ihm ausgeblendet und die restlichen Kacheln füllen den Platz.",
       "<b>Entsperren jetzt modellabhängig.</b> Der Dreifach-Tipp auf die Tempo-Kachel tut das Richtige für den verbundenen Roller: der Fighter Mini per direktem Entsperren, ein Blade Mini auf Firmware 3.4.6 über die Per-Gang-Geschwindigkeit, ein Blade Mini auf anderer Firmware (z.B. 3.4.8) zeigt 'Firmware 3.4.6 benötigt für Blade Mini Ultra' statt nichts zu tun.",
-      "<b>Blade-Mini-Entsperrtempo einstellbar.</b> Der Dreifach-Tipp macht nicht mehr zwangsläufig auf das Höchsttempo auf. Öffne die Scooter Settings (der Block erscheint beim Blade Mini) und lege den Wert pro Gang fest, den er schreibt, so kannst du niedriger begrenzen. Die Tempo-Zahl wird beim Blade Mini rot, solange entdrosselt ist, und bleibt es auch im Tuning-Zustand, wie beim Fighter Mini.",
+      "<b>Blade-Mini-Entsperrtempo einstellbar.</b> Der Dreifach-Tipp macht nicht mehr zwangsläufig auf das Höchsttempo auf. Öffne die Scooter Settings (der Block erscheint beim Blade Mini) und lege den Wert pro Gang fest, den er schreibt, so kannst du niedriger begrenzen. Die Tempo-Zahl wird in jedem über die Grenze getunten Gang rot und bleibt es auch im Tuning-Zustand, wie beim Fighter Mini.",
     ],
 
     'disclaimer.points': [

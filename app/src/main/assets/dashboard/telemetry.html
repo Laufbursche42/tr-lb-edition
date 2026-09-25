@@ -1616,7 +1616,7 @@ function updateBLEUI(data) {
     const spEl = document.getElementById('ble-speed');
     let unlocked = false, colour = false;
     if (bminiActive()) {
-      unlocked = (liveRaw().assistSpeedLimit | 0) > 30;   // Blade: per-gear speed a[10] high = de-restricted
+      unlocked = (liveRaw().assistSpeedLimit | 0) > BMINI_TUNED_ABOVE;   // active gear's a[10] above the eKFV cap = de-restricted (any gear, not just 1st)
       colour = true;                                        // sticky flag, so it stays red through the tuning FIN
     } else if (fighterFeatures()) {
       const finU = ((liveRaw().btName || '') + '').toUpperCase();   // Fighter: 55 71 lock byte, FIN "TDE" fallback
@@ -3153,8 +3153,10 @@ function toggleFinLock() {
     showToast(locked ? t('msg2.lock.toast.unlocking') : t('msg2.lock.toast.locking'), 3000);
   } catch (e) { showToast(tf('msg2.toast.error', { e: e })); }
 }
-// Blade Mini de-restrict: per-gear speed high = unlocked (55 71 t[10] > 30); tap toggles it on German gears 2/3/4.
-// Unlock values are user-set (settings block); lock restores the eKFV-legal cap and stays fixed at 10/15/21.
+// Blade Mini de-restrict: the active gear's per-gear speed (55 71 t[10]) above the eKFV cap = de-restricted;
+// tap toggles it on German gears 2/3/4. Unlock values are user-set (settings block); lock restores the legal
+// cap and stays fixed at 10/15/21.
+const BMINI_TUNED_ABOVE = 22;   // eKFV legal per-gear cap; a gear set above this counts as tuned -> red tile + "unlocked"
 const BMINI_UNLOCK_DEFAULTS = [45, 60, 80];
 function bminiUnlockSpeeds() {
   return [1, 2, 3].map((n, i) => {
@@ -3165,7 +3167,7 @@ function bminiUnlockSpeeds() {
 }
 function bminiToggleDerestrict() {
   if (!LB.sendGearSetting) { showToast(t('msg.app.only.in.app')); return; }
-  const unlocked = (liveRaw().assistSpeedLimit | 0) > 30;
+  const unlocked = (liveRaw().assistSpeedLimit | 0) > BMINI_TUNED_ABOVE;
   const speeds = unlocked ? [10, 15, 21] : bminiUnlockSpeeds();
   [2, 3, 4].forEach((g, i) => { try { LB.sendGearSetting(g, JSON.stringify({ speedLimit: speeds[i] })); } catch (e) {} });
   showToast(unlocked ? t('msg2.lock.toast.locking') : t('msg2.lock.toast.unlocking'), 3000);
