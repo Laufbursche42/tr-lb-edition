@@ -312,8 +312,9 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
   </div>
 
   <!-- Blade Mini de-restrict speed: the per-gear values the triple-tap writes on unlock (ESC gears 2/3/4).
-       Blade-Mini-only (bmini-only); the Fighter's lock is a different mechanism entirely. -->
-  <div class="settings-group bmini-only has-top-rule">
+       Shown only for the Blade Mini (toggled by applyModelUi via showEl); the Fighter's lock is a different
+       mechanism entirely. Starts hidden through .is-hidden, revealed once a Blade Mini is detected/selected. -->
+  <div class="settings-group has-top-rule is-hidden" id="bmini-speed-block">
     <div class="settings-group-title" data-i18n="settings.bmini.group.title">Blade Mini unlock speed</div>
     <div class="settings-row-sublabel note-gap" data-i18n="settings.bmini.hint">Per-gear speed the triple-tap writes when de-restricting (gears 1/2/3). 45 / 60 / 80 opens fully; lower values cap the top speed. Firmware 3.4.6 only.</div>
     <div class="settings-row">
@@ -2832,6 +2833,14 @@ function applyModelUi(btName) {
   // audience is Fighter Mini owners, who patch offline).
   cl.toggle('is-other', known && !isFighter && !isTetra);
   cl.toggle('is-bmini', isBmini);
+  // The Blade-Mini unlock-speed block is model-gated via showEl (not a CSS class), the same proven
+  // mechanism as the firmware banner. It reveals for a Blade Mini and only hides again for a definite
+  // OTHER known model - never for an unknown/blank read, so the unlocked (tuning) FIN, whose shorter
+  // name can miss the model offset, cannot make the block vanish while the rider is using it.
+  try {
+    const bminiEl = document.getElementById('bmini-speed-block');
+    if (bminiEl && (isBmini || known)) showEl(bminiEl, isBmini);
+  } catch (e) {}
   cl.toggle('model-manual', !!ov);
   const nameEl = document.getElementById('model-name');
   if (nameEl) nameEl.textContent = dispName;

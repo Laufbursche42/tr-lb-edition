@@ -905,9 +905,6 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 .is-bmini #current-cell { display: none; }
 /* current tile gone on the Blade Mini: the two remaining hero tiles fill the row instead of leaving a gap. */
 .is-bmini #hero-row { grid-template-columns: 1fr 1fr; }
-/* Blade-Mini-only settings blocks (e.g. the unlock-speed inputs): shown only for that model. */
-.bmini-only { display: none; }
-body.is-bmini .bmini-only { display: block; }
 
 /* ── Language switch and the what-is-new modal ─────────────────────────────── */
 .lang-switch { display: flex; gap: 4px; flex-shrink: 0; }
