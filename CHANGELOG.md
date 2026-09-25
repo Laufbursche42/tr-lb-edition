@@ -14,6 +14,12 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.13
+
+### Correct Blade Mini pack voltage
+
+The Blade Mini voltage tile under-read (for example 46 V while the scooter's own display showed 56 V). The app had taken the voltage from a battery-frame field that is not the true pack voltage on the Blade. It now reads the whole-volt pack voltage the controller reports in its config frame (55 71) - the same source the scooter display and the web unlock tool use - so the tile matches the display. The Fighter Mini keeps its precise smart-BMS reading unchanged.
+
 ## 1.1.12
 
 ### A settable Blade Mini unlock speed, and the speed tile goes red when de-restricted

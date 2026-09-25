@@ -179,10 +179,14 @@ final class FrameParser {
     // ── frame decoders ──
 
     private synchronized void parse52(int[] t) {
-        // Fighter Mini: smart-BMS volt in t[2:3] (0.1V). Blade Mini leaves it 0, sends whole-volt pack in t[4:5].
-        double smartV = u16(t, 2) * 0.1, wholeV = u16(t, 4);
-        packVoltage = smartV > 0 ? smartV : (wholeV >= 20 && wholeV <= 120 ? wholeV : packVoltage);
-        double poleV = u16(t, 4) * 0.1;   // IVCU pole; implausible on the Minis (t[4:5] is the whole-volt pack there)
+        // Pack voltage: prefer the Fighter's smart-BMS live reading in t[2:3] (0.1V). The Blade Mini's
+        // ESC leaves that 0, so fall back to the whole-volt pack the controller reports in the 55 71
+        // config frame (settings.packVoltage = t[15]) - the same source trbm-unlock and the scooter
+        // display use. The old t[4:5] read was a different measurement that under-reported on the Blade.
+        double smartV = u16(t, 2) * 0.1;
+        int cfgV = settings.packVoltage;   // 55 71 t[15], whole volts
+        packVoltage = smartV > 0 ? smartV : (cfgV >= 20 && cfgV <= 120 ? cfgV : packVoltage);
+        double poleV = u16(t, 4) * 0.1;   // IVCU pole (0.1V); the Minis do not report a separate pole voltage
         poleVoltage = poleV >= 20 ? poleV : 0;
         haveCurrent = u16(t, 6) != 0;             // Blade Mini leaves t[6:7]=0: current not reported
         packCurrent = u16(t, 6) * 0.1 - 1000;     // < 0 => regeneration
