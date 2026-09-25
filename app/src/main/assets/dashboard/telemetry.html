@@ -311,26 +311,6 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <div class="settings-row-sublabel note-gap" data-i18n="settings.scooter.navigation.hint">Open the navigation screen</div>
   </div>
 
-  <!-- Blade Mini de-restrict speed: the per-gear values the triple-tap writes on unlock (ESC gears 2/3/4).
-       Shown only for the Blade Mini (toggled by applyModelUi via showEl); the Fighter's lock is a different
-       mechanism entirely. Starts hidden through .is-hidden, revealed once a Blade Mini is detected/selected. -->
-  <div class="settings-group has-top-rule is-hidden" id="bmini-speed-block">
-    <div class="settings-group-title" data-i18n="settings.bmini.group.title">Blade Mini unlock speed</div>
-    <div class="settings-row-sublabel note-gap" data-i18n="settings.bmini.hint">Per-gear speed the triple-tap writes when de-restricting (gears 1/2/3). 45 / 60 / 80 opens fully; lower values cap the top speed. Firmware 3.4.6 only.</div>
-    <div class="settings-row">
-      <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g1.label">Gear 1</div></div>
-      <input class="set-ctrl" id="bmini-g1" type="number" min="1" max="100" step="1" inputmode="numeric">
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g2.label">Gear 2</div></div>
-      <input class="set-ctrl" id="bmini-g2" type="number" min="1" max="100" step="1" inputmode="numeric">
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g3.label">Gear 3 (top)</div></div>
-      <input class="set-ctrl" id="bmini-g3" type="number" min="1" max="100" step="1" inputmode="numeric">
-    </div>
-  </div>
-
   <!-- GPS: the recording settings and the recordings they produce belong together. -->
   <div class="settings-group has-top-rule">
     <div class="settings-group-title" data-i18n="settings.gps.group.title">GPS recording</div>
@@ -476,6 +456,28 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <div class="settings-row-sublabel mb-8" data-i18n="scooter.intro.note">
       Edit the fields, then press a Save button to send the changes to the scooter over BLE.
       Nothing is written until you save. Connect first.
+    </div>
+
+    <!-- Blade Mini de-restrict speed: the per-gear values the speed-tile triple-tap writes on unlock
+         (ESC gears 2/3/4). A LOCAL preference, saved instantly and NOT sent to the scooter on Save.
+         Shown only for the Blade Mini (toggled by applyModelUi via showEl); the Fighter's lock differs. -->
+    <div id="bmini-speed-block" class="is-hidden">
+      <div class="section-hdr sub-hdr" data-i18n="settings.bmini.group.title">Blade Mini unlock speed</div>
+      <div class="settings-group pt-4">
+        <div class="settings-row-sublabel mb-8" data-i18n="settings.bmini.hint">Per-gear speed the speed-tile triple-tap writes when de-restricting (gears 1/2/3). 45 / 60 / 80 opens fully; lower values cap the top speed. Saved instantly - no Save needed, and not sent with the other settings. Firmware 3.4.6 only.</div>
+        <div class="settings-row">
+          <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g1.label">Gear 1</div></div>
+          <input class="set-ctrl" id="bmini-g1" type="number" min="1" max="100" step="1" inputmode="numeric">
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g2.label">Gear 2</div></div>
+          <input class="set-ctrl" id="bmini-g2" type="number" min="1" max="100" step="1" inputmode="numeric">
+        </div>
+        <div class="settings-row no-bottom-rule">
+          <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g3.label">Gear 3 (top)</div></div>
+          <input class="set-ctrl" id="bmini-g3" type="number" min="1" max="100" step="1" inputmode="numeric">
+        </div>
+      </div>
     </div>
 
     <!-- Per-gear (assist) settings, one profile per gear
@@ -1613,9 +1615,9 @@ function updateBLEUI(data) {
     // so each gets its own branch; other models stay neutral.
     const spEl = document.getElementById('ble-speed');
     let unlocked = false, colour = false;
-    if (isBladeMini()) {
+    if (bminiActive()) {
       unlocked = (liveRaw().assistSpeedLimit | 0) > 30;   // Blade: per-gear speed a[10] high = de-restricted
-      colour = true;
+      colour = true;                                        // sticky flag, so it stays red through the tuning FIN
     } else if (fighterFeatures()) {
       const finU = ((liveRaw().btName || '') + '').toUpperCase();   // Fighter: 55 71 lock byte, FIN "TDE" fallback
       const known = (data.vcuUnlock === 0 || data.vcuUnlock === 1);
@@ -2777,6 +2779,7 @@ const MODEL_OPTIONS = [
 ];
 let _modelOverride = null;   // MODEL_OPTIONS id or null for auto-detect
 let _lastModelKey = null;
+let _bminiEffective = false;   // sticky "a Blade Mini is connected/selected" (see applyModelUi); read via bminiActive()
 let _modelSelectWired = false;
 
 function loadModelOverride() {
@@ -2833,14 +2836,13 @@ function applyModelUi(btName) {
   // audience is Fighter Mini owners, who patch offline).
   cl.toggle('is-other', known && !isFighter && !isTetra);
   cl.toggle('is-bmini', isBmini);
-  // The Blade-Mini unlock-speed block is model-gated via showEl (not a CSS class), the same proven
-  // mechanism as the firmware banner. It reveals for a Blade Mini and only hides again for a definite
-  // OTHER known model - never for an unknown/blank read, so the unlocked (tuning) FIN, whose shorter
-  // name can miss the model offset, cannot make the block vanish while the rider is using it.
-  try {
-    const bminiEl = document.getElementById('bmini-speed-block');
-    if (bminiEl && (isBmini || known)) showEl(bminiEl, isBmini);
-  } catch (e) {}
+  // Sticky Blade-Mini flag: set once a Blade Mini is seen, cleared only for a definite OTHER known
+  // model - never on an unknown/blank read. The unlocked (tuning) FIN is shorter and can miss the
+  // model offset, so this keeps the tile colour red, the unlock routing correct and the settings
+  // block visible while the rider tunes. bminiActive() reads it everywhere.
+  if (isBmini) _bminiEffective = true;
+  else if (known) _bminiEffective = false;
+  try { showEl(document.getElementById('bmini-speed-block'), _bminiEffective); } catch (e) {}
   cl.toggle('model-manual', !!ov);
   const nameEl = document.getElementById('model-name');
   if (nameEl) nameEl.textContent = dispName;
@@ -2855,16 +2857,20 @@ function fighterFeatures() {
   const c = document.body.classList;
   return !c.contains('is-other') && !c.contains('is-tetra');
 }
-// True when the connected/selected model is a Blade Mini (any variant BME/BMP/BMU incl. Ultra).
+// True when the connected/selected model is a Blade Mini (any variant BME/BMP/BMU incl. Ultra). Raw
+// per-frame detection; feeds the sticky _bminiEffective in applyModelUi. Everything user-facing uses
+// bminiActive() instead, so a momentary miss on the shorter unlocked FIN does not flip the UI.
 function isBladeMini() {
   if (_modelOverride) return _modelOverride === 'bmini';
   return detectModel(liveRaw().btName || '').name === 'BLADE MINI';
 }
+// Sticky Blade-Mini state: stays true through the tuning FIN, only cleared for a definite other model.
+function bminiActive() { return _bminiEffective; }
 // Blade Mini de-restrict (per-gear speed) only works on firmware 3.4.6; 3.4.8 ignores every BLE write.
 // A Fighter IVCU can also run 3.4.x, so this MUST gate on the model too, never on the firmware alone.
 function bminiFwBlocked() {
   const sw = (liveRaw().swVer || '') + '';
-  return isBladeMini() && sw !== '' && sw !== '3.4.6';
+  return bminiActive() && sw !== '' && sw !== '3.4.6';
 }
 
 function pick(d, keys) {
@@ -3130,8 +3136,8 @@ function onVcuTileTap() {
 function toggleFinLock() {
   if (typeof LB === 'undefined') { showToast(t('msg.app.only.in.app')); return; }
   if (!state.bleConnected) { showToast(t('msg2.toast.connect_scooter_first'), 3000, 'err'); return; }
-  // Switch on the scooter (already known at connect): Blade Mini uses per-gear speed, Fighter Mini uses 0x1B.
-  if (isBladeMini()) {
+  // Switch on the scooter (sticky since connect): Blade Mini uses per-gear speed, Fighter Mini uses 0x1B.
+  if (bminiActive()) {
     if (bminiFwBlocked()) { showToast(t('dash.bmini.fw.required'), 6000, 'err'); return; }
     bminiToggleDerestrict();
     return;

@@ -14,6 +14,13 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.14
+
+### Blade Mini unlock-speed field moved into Scooter Settings, and the red stays red
+
+- The "Blade Mini unlock speed" fields now live inside Scooter Settings (the gear menu -> Scooter settings), next to the other scooter parameters, instead of in the top-level settings list where they were easy to miss. They are still Blade-Mini-only and are saved instantly (not sent with the Save button).
+- Model detection is now sticky: once a Blade Mini is connected it stays recognised through the shorter unlocked (tuning) FIN, so the speed number stays red while de-restricted, the settings block stays visible, and the triple-tap keeps writing the Blade values instead of falling back to the "Fighter only" path.
+
 ## 1.1.13
 
 ### Correct Blade Mini pack voltage
