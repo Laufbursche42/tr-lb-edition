@@ -1617,7 +1617,7 @@ function updateBLEUI(data) {
     let unlocked = false, colour = false;
     if (bminiActive()) {
       unlocked = (liveRaw().assistSpeedLimit | 0) > BMINI_TUNED_ABOVE;   // active gear's a[10] above the eKFV cap = de-restricted (any gear, not just 1st)
-      colour = true;                                        // sticky flag, so it stays red through the tuning FIN
+      colour = true;                                        // sticky: red while a Blade is connected
     } else if (fighterFeatures()) {
       const finU = ((liveRaw().btName || '') + '').toUpperCase();   // Fighter: 55 71 lock byte, FIN "TDE" fallback
       const known = (data.vcuUnlock === 0 || data.vcuUnlock === 1);
@@ -2836,10 +2836,7 @@ function applyModelUi(btName) {
   // audience is Fighter Mini owners, who patch offline).
   cl.toggle('is-other', known && !isFighter && !isTetra);
   cl.toggle('is-bmini', isBmini);
-  // Sticky Blade-Mini flag: set once a Blade Mini is seen, cleared only for a definite OTHER known
-  // model - never on an unknown/blank read. The unlocked (tuning) FIN is shorter and can miss the
-  // model offset, so this keeps the tile colour red, the unlock routing correct and the settings
-  // block visible while the rider tunes. bminiActive() reads it everywhere.
+  // Sticky Blade flag: holds until another known model connects or Fighter is picked; a blank read never drops it.
   if (isBmini) _bminiEffective = true;
   else if (known) _bminiEffective = false;
   try { showEl(document.getElementById('bmini-speed-block'), _bminiEffective); } catch (e) {}
@@ -2857,14 +2854,12 @@ function fighterFeatures() {
   const c = document.body.classList;
   return !c.contains('is-other') && !c.contains('is-tetra');
 }
-// True when the connected/selected model is a Blade Mini (any variant BME/BMP/BMU incl. Ultra). Raw
-// per-frame detection; feeds the sticky _bminiEffective in applyModelUi. Everything user-facing uses
-// bminiActive() instead, so a momentary miss on the shorter unlocked FIN does not flip the UI.
+// True when the connected/selected model is a Blade Mini; raw per-frame detection that feeds _bminiEffective.
 function isBladeMini() {
   if (_modelOverride) return _modelOverride === 'bmini';
   return detectModel(liveRaw().btName || '').name === 'BLADE MINI';
 }
-// Sticky Blade-Mini state: stays true through the tuning FIN, only cleared for a definite other model.
+// Sticky Blade state (set in applyModelUi); user-facing code reads this, not the raw per-frame detection.
 function bminiActive() { return _bminiEffective; }
 // Blade Mini de-restrict (per-gear speed) only works on firmware 3.4.6; 3.4.8 ignores every BLE write.
 // A Fighter IVCU can also run 3.4.x, so this MUST gate on the model too, never on the firmware alone.
