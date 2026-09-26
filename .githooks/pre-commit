@@ -298,6 +298,50 @@ if grep -aqzF -- "$MANIFEST_REL" "$STAGED_LIST" 2>/dev/null; then
 fi
 
 # =================================================================
+# PHASE E - changelog gate for a RELEASING commit
+# =================================================================
+# release.yml auto-builds a public GitHub release on every push to main UNLESS every changed
+# path is under its paths-ignore (**.md, .github/**, .githooks/**, screenshots/**, firmware/**,
+# LICENSE, .gitattributes, .gitignore). The release notes ("What is new in v<version>") are built from
+# the CHANGELOG.md "## <version>" section (build-release-notes.sh), else fall back to the raw
+# commit subject. So a RELEASING commit must carry its own CHANGELOG section or it ships
+# undocumented (as v1.1.16 did). versionName = major.minor.(commit count - patchZeroAt) from
+# version.properties; THIS commit will be count+1. A docs-only (.md/.github/...) commit does not
+# release and is exempt. Bypass this one check with:  SKIP_CHANGELOG=1 git commit ...
+if [ -z "${SKIP_CHANGELOG:-}" ] && [ -f version.properties ] && [ -f CHANGELOG.md ]; then
+  RELEASING=0
+  while IFS= read -r -d '' f; do
+    [ -n "$f" ] || continue
+    case "$f" in
+      *.md|screenshots/*|LICENSE|.gitattributes|.gitignore|.github/*|.githooks/*|firmware/*) : ;;   # path-ignored -> no release
+      *) RELEASING=1; break ;;
+    esac
+  done < "$STAGED_LIST"
+  if [ "$RELEASING" = "1" ]; then
+    MAJOR=$(sed -nE 's/^major=([0-9]+).*/\1/p' version.properties | head -1)
+    MINOR=$(sed -nE 's/^minor=([0-9]+).*/\1/p' version.properties | head -1)
+    PZERO=$(sed -nE 's/^patchZeroAt=([0-9]+).*/\1/p' version.properties | head -1)
+    COUNT=$(git rev-list --count HEAD 2>/dev/null || echo 0)
+    if [ -n "$MAJOR" ] && [ -n "$MINOR" ] && [ -n "$PZERO" ]; then
+      PATCH=$(( COUNT + 1 - PZERO )); [ "$PATCH" -lt 0 ] && PATCH=0
+      VER="$MAJOR.$MINOR.$PATCH"
+      if git show ":CHANGELOG.md" 2>/dev/null | grep -qE "^## ${VER}([^0-9]|\$)"; then
+        echo "OK    [changelog] CHANGELOG.md has ## $VER (feeds the release 'What is new')"
+      else
+        echo "BLOCK [changelog] this releasing commit builds v$VER but CHANGELOG.md has no '## $VER' section"
+        echo "  -> add a '## $VER' section at the top of the version list, describe the change, then 'git add CHANGELOG.md'."
+        echo "     (the release notes 'What is new in v$VER' are built from it; without it they fall back to the raw commit subject)"
+        echo "  -> or make this a docs-only (.md) commit, which release.yml path-ignores and does not release."
+        echo "  -> genuine exception: SKIP_CHANGELOG=1 git commit ..."
+        RC=1
+      fi
+    else
+      echo "WARN  [changelog] could not parse major/minor/patchZeroAt from version.properties - changelog gate skipped"
+    fi
+  fi
+fi
+
+# =================================================================
 # Result
 # =================================================================
 echo "-----------------------------------------------------------------"

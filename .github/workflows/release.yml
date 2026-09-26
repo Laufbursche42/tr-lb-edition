@@ -22,6 +22,7 @@ on:
       - '.gitattributes'
       - '.gitignore'
       - '.github/**'
+      - '.githooks/**'
       - 'firmware/**'
   workflow_dispatch:
 
