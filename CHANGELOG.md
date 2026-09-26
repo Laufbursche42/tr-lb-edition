@@ -14,12 +14,6 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
-## 1.1.17
-
-### Changelog and release notes backfilled
-
-Documentation only: added the missing 1.1.16 section so the changelog - and the generated release notes ("What is new in ...") that read from it - no longer fall back to the raw commit subject. No app or rider-facing change.
-
 ## 1.1.16
 
 ### Blade Mini comments corrected - no functional change
