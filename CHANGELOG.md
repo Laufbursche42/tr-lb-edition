@@ -41,10 +41,15 @@ The Blade Mini voltage tile under-read (for example 46 V while the scooter's own
 
 ## 1.1.12
 
+### The Blade Mini unlock-speed block now appears reliably
+
+The "Blade Mini unlock speed" settings block is now revealed the moment the model is detected or picked, and it no longer disappears in the unlocked (tuning) state, whose shorter FIN can otherwise miss the model detection.
+
+## 1.1.11
+
 ### A settable Blade Mini unlock speed, and the speed tile goes red when de-restricted
 
 - The Blade Mini triple-tap no longer always opens to the top speed. A "Blade Mini unlock speed" block in the settings (shown only for that model) sets the per-gear speed the de-restrict writes to German gears 2/3/4, defaulting to the full 45/60/80. Lower the values to cap the top speed; the numbers are the same ones the web unlock tool uses. Locking still restores the eKFV-legal 10/15/21 and is not user-editable. Only firmware 3.4.6 accepts these writes.
-- That settings block now reliably appears for the Blade Mini: it is revealed the moment the model is detected or picked, and it no longer disappears in the unlocked (tuning) state, whose shorter FIN can otherwise miss the model detection.
 - The speed number now turns red while a Blade Mini is de-restricted, driven by the Blade's own state (per-gear speed high), not the Fighter's lock byte. The Fighter Mini keeps its existing red-when-unlocked colour unchanged.
 
 ## 1.1.10
@@ -135,6 +140,12 @@ A new entry under Display opens colour settings kept separately for dark and lig
 - Each motor tile carries a single value with its unit underneath. The currents moved into a second row of tiles rather than crowding the first.
 - Park replaces the gear number itself instead of adding a small marker beneath it.
 - The turn-signal indicators had left and right the wrong way round.
+
+## 1.1.1
+
+### The 1.1 series, now in German
+
+The first public build of the 1.1 series: the app now speaks German, asks for a safety confirmation before the first ride, and leaves firmware flashing to the web patcher, so this app focuses on the live dashboard and tuning over Bluetooth. The app bundle is smaller, and the "1.1" version series is now defined in one place so the version number and the build can never drift apart.
 
 ## 1.1.0
 

@@ -17,8 +17,7 @@ FOOTER=".github/release-footer.md"
 BODY=""
 if [ -f "$CHANGELOG" ]; then
   BODY="$(awk -v v="$VERSION" '
-    index($0, "## " v) == 1 { grab = 1; next }
-    /^## / { grab = 0 }
+    /^## / { h = $0; sub(/^## /, "", h); sub(/[ \t]+$/, "", h); grab = (h == v); next }
     grab { print }
   ' "$CHANGELOG")"
 fi
