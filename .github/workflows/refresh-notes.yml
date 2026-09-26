@@ -1,0 +1,32 @@
+# Refresh the newest GitHub Release's notes from CHANGELOG.md.
+# release.yml builds a new APK + release on a CODE push; a CHANGELOG-only edit is path-ignored there and
+# would otherwise never reach users (exactly how the curated 1.1.16 notes never shipped). This closes the
+# gap: whenever CHANGELOG.md changes on main, it regenerates the LATEST release's "What is new" from the
+# same build-release-notes.sh the build uses and updates that release in place - no rebuild, no new version.
+name: Refresh release notes
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'CHANGELOG.md' ]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Regenerate the latest release's notes from CHANGELOG
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName 2>/dev/null || true)
+          if [ -z "$TAG" ]; then echo "no release yet - nothing to refresh"; exit 0; fi
+          VER="${TAG#v}"
+          chmod +x .github/build-release-notes.sh
+          .github/build-release-notes.sh "$VER" > "$RUNNER_TEMP/notes.md"
+          echo "----- notes for $TAG -----"; cat "$RUNNER_TEMP/notes.md"
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/notes.md"
+          echo ">> refreshed $TAG notes from CHANGELOG"
