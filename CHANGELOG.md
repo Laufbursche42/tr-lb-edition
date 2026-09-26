@@ -14,6 +14,18 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.17
+
+### Changelog and release notes backfilled
+
+Documentation only: added the missing 1.1.16 section so the changelog - and the generated release notes ("What is new in ...") that read from it - no longer fall back to the raw commit subject. No app or rider-facing change.
+
+## 1.1.16
+
+### Blade Mini comments corrected - no functional change
+
+A maintenance follow-up to 1.1.15 that only rewrites the in-code comments around the Blade Mini de-restrict tile: the red state is sticky while a Blade Mini stays connected, and a Blade Mini's FIN does not change when it is de-restricted (it de-restricts through its per-gear speed, not a rename like the Fighter Mini). No rider-facing behaviour changed.
+
 ## 1.1.15
 
 ### Blade Mini: the speed number goes red in every tuned gear, not just the first
