@@ -47,31 +47,42 @@ def hasReleaseSigning = releaseSigning.storeFile != null && !releaseSigning.stor
 // The series lives in version.properties in the repo root, which the release workflow
 // reads as well so the tag and the number inside the APK cannot drift apart:
 //
-//   versionName = <major>.<minor>.<commit count - patchZeroAt>
-//   versionCode = codeBase + <commit count>
+//   versionName = <major>.<minor>.<release-commit count - patchZeroAt>
+//   versionCode = codeBase + <total commit count>
 //
-// No manual bump: each commit raises the patch level. versionCode counts straight
-// through a series change and never goes backwards, so a build always installs over
-// the one before it. Falls back to the baseline when git is not available (e.g. a
-// source zip without .git) so the build never breaks.
+// The versionName patch counts ONLY commits that change release-relevant paths (the same
+// paths that trigger a release; the complement of release.yml's paths-ignore set), so a
+// docs/CI/hooks-only commit does not advance the number and every released version is
+// consecutive with one changelog entry. versionCode counts EVERY commit so it never goes
+// backwards and a build always installs over the one before it. Both fall back to the
+// baseline when git is not available (e.g. a source zip without .git) so the build never breaks.
 def versionProps = new Properties()
 rootProject.file('version.properties').withInputStream { versionProps.load(it) }
 def VERSION_MAJOR = versionProps.getProperty('major').toInteger()
 def VERSION_MINOR = versionProps.getProperty('minor').toInteger()
 def PATCH_ZERO_AT = versionProps.getProperty('patchZeroAt').toInteger()
 def VERSION_BASE = versionProps.getProperty('codeBase').toInteger()
-def gitCommitCount = {
+def gitCount = { List extraArgs ->
     try {
-        def proc = ['git', 'rev-list', '--count', 'HEAD'].execute(null, rootProject.projectDir)
+        def proc = (['git', 'rev-list', '--count', 'HEAD'] + extraArgs).execute(null, rootProject.projectDir)
         def out = proc.text
         proc.waitFor()
         return proc.exitValue() == 0 ? out.trim().toInteger() : 0
     } catch (ignored) {
         return 0
     }
-}()
-def appVersionCode = VERSION_BASE + gitCommitCount
-def appVersionName = "${VERSION_MAJOR}.${VERSION_MINOR}.${Math.max(0, gitCommitCount - PATCH_ZERO_AT)}"
+}
+// Paths that do NOT count toward the versionName patch - kept in lockstep with the
+// paths-ignore list in .github/workflows/release.yml so "a commit that bumps the number"
+// and "a commit that triggers a release" are the exact same set.
+def RELEASE_EXCLUDES = ['--', '.',
+    ':(exclude)*.md', ':(exclude)screenshots', ':(exclude)LICENSE',
+    ':(exclude).gitattributes', ':(exclude).gitignore',
+    ':(exclude).github', ':(exclude).githooks', ':(exclude)firmware']
+def gitTotalCount = gitCount([])
+def gitReleaseCount = gitCount(RELEASE_EXCLUDES)
+def appVersionCode = VERSION_BASE + gitTotalCount
+def appVersionName = "${VERSION_MAJOR}.${VERSION_MINOR}.${Math.max(0, gitReleaseCount - PATCH_ZERO_AT)}"
 
 android {
     namespace = 'com.lb.edition'

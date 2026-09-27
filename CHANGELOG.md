@@ -14,6 +14,12 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.23
+
+### Versioning: no more gaps in the changelog
+
+The patch number is now derived from the count of commits that actually change the app (code and assets), not the raw commit count. Documentation, CI and git-hook commits no longer advance the version, so from here on every released version is consecutive and carries exactly one changelog entry. (The one-time jump from 1.1.16 to 1.1.22 predates this change and stays as it is.) `versionCode` still counts every commit, so an update always installs over the previous one.
+
 ## 1.1.22
 
 ### Warning banners no longer cover the header

@@ -42,7 +42,14 @@ jobs:
       - name: Compute version from git commit count
         id: ver
         run: |
-          COUNT=$(git rev-list --count HEAD)
+          # The patch counts ONLY commits that change release-relevant paths - the exact
+          # complement of the paths-ignore list below, so "a commit that bumps the number"
+          # and "a commit that triggers this workflow" are the same set and versions stay gapless.
+          # Must match RELEASE_EXCLUDES in app/build.gradle so the tag and the APK agree.
+          COUNT=$(git rev-list --count HEAD -- . \
+            ':(exclude)*.md' ':(exclude)screenshots' ':(exclude)LICENSE' \
+            ':(exclude).gitattributes' ':(exclude).gitignore' \
+            ':(exclude).github' ':(exclude).githooks' ':(exclude)firmware')
           # The series comes from version.properties, the same file the gradle build reads.
           MAJOR=$(sed -n 's/^major=//p' version.properties)
           MINOR=$(sed -n 's/^minor=//p' version.properties)
@@ -50,7 +57,7 @@ jobs:
           PATCH=$(( COUNT - ZERO )); [ "$PATCH" -lt 0 ] && PATCH=0
           echo "version=$MAJOR.$MINOR.$PATCH" >> "$GITHUB_OUTPUT"
           echo "tag=v$MAJOR.$MINOR.$PATCH" >> "$GITHUB_OUTPUT"
-          echo "Version $MAJOR.$MINOR.$PATCH  (commit count $COUNT, patch 0 at $ZERO)"
+          echo "Version $MAJOR.$MINOR.$PATCH  (release-commit count $COUNT, patch 0 at $ZERO)"
 
       - name: Skip if this version was already released
         id: exists
