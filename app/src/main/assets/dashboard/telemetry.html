@@ -18,9 +18,6 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
 <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
-<!-- Debug-mode banner: visible only while native debug logging is recording. -->
-<div class="debug-banner" id="debug-banner" data-i18n="dash.debug.banner">&#9888; DEBUG MODE ON: recording logs</div>
-<div class="fw-req-banner is-hidden" id="bmini-fw-banner" data-i18n="dash.bmini.fw.required">&#9888; Firmware 3.4.6 required for Blade Mini Ultra</div>
 <div id="app">
 
   <!-- ── Topbar ─────────────────────────────────────── -->
@@ -35,6 +32,16 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       <button class="icon-btn" id="btn-theme" aria-label="Toggle theme" data-i18n-aria="dash.topbar.theme.toggle" data-i18n="dash.topbar.theme.icon">&#9728;</button>
       <button class="icon-btn" id="btn-settings" aria-label="Settings" data-i18n-aria="dash.topbar.settings" data-i18n="dash.topbar.settings.icon">&#9881;</button>
     </div>
+  </div>
+
+  <!-- ── Top banners ────────────────────────────────────
+       ALL top-of-app banners live here, IN FLOW directly under the topbar, so they can
+       never overlap the title or the icon buttons. Keep them thin (see .debug-banner /
+       .fw-req-banner in dashboard.css): a banner is a slim line, never a full overlay. -->
+  <div id="topbanners">
+    <!-- Debug-mode banner: visible only while native debug logging is recording. -->
+    <div class="debug-banner" id="debug-banner" data-i18n="dash.debug.banner">&#9888; DEBUG MODE ON: recording logs</div>
+    <div class="fw-req-banner is-hidden" id="bmini-fw-banner" data-i18n="dash.bmini.fw.required">&#9888; Firmware 3.4.6 required for Blade Mini Ultra</div>
   </div>
 
   <!-- ── Scrollable Content ─────────────────────────── -->

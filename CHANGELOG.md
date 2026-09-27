@@ -14,6 +14,12 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.22
+
+### Warning banners no longer cover the header
+
+The wrong-firmware banner (and the debug-mode banner) used to be pinned over the very top of the screen, hiding the title and the connect / theme / settings buttons underneath it. Banners now sit as a thin line in the normal layout flow directly under the topbar, so they can never overlap the header again. The Blade-on-wrong-firmware warning ("Firmware 3.4.6 required for Blade Mini Ultra") is now a slim strip beneath the icons instead of a full-width block covering the controls.
+
 ## 1.1.16
 
 ### Blade Mini comments corrected - no functional change
