@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 6
+      max-parallel: 2
       matrix:
         base:
           - albania
@@ -117,7 +117,14 @@ jobs:
       - name: Download, filter + build ${{ matrix.base }}.poi
         run: |
           set -euo pipefail
-          curl -fsSL "https://download.geofabrik.de/europe/${{ matrix.base }}-latest.osm.pbf" -o country.osm.pbf
+          # Geofabrik redirect-loops (curl exit 47) / rate-limits concurrent requests; a single request
+          # works, so retry with a back-off (and the matrix runs few in parallel).
+          for attempt in 1 2 3 4 5 6; do
+            curl -fsSL --max-redirs 10 --connect-timeout 30 "https://download.geofabrik.de/europe/${{ matrix.base }}-latest.osm.pbf" -o country.osm.pbf && break
+            echo "geofabrik download attempt $attempt failed; retrying in 20s..."
+            sleep 20
+          done
+          [ -s country.osm.pbf ] || { echo "geofabrik download failed after retries"; exit 1; }
           ls -lh country.osm.pbf
           # 1) Filter the (multi-GB) country extract to just charging + camping. nwr/ keeps nodes, ways
           #    AND relations plus their referenced geometry. The result is a few MB, so the rest is fast.
