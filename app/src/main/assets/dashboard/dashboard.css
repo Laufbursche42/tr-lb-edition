@@ -709,6 +709,37 @@ html, body {
   max-height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
 }
 
+/* ── Firmware patcher (rich in-app flow) ─────────────────────
+   Full functional parity with the lb-webpatcher patcher, in the app's own tokens: the build
+   selector (+ version badge in each option), the two clamp fields, the blinker tick and the
+   build-facts summary. No webpatcher branding or chrome is carried over. */
+#fw-patch-group .settings-row select {
+  flex: 0 0 auto; min-width: 150px; max-width: 58%;
+  padding: 7px 10px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font-size: var(--fs-md);
+  -webkit-appearance: none; appearance: none;
+}
+#fw-patch-group #btn-fw-build, #fw-patch-group #btn-fw-save {
+  width: 100%; margin-top: 12px; padding: 12px; border-radius: 9px;
+  border: 1px solid var(--border); font-size: var(--fs-base); font-weight: var(--fw-bold);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+#fw-patch-group #btn-fw-build { background: var(--btnfill); color: #0A0C10; border-color: var(--btnfill); }
+#fw-patch-group #btn-fw-save { background: var(--card); color: var(--text); }
+#fw-patch-group #btn-fw-build:active, #fw-patch-group #btn-fw-save:active { opacity: .75; }
+#fw-variant-hint:empty { display: none; }
+/* Build facts: one accent-tinted card; the key/value rows reuse the file-info row shape. */
+#fw-patch-result {
+  margin-top: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--ble) 8%, transparent);
+  font-size: var(--fs-sm); line-height: 1.6;
+}
+#fw-patch-result .fw-patch-ok { display: block; color: var(--ble); font-weight: var(--fw-bold); margin-bottom: 6px; }
+#fw-patch-result .fw-row { display: flex; justify-content: space-between; gap: 10px; }
+#fw-patch-result .fw-k { color: var(--label); flex-shrink: 0; white-space: nowrap; }
+#fw-patch-result .fw-row > span:last-child { min-width: 0; text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+#fw-patch-result .fw-patch-locknote { margin-top: 8px; color: var(--label); font-size: var(--fs-xs); line-height: 1.5; }
+
 /* Error report rows */
 .err-item {
   display: flex; align-items: flex-start; gap: 10px;

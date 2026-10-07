@@ -881,29 +881,53 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       <div id="fw-fileinfo" data-i18n="fw.file.none">No file selected.</div>
     </div>
 
-    <!-- Patcher: only shown when the picked file is a recognised stock image (R5.4.19 / R5.4.21).
-         The user chooses the build, presses Build, and the patched image is staged for the flasher. -->
+    <!-- Patcher: shown only when the picked file is a recognised stock image (R5.4.19 / R5.4.21).
+         Full functional parity with the lb-webpatcher patcher - build variant, the two speed
+         clamps (locked / after unlock), the blinker fix, an explicit Build, Save to Downloads and
+         staging to the native flasher - in the app's own design. The user chooses the build and
+         its options, presses Build, and the patched image is staged so Start update flashes it. -->
     <div class="settings-group has-top-rule is-hidden" id="fw-patch-group">
       <div class="settings-group-title" data-i18n="fw.patch.title">Patch options</div>
-      <div class="settings-row-sublabel m-6-0-0" data-i18n="fw.patch.intro">Choose the build you want, then build the patched firmware.</div>
+      <div class="settings-row-sublabel m-6-0-0" data-i18n="fw.patch.intro">Choose the build and its options, then build the patched firmware.</div>
+
+      <!-- Build: variant select (each option carries the reported-version badge V48 / V248) plus a
+           short note on what the chosen build actually does. -->
       <label class="settings-row">
         <span data-i18n="fw.patch.variant">Build</span>
         <select id="fw-variant"></select>
       </label>
-      <label class="consent-row">
-        <input type="checkbox" id="fw-blinker">
-        <span data-i18n="fw.patch.blinker">Blinker fix</span>
-      </label>
-      <label class="settings-row">
-        <span data-i18n="fw.patch.clampstock">Speed limit (locked)</span>
-        <select id="fw-clamp-stock"></select>
-      </label>
-      <label class="settings-row">
-        <span data-i18n="fw.patch.clamprelock">Speed limit (after unlock)</span>
-        <select id="fw-clamp-relock"></select>
-      </label>
-      <button id="btn-fw-build" data-i18n="fw.patch.build">&#128295; Build patched firmware</button>
-      <button id="btn-fw-save" class="is-hidden mt-10" data-i18n="fw.patch.save">&#128190; Save to Downloads</button>
+      <div class="settings-row-sublabel m-6-0-0" id="fw-variant-hint"></div>
+
+      <!-- Speed clamp: two fields, lock builds only; a short note replaces them for a build with no lock. -->
+      <div id="fw-clamp-block">
+        <div class="settings-row-sublabel m-6-0-0" data-i18n="fw.patch.clamphelp">What should the scooter be clamped to while it is locked?</div>
+        <label class="settings-row">
+          <span data-i18n="fw.patch.clampstock">Clamp: never unlocked since power on</span>
+          <select id="fw-clamp-stock"></select>
+        </label>
+        <label class="settings-row">
+          <span data-i18n="fw.patch.clamprelock">Clamp: after unlocking and locking again</span>
+          <select id="fw-clamp-relock"></select>
+        </label>
+        <div class="settings-row-sublabel m-6-0-0" data-i18n="fw.patch.clampnote">Native units, not km/h.</div>
+      </div>
+      <div class="settings-row-sublabel m-6-0-0 is-hidden" id="fw-clamp-na" data-i18n="fw.patch.notapplicable">This build carries no lock, so the clamp and the blinker fix do not apply.</div>
+
+      <!-- Blinker fix: lock builds only. -->
+      <div id="fw-blinker-row">
+        <label class="consent-row">
+          <input type="checkbox" id="fw-blinker">
+          <span data-i18n="fw.patch.blinker">Blinker fix</span>
+        </label>
+        <div class="settings-row-sublabel m-6-0-0" data-i18n="fw.patch.blinkernote">Only needed if your indicator stays lit instead of blinking.</div>
+      </div>
+
+      <button id="btn-fw-build" data-i18n="fw.patch.build">&#128295; Build firmware</button>
+
+      <!-- Build facts (based on, stock version, reports-as, clamps, app bytes, CRC, groups); filled on build. -->
+      <div id="fw-patch-result" class="is-hidden"></div>
+
+      <button id="btn-fw-save" class="is-hidden" data-i18n="fw.patch.save">&#128190; Save to Downloads</button>
       <div class="settings-row-sublabel m-6-0-0" data-i18n="fw.patch.hint">After building, the patched firmware is staged below. Press Start update to flash it.</div>
     </div>
 
@@ -2470,6 +2494,9 @@ function applyLang() {
   }
   renderWhatsNewList();
   renderDisclaimerList();
+  // The firmware patcher's variant labels (name + version badge) and its dynamic hint are built in
+  // JS, so the generic [data-i18n] pass above cannot relocalize them - do it here.
+  try { fwRelocalizePatch(); } catch (e) {}
   // Label lengths just changed, so the fold has to be measured again.
   try { scheduleFitFold(); } catch (e) {}
 }
@@ -3676,15 +3703,31 @@ function fwCompat(meta) {
    Shown only when the picked file is a recognised stock image. The user chooses the build and
    presses Build; window.build() (patcher.js) produces the patched hex, which is staged natively
    (LB.otaStagePatched) so Start update flashes the patched image. */
-let fwStockHex = null, fwStockOk = false, fwLastPatched = null, fwJustStaged = false, fwPatchInit = false;
+let fwStockHex = null, fwStockOk = false, fwLastPatched = null, fwLastRes = null, fwJustStaged = false, fwPatchInit = false;
+
+/* A build "carries the lock" when its patch groups include CORE. Only those builds get the speed
+   clamp, the blinker fix and a reported version byte; eepromerase carries none of them. */
+function fwCarriesLock(variant) {
+  const V = (window.OTA && window.OTA.VARIANTS && window.OTA.VARIANTS[variant]) || null;
+  return !!(V && V.groups && V.groups.indexOf('CORE') >= 0);
+}
+
+/* The dropdown label: the build name plus the reported-version badge it writes over Bluetooth
+   (V48 standard, V248 kickstart). A build that writes no version byte says so instead. */
+function fwVariantLabel(k) {
+  const name = t('fw.patch.variant.' + k);
+  const label = (name && name !== 'fw.patch.variant.' + k) ? name : k;
+  const V = (window.OTA && window.OTA.VARIANTS && window.OTA.VARIANTS[k]) || null;
+  const badge = (fwCarriesLock(k) && V) ? ('V' + V.stamp) : t('fw.patch.variant.noversion');
+  return label + '  ·  ' + badge;
+}
 
 function fwInitPatchControls() {
   if (fwPatchInit || typeof window.OTA === 'undefined') return;
   const vsel = document.getElementById('fw-variant');
   if (vsel && !vsel.options.length) {
     Object.keys(window.OTA.VARIANTS || {}).forEach(k => {
-      const label = t('fw.patch.variant.' + k);
-      vsel.appendChild(new Option((label && label !== 'fw.patch.variant.' + k) ? label : k, k));
+      vsel.appendChild(new Option(fwVariantLabel(k), k));
     });
   }
   [['fw-clamp-stock', 'clampStock'], ['fw-clamp-relock', 'clampRelock']].forEach(pair => {
@@ -3700,11 +3743,77 @@ function fwInitPatchControls() {
   fwPatchInit = true;
 }
 
+/* Updates the per-build hint and shows/hides the clamp fields and the blinker tick: both belong to
+   the lock, so a build that carries none (eepromerase) takes neither and a short note says so. */
+function fwRenderPatchState() {
+  const variant = (document.getElementById('fw-variant') || {}).value || 'standard';
+  const carriesLock = fwCarriesLock(variant);
+  const hint = document.getElementById('fw-variant-hint');
+  if (hint) {
+    const h = t('fw.patch.hint.' + variant);
+    hint.textContent = (h && h !== 'fw.patch.hint.' + variant) ? h : '';
+  }
+  showEl(document.getElementById('fw-clamp-block'), carriesLock);
+  showEl(document.getElementById('fw-clamp-na'), !carriesLock);
+  showEl(document.getElementById('fw-blinker-row'), carriesLock);
+  if (!carriesLock) { const cb = document.getElementById('fw-blinker'); if (cb) cb.checked = false; }
+}
+
+/* The staged build no longer matches once an option changes, so the facts and Save are cleared and
+   the user has to press Build again. */
+function fwClearPatchResult() {
+  fwLastPatched = null; fwLastRes = null;
+  const host = document.getElementById('fw-patch-result');
+  if (host) { host.innerHTML = ''; host.classList.add('is-hidden'); }
+  const sv = document.getElementById('btn-fw-save'); if (sv) sv.classList.add('is-hidden');
+}
+
+function fwOnVariantChange() { fwRenderPatchState(); fwClearPatchResult(); }
+
 function fwShowPatchGroup(show) {
   const g = document.getElementById('fw-patch-group');
   if (!g) return;
-  if (show) { fwInitPatchControls(); g.classList.remove('is-hidden'); }
+  if (show) { fwInitPatchControls(); fwRenderPatchState(); g.classList.remove('is-hidden'); }
   else g.classList.add('is-hidden');
+}
+
+/* Rebuilds the parts the generic [data-i18n] pass cannot reach: the variant option labels (name +
+   badge) and the dynamic hint, plus the facts box if a build is on screen. Called from applyLang. */
+function fwRelocalizePatch() {
+  const vsel = document.getElementById('fw-variant');
+  if (vsel && vsel.options.length) {
+    const keep = vsel.value;
+    for (let i = 0; i < vsel.options.length; i++) vsel.options[i].textContent = fwVariantLabel(vsel.options[i].value);
+    vsel.value = keep;
+  }
+  const g = document.getElementById('fw-patch-group');
+  if (g && !g.classList.contains('is-hidden')) fwRenderPatchState();
+  if (fwLastRes) fwRenderResult(fwLastRes);
+}
+
+/* Build facts, like the webpatcher result: what it was built from, the stock version, what the
+   scooter will report, the two clamps (only when a version byte is written), app bytes, CRC and the
+   patch groups included. A build that carries the lock also shows the lock note. */
+function fwRenderResult(res) {
+  const host = document.getElementById('fw-patch-result');
+  if (!host) return;
+  if (!res) { host.innerHTML = ''; host.classList.add('is-hidden'); return; }
+  const writesVersion = (res.groups || []).indexOf('CORE') >= 0;
+  const locale = (lang === 'de') ? 'de-DE' : 'en-US';
+  const row = (k, v) => '<div class="fw-row"><span class="fw-k">' + escXML(k) + '</span><span>' + escXML(v) + '</span></div>';
+  let html = '<span class="fw-patch-ok">' + escXML(t('fw.patch.result.title')) + '</span>';
+  if (res._srcName) html += row(t('fw.patch.fact.source'), res._srcName);
+  html += row(t('fw.patch.fact.base'), 'R' + ((res.base && res.base.version) || '?'));
+  html += row(t('fw.patch.fact.reports'), writesVersion ? ('V' + res.variant.stamp) : t('fw.patch.fact.reports.kept'));
+  if (writesVersion) html += row(t('fw.patch.fact.clamp'), res.clampStock + ' / ' + res.clampRelock);
+  let bytes;
+  try { bytes = Number(res.appBytes || 0).toLocaleString(locale); } catch (e) { bytes = String(res.appBytes || 0); }
+  html += row(t('fw.patch.fact.bytes'), bytes);
+  html += row(t('fw.patch.fact.crc'), (res.crc >>> 0).toString(16).toUpperCase().padStart(4, '0'));
+  html += row(t('fw.patch.fact.groups'), (res.groups || []).join(', ').toLowerCase());
+  if (writesVersion) html += '<div class="fw-patch-locknote">' + escXML(t('fw.patch.locknote')) + '</div>';
+  host.innerHTML = html;
+  host.classList.remove('is-hidden');
 }
 
 /* Called from __onOtaFile. On a fresh pick it tests whether the hex is a patchable stock image and
@@ -3712,8 +3821,8 @@ function fwShowPatchGroup(show) {
    the patched image is not treated as a new stock pick. */
 function fwEvalPatch() {
   if (fwJustStaged) { fwJustStaged = false; return; }   // staged patched image: leave controls as-is
-  fwStockHex = null; fwStockOk = false; fwLastPatched = null;
-  const sv = document.getElementById('btn-fw-save'); if (sv) sv.classList.add('is-hidden');
+  fwStockHex = null; fwStockOk = false;
+  fwClearPatchResult();
   try {
     const hex = (typeof LB !== 'undefined' && LB.otaGetHexText) ? LB.otaGetHexText() : '';
     const v = (hex && window.identify) ? window.identify(hex) : { ok: false };
@@ -3728,20 +3837,24 @@ function fwBuild() {
   try {
     const variant = (document.getElementById('fw-variant') || {}).value || 'standard';
     const opts = {
-      blinker: !!(document.getElementById('fw-blinker') || {}).checked,
+      blinker: fwCarriesLock(variant) && !!(document.getElementById('fw-blinker') || {}).checked,
       clampStock: parseInt((document.getElementById('fw-clamp-stock') || {}).value, 10),
       clampRelock: parseInt((document.getElementById('fw-clamp-relock') || {}).value, 10)
     };
+    const srcName = (fwState.meta && fwState.meta.name) || '';   // captured before staging re-inspects the file
     const res = window.build(fwStockHex, variant, opts);
+    res._srcName = srcName;
     const ver = (res.base && res.base.version) ? ('R' + res.base.version.replace(/\./g, '_')) : 'R';
     const name = 'AWIVCU_APP_' + ver + '_' + variant + '.hex';
     fwLastPatched = { name: name, text: res.text };
+    fwLastRes = res;
     fwJustStaged = true;
     LB.otaStagePatched(name, res.text);   // native re-inspects -> __onOtaFile -> Start enabled
+    fwRenderResult(res);
     const sv = document.getElementById('btn-fw-save'); if (sv) sv.classList.remove('is-hidden');
     showToast(t('msg2.fw.patch.built'));
   } catch (e) {
-    fwJustStaged = false; fwLastPatched = null;
+    fwJustStaged = false; fwLastPatched = null; fwLastRes = null;
     showToast(tf('msg2.toast.error', { e: (e && e.message) || e }));
   }
 }
@@ -4615,6 +4728,12 @@ function wireEvents() {
   document.getElementById('btn-fw-pick').addEventListener('click', fwPick);
   { const bb = document.getElementById('btn-fw-build'); if (bb) bb.addEventListener('click', fwBuild); }
   { const bs = document.getElementById('btn-fw-save'); if (bs) bs.addEventListener('click', fwSave); }
+  // Changing the build re-renders the clamp/blinker visibility and the hint; changing any option
+  // invalidates the staged build, so the facts and Save are cleared until the user builds again.
+  { const vs = document.getElementById('fw-variant'); if (vs) vs.addEventListener('change', fwOnVariantChange); }
+  ['fw-clamp-stock', 'fw-clamp-relock', 'fw-blinker'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.addEventListener('change', fwClearPatchResult);
+  });
   document.getElementById('btn-fw-start').addEventListener('click', fwStart);
   document.getElementById('btn-fw-cancel').addEventListener('click', fwCancel);
   document.getElementById('fw-override').addEventListener('change', fwSyncStartEnabled);

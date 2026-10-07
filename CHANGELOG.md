@@ -14,6 +14,12 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.26
+
+### Guided firmware patcher in the app
+
+The in-app firmware patcher now walks you through the build the same way the web patcher does, without leaving the app. Once a picked file is recognised as a stock image (R5.4.19 / R5.4.21), the Patch options block shows the build selector with the version each build reports over Bluetooth right in the dropdown (Standard - V48, Kickstart - V248, EEPROM reset - no reported version) and a short note under it explaining what the chosen build actually does. The two speed clamps (never unlocked since power on / after unlocking again) and the blinker fix appear only for a build that carries the lock; EEPROM reset shows a short "not applicable" note in their place. Pressing Build patches the image, stages it for the flasher so Start update flashes it, and offers Save to Downloads - and now also prints a build summary (based-on file, stock version, reported version, both clamps, app bytes, CRC and the patch groups included). Any file that is not a recognised stock image is still left untouched and flashes as-is.
+
 ## 1.1.25
 
 ### Firmware page now opens on every Fighter Mini
