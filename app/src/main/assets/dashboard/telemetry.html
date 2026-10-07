@@ -2756,6 +2756,8 @@ function liveRaw() {
 function detectModel(name) {
   name = (name || '').trim().toUpperCase();
   let code = '', model = '';
+  // FIN model token, offset-proof: an FM-family code (FMA/FME/FMO/FMP) means Fighter Mini (TDE/T1 lead is only the lock state)
+  if (/\d+FM[AEOP]/.test(name)) return { code: 'FM', name: 'FIGHTER MINI', known: true, isFighter: true, isTetra: false };
   if (name.startsWith('T2') && name.length >= 9) {
     // ver2 / T2 naming: the scooter puts its model code at chars 7-9 of the advertised name.
     code = name.substring(7, 9);

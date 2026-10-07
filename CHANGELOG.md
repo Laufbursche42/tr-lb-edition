@@ -14,6 +14,12 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.25
+
+### Firmware page now opens on every Fighter Mini
+
+The firmware update and patcher page is gated to the Fighter Mini family, but the model auto-detection read the FIN at fixed character positions and could miss the model code on some names (e.g. the eKFV format), classifying a real Fighter Mini as "another model" and hiding the firmware page. Detection now matches the FM-family code (FMA / FME / FMO / FMP) anywhere in the FIN, so a Fighter Mini (incl. Pro / eKFV) is recognised regardless of the exact name length and the firmware page opens as it should. If auto-detection ever still misses, you can pick the model by hand under Settings - Model.
+
 ## 1.1.24
 
 ### Firmware patcher back in the app
