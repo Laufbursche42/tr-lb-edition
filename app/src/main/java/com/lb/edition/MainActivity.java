@@ -793,7 +793,8 @@ public class MainActivity extends Activity {
          *  the patched version/CRC/target. The next otaStart() flashes this patched image. */
         @JavascriptInterface
         public void otaStagePatched(final String name, final String text) {
-            Log.i(TAG, "LB.otaStagePatched(" + name + ")");
+            // sanitize the JS-provided name before logging (strip CR/LF) - avoids log injection
+            Log.i(TAG, "LB.otaStagePatched(" + (name == null ? "null" : name.replaceAll("[\\r\\n]", "_")) + ")");
             try {
                 if (text == null || text.isEmpty()) {
                     pushOtaFile("{\"ok\":false,\"error\":\"empty patched image\"}");

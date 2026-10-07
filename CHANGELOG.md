@@ -14,6 +14,12 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.28
+
+### Hardening: log injection in the patcher bridge
+
+The native LB.otaStagePatched bridge logged the JS-provided file name verbatim; a name containing CR/LF could forge extra log lines (CodeQL java/log-injection). The name is now stripped of line breaks before logging. No behaviour change.
+
 ## 1.1.27
 
 ### What is new text updated for the guided patcher
