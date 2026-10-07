@@ -321,7 +321,13 @@ if [ -z "${SKIP_CHANGELOG:-}" ] && [ -f version.properties ] && [ -f CHANGELOG.m
     MAJOR=$(sed -nE 's/^major=([0-9]+).*/\1/p' version.properties | head -1)
     MINOR=$(sed -nE 's/^minor=([0-9]+).*/\1/p' version.properties | head -1)
     PZERO=$(sed -nE 's/^patchZeroAt=([0-9]+).*/\1/p' version.properties | head -1)
-    COUNT=$(git rev-list --count HEAD 2>/dev/null || echo 0)
+    # Count ONLY release-relevant commits - must match RELEASE_EXCLUDES in app/build.gradle
+    # and the paths-ignore in release.yml, or the hook's predicted version drifts above the
+    # one gradle actually stamps (total count includes docs/CI/hooks commits; the APK does not).
+    COUNT=$(git rev-list --count HEAD -- . \
+      ':(exclude)*.md' ':(exclude)screenshots' ':(exclude)LICENSE' \
+      ':(exclude).gitattributes' ':(exclude).gitignore' \
+      ':(exclude).github' ':(exclude).githooks' ':(exclude)firmware' 2>/dev/null || echo 0)
     if [ -n "$MAJOR" ] && [ -n "$MINOR" ] && [ -n "$PZERO" ]; then
       PATCH=$(( COUNT + 1 - PZERO )); [ "$PATCH" -lt 0 ] && PATCH=0
       VER="$MAJOR.$MINOR.$PATCH"

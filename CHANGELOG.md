@@ -14,7 +14,7 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
-## 1.1.45
+## 1.1.24
 
 ### Firmware patcher back in the app
 
