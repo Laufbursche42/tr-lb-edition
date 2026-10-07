@@ -881,6 +881,32 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       <div id="fw-fileinfo" data-i18n="fw.file.none">No file selected.</div>
     </div>
 
+    <!-- Patcher: only shown when the picked file is a recognised stock image (R5.4.19 / R5.4.21).
+         The user chooses the build, presses Build, and the patched image is staged for the flasher. -->
+    <div class="settings-group has-top-rule is-hidden" id="fw-patch-group">
+      <div class="settings-group-title" data-i18n="fw.patch.title">Patch options</div>
+      <div class="settings-row-sublabel m-6-0-0" data-i18n="fw.patch.intro">Choose the build you want, then build the patched firmware.</div>
+      <label class="settings-row">
+        <span data-i18n="fw.patch.variant">Build</span>
+        <select id="fw-variant"></select>
+      </label>
+      <label class="consent-row">
+        <input type="checkbox" id="fw-blinker">
+        <span data-i18n="fw.patch.blinker">Blinker fix</span>
+      </label>
+      <label class="settings-row">
+        <span data-i18n="fw.patch.clampstock">Speed limit (locked)</span>
+        <select id="fw-clamp-stock"></select>
+      </label>
+      <label class="settings-row">
+        <span data-i18n="fw.patch.clamprelock">Speed limit (after unlock)</span>
+        <select id="fw-clamp-relock"></select>
+      </label>
+      <button id="btn-fw-build" data-i18n="fw.patch.build">&#128295; Build patched firmware</button>
+      <button id="btn-fw-save" class="is-hidden mt-10" data-i18n="fw.patch.save">&#128190; Save to Downloads</button>
+      <div class="settings-row-sublabel m-6-0-0" data-i18n="fw.patch.hint">After building, the patched firmware is staged below. Press Start update to flash it.</div>
+    </div>
+
     <div class="settings-group has-top-rule">
       <!-- Asked again on every visit to this page: the tick is deliberately NOT remembered. -->
       <label class="consent-row" id="fw-consent-wrap">
@@ -967,6 +993,7 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
 </div>
 
 <script src="i18n.js"></script>
+<script src="patcher.js"></script>
 <script>
 // The current language, declared first: everything below may look a string up.
 let lang = 'en';
@@ -3643,6 +3670,87 @@ function fwCompat(meta) {
   return { ok, noOverride, checks };
 }
 
+/* ---- Firmware patcher (R5.4.19 / R5.4.21 stock -> standard/kickstart/eepromerase) ------------
+   Shown only when the picked file is a recognised stock image. The user chooses the build and
+   presses Build; window.build() (patcher.js) produces the patched hex, which is staged natively
+   (LB.otaStagePatched) so Start update flashes the patched image. */
+let fwStockHex = null, fwStockOk = false, fwLastPatched = null, fwJustStaged = false, fwPatchInit = false;
+
+function fwInitPatchControls() {
+  if (fwPatchInit || typeof window.OTA === 'undefined') return;
+  const vsel = document.getElementById('fw-variant');
+  if (vsel && !vsel.options.length) {
+    Object.keys(window.OTA.VARIANTS || {}).forEach(k => {
+      const label = t('fw.patch.variant.' + k);
+      vsel.appendChild(new Option((label && label !== 'fw.patch.variant.' + k) ? label : k, k));
+    });
+  }
+  [['fw-clamp-stock', 'clampStock'], ['fw-clamp-relock', 'clampRelock']].forEach(pair => {
+    const sel = document.getElementById(pair[0]);
+    if (sel && !sel.options.length) {
+      (window.OTA.CLAMP_VALUES || []).forEach(v => {
+        const o = new Option(String(v), String(v));
+        if (v === window.OTA.CLAMP_DEFAULT) o.selected = true;
+        sel.appendChild(o);
+      });
+    }
+  });
+  fwPatchInit = true;
+}
+
+function fwShowPatchGroup(show) {
+  const g = document.getElementById('fw-patch-group');
+  if (!g) return;
+  if (show) { fwInitPatchControls(); g.classList.remove('is-hidden'); }
+  else g.classList.add('is-hidden');
+}
+
+/* Called from __onOtaFile. On a fresh pick it tests whether the hex is a patchable stock image and
+   shows/hides the patch group. The re-inspect that follows a Build is flagged with fwJustStaged so
+   the patched image is not treated as a new stock pick. */
+function fwEvalPatch() {
+  if (fwJustStaged) { fwJustStaged = false; return; }   // staged patched image: leave controls as-is
+  fwStockHex = null; fwStockOk = false; fwLastPatched = null;
+  const sv = document.getElementById('btn-fw-save'); if (sv) sv.classList.add('is-hidden');
+  try {
+    const hex = (typeof LB !== 'undefined' && LB.otaGetHexText) ? LB.otaGetHexText() : '';
+    const v = (hex && window.identify) ? window.identify(hex) : { ok: false };
+    if (v && v.ok) { fwStockHex = hex; fwStockOk = true; }
+  } catch (e) { fwStockOk = false; }
+  fwShowPatchGroup(fwStockOk);
+}
+
+function fwBuild() {
+  if (!fwStockHex || typeof window.build !== 'function') { showToast(t('msg.app.only.in.app')); return; }
+  if (typeof LB === 'undefined' || !LB.otaStagePatched) { showToast(t('msg.app.only.in.app')); return; }
+  try {
+    const variant = (document.getElementById('fw-variant') || {}).value || 'standard';
+    const opts = {
+      blinker: !!(document.getElementById('fw-blinker') || {}).checked,
+      clampStock: parseInt((document.getElementById('fw-clamp-stock') || {}).value, 10),
+      clampRelock: parseInt((document.getElementById('fw-clamp-relock') || {}).value, 10)
+    };
+    const res = window.build(fwStockHex, variant, opts);
+    const ver = (res.base && res.base.version) ? ('R' + res.base.version.replace(/\./g, '_')) : 'R';
+    const name = 'AWIVCU_APP_' + ver + '_' + variant + '.hex';
+    fwLastPatched = { name: name, text: res.text };
+    fwJustStaged = true;
+    LB.otaStagePatched(name, res.text);   // native re-inspects -> __onOtaFile -> Start enabled
+    const sv = document.getElementById('btn-fw-save'); if (sv) sv.classList.remove('is-hidden');
+    showToast(t('msg2.fw.patch.built'));
+  } catch (e) {
+    fwJustStaged = false; fwLastPatched = null;
+    showToast(tf('msg2.toast.error', { e: (e && e.message) || e }));
+  }
+}
+
+function fwSave() {
+  if (!fwLastPatched) { showToast(t('msg2.fw.patch.nofile')); return; }
+  if (typeof LB === 'undefined' || !LB.saveGpxToDownloads) { showToast(t('msg.app.only.in.app')); return; }
+  try { LB.saveGpxToDownloads(fwLastPatched.name, fwLastPatched.text); showToast(t('msg2.fw.patch.saved')); }
+  catch (e) { showToast(tf('msg2.toast.error', { e: e })); }
+}
+
 window.__onOtaFile = function(metaArg) {
   let m = metaArg;
   try { if (typeof metaArg === 'string') m = JSON.parse(metaArg); } catch (e) { m = null; }
@@ -3652,6 +3760,7 @@ window.__onOtaFile = function(metaArg) {
     fwState.meta = null;
     fwState.compat = null;
     if (info) info.innerHTML = '<span class="fw-badge warn" data-i18n="msg2.fw.file.badge.invalid">invalid</span> ' + t('msg2.fw.file.unreadable');
+    fwJustStaged = false; fwShowPatchGroup(false);
     fwSyncStartEnabled();
     return;
   }
@@ -3679,6 +3788,7 @@ window.__onOtaFile = function(metaArg) {
         ? '<div class="fw-verdict bad" data-i18n="msg2.fw.verdict.blocked">This file cannot be flashed.</div>'
         : '<div class="fw-verdict bad" data-i18n="msg2.fw.verdict.warn">Compatibility check did NOT pass. Only flash this if you are certain it is the right file.</div>');
   if (info) info.innerHTML = rows + list + verdict;
+  fwEvalPatch();
   fwSyncStartEnabled();
 };
 
@@ -4501,6 +4611,8 @@ function wireEvents() {
   });
   document.getElementById('btn-firmware-back').addEventListener('click', closeFirmwarePage);
   document.getElementById('btn-fw-pick').addEventListener('click', fwPick);
+  { const bb = document.getElementById('btn-fw-build'); if (bb) bb.addEventListener('click', fwBuild); }
+  { const bs = document.getElementById('btn-fw-save'); if (bs) bs.addEventListener('click', fwSave); }
   document.getElementById('btn-fw-start').addEventListener('click', fwStart);
   document.getElementById('btn-fw-cancel').addEventListener('click', fwCancel);
   document.getElementById('fw-override').addEventListener('change', fwSyncStartEnabled);

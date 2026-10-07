@@ -14,6 +14,12 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.45
+
+### Firmware patcher back in the app
+
+The firmware page can now patch a stock image in the app, so the whole flow stays native and no browser or Web Bluetooth is needed - which keeps the flash reliable on phones (notably Samsung) where the browser Bluetooth link drops mid-flash. Pick a stock firmware file and, when it is recognised as a stock image (R5.4.19 / R5.4.21), a Patch options block appears: choose the build (standard, kickstart or EEPROM reset), the turn-signal fix and the locked / after-unlock speed caps, then press Build. The app patches the image, lets you save the result to Downloads and stages it for the flasher, so Start update flashes the patched firmware over the app's own stable Bluetooth. Any file that is not a recognised stock image is left untouched and still flashes as-is, exactly as before.
+
 ## 1.1.23
 
 ### Versioning: no more gaps in the changelog

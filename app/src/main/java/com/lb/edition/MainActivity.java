@@ -781,6 +781,34 @@ public class MainActivity extends Activity {
             otaFileName = null;
         }
 
+        /** Hand the picked stock hex to the in-page patcher so it can build a patched image.
+         *  Round-trips the ~200 KB hex text to JS only when the user actually patches. */
+        @JavascriptInterface
+        public String otaGetHexText() {
+            String h = otaHexText;
+            return h == null ? "" : h;
+        }
+
+        /** Replace the staged image with the patcher's output, then re-inspect it so the page shows
+         *  the patched version/CRC/target. The next otaStart() flashes this patched image. */
+        @JavascriptInterface
+        public void otaStagePatched(final String name, final String text) {
+            Log.i(TAG, "LB.otaStagePatched(" + name + ")");
+            try {
+                if (text == null || text.isEmpty()) {
+                    pushOtaFile("{\"ok\":false,\"error\":\"empty patched image\"}");
+                    return;
+                }
+                otaHexText = text;
+                otaFileName = (name == null || name.isEmpty()) ? "patched.hex" : name;
+                String meta = OtaEngine.inspect(otaHexText, otaFileName);
+                pushOtaFile(meta);
+            } catch (Throwable t) {
+                Log.e(TAG, "otaStagePatched failed", t);
+                pushOtaFile("{\"ok\":false,\"error\":\"stage failed\"}");
+            }
+        }
+
         /** Abort a running flash. The controller stays in bootloader receive-mode (re-flashable).
          *  Runs on the UI/main thread so the engine's cancel + finish (which touch the main-looper
          *  timers and push the 'cancelled' state) run on the same thread as the flash itself. */
