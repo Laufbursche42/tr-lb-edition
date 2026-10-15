@@ -14,6 +14,11 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.29
+
+- Display settings now has a Font sizes section: set the speed value and its label, the upper tiles and each lower tile row (Tile row 1 and Tile row 2) independently, each with its own range. Reset puts them all back to the built-in sizes.
+- Report issue: the Version / disclaimer dialog has a new "Report issue" button that opens a pre-filled GitHub issue with the app version, Android version, phone model and your (already masked) debug log attached. No personal data is collected.
+
 ## 1.1.28
 
 ### Hardening: log injection in the patcher bridge

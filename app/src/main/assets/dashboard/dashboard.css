@@ -150,7 +150,7 @@ html, body {
   gap: 2px;
 }
 .speed-drum .sd-val {
-  font-size: clamp(42px, 13vw, 64px);
+  font-size: var(--sz-speed-val, clamp(42px, 13vw, 64px));
   font-weight: var(--fw-heavy); line-height: 1;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
@@ -158,7 +158,7 @@ html, body {
 .speed-drum.ble-drum .sd-val { color: var(--ble); }
 .speed-drum.gps-drum .sd-val { color: var(--gps); }
 .speed-drum .sd-unit {
-  font-size: var(--fs-base); color: var(--label); margin-top: 4px;
+  font-size: var(--sz-speed-lbl, var(--fs-base)); color: var(--label); margin-top: 4px;
   font-weight: var(--fw-medium); letter-spacing: .04em;
 }
 
@@ -174,12 +174,12 @@ html, body {
   display: flex; flex-direction: column; align-items: center;
 }
 .hero-cell .hc-val {
-  font-size: clamp(28px, 9vw, 38px); font-weight: var(--fw-heavy);
+  font-size: var(--sz-hero-val, clamp(28px, 9vw, 38px)); font-weight: var(--fw-heavy);
   line-height: 1; letter-spacing: -.01em;
   font-variant-numeric: tabular-nums;
 }
 .hero-cell .hc-unit {
-  font-size: var(--fs-md); color: var(--label); margin-top: 3px; white-space: nowrap;
+  font-size: var(--sz-hero-lbl, var(--fs-md)); color: var(--label); margin-top: 3px; white-space: nowrap;
 }
 .hero-cell .hc-tag {
   margin-top: 5px; padding: 2px 7px;
@@ -426,6 +426,13 @@ html, body {
 }
 /* Own line under the value, centred like the title and the value above it. */
 .mc-unit { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--label); }
+/* Rider-adjustable per-row tile font sizes (Display settings > Font sizes); unset falls back to the built-in size. */
+#motor-row .mc-title { font-size: var(--sz-m1-top, var(--fs-sm)); }
+#motor-row .mc-main  { font-size: var(--sz-m1-mid, clamp(22px, 7vw, 30px)); }
+#motor-row .mc-unit  { font-size: var(--sz-m1-bot, var(--fs-sm)); }
+#motor-row-2 .mc-title { font-size: var(--sz-m2-top, var(--fs-sm)); }
+#motor-row-2 .mc-main  { font-size: var(--sz-m2-mid, clamp(22px, 7vw, 30px)); }
+#motor-row-2 .mc-unit  { font-size: var(--sz-m2-bot, var(--fs-sm)); }
 
 /* Two stacked tile rows: temperatures and power above, currents below. */
 #motor-area { display: flex; flex-direction: column; gap: var(--gap); }

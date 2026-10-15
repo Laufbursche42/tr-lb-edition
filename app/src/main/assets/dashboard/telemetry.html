@@ -852,6 +852,52 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       </div>
       <button type="button" id="btn-dsp-reset-light" class="settings-btn mt-10" data-i18n="display.reset.light">Reset light mode</button>
     </div>
+
+    <div class="settings-group has-top-rule">
+      <div class="settings-group-title" data-i18n="display.fonts.title">Font sizes</div>
+      <div class="settings-row-sublabel mb-10" data-i18n="display.fonts.hint">Font size for every tile text line on the main screen, set individually. On the live-value tiles that is the title (top), the value (middle) and the unit (bottom). The screen still auto-scales to the height, so it is mainly the ratio between the sizes that shows.</div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.fonts.speed.val">Speed - value</div></div>
+        <input class="set-ctrl" id="dsp-font-speed-val" type="number" min="20" max="72" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.fonts.speed.lbl">Speed - label</div></div>
+        <input class="set-ctrl" id="dsp-font-speed-lbl" type="number" min="10" max="40" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.fonts.hero.val">Upper tiles - value</div></div>
+        <input class="set-ctrl" id="dsp-font-hero-val" type="number" min="10" max="48" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.fonts.hero.lbl">Upper tiles - label</div></div>
+        <input class="set-ctrl" id="dsp-font-hero-lbl" type="number" min="10" max="40" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.fonts.m1.top">Tile row 1 - title (top)</div></div>
+        <input class="set-ctrl" id="dsp-font-m1-top" type="number" min="10" max="40" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.fonts.m1.mid">Tile row 1 - value (middle)</div></div>
+        <input class="set-ctrl" id="dsp-font-m1-mid" type="number" min="10" max="48" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.fonts.m1.bot">Tile row 1 - unit (bottom)</div></div>
+        <input class="set-ctrl" id="dsp-font-m1-bot" type="number" min="10" max="40" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.fonts.m2.top">Tile row 2 - title (top)</div></div>
+        <input class="set-ctrl" id="dsp-font-m2-top" type="number" min="10" max="40" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.fonts.m2.mid">Tile row 2 - value (middle)</div></div>
+        <input class="set-ctrl" id="dsp-font-m2-mid" type="number" min="10" max="48" step="1" inputmode="numeric">
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.fonts.m2.bot">Tile row 2 - unit (bottom)</div></div>
+        <input class="set-ctrl" id="dsp-font-m2-bot" type="number" min="10" max="40" step="1" inputmode="numeric">
+      </div>
+      <button type="button" id="btn-dsp-reset-fonts" class="settings-btn mt-10" data-i18n="display.fonts.reset">Reset font sizes</button>
+    </div>
   </div>
 </div>
 
@@ -968,6 +1014,7 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <p id="verinfo-license" data-i18n="fw.verinfo.license">Laufbursche Edition is source-available under the PolyForm Noncommercial License 1.0.0 with Additional Terms. Read the <span class="link-ble" onclick="openExt('https://github.com/Laufbursche42/tr-lb-edition/blob/main/README.md')">GitHub README</span> and <span class="link-ble" onclick="openExt('https://github.com/Laufbursche42/tr-lb-edition/blob/main/license.md')">License</span>.</p>
     <p id="verinfo-osm" data-i18n="fw.verinfo.map.attribution">Offline maps and POI data (camping / charging) are &copy; OpenStreetMap contributors, licensed under the ODbL 1.0.</p>
     <p><span class="link-ble" id="verinfo-disclaimer-link" data-i18n="disclaimer.read.link">Read the liability disclaimer</span></p>
+    <p><span class="link-ble" id="verinfo-report" data-i18n="fw.verinfo.report">Report issue</span></p>
     <button type="button" id="verinfo-close" data-i18n="fw.verinfo.close">Close</button>
   </div>
 </div>
@@ -1181,12 +1228,29 @@ const DISPLAY_DEFAULTS = {
   light: { card: '#ffffff', bg: '#e8edf5', lum: 100 }
 };
 
+// Rider-adjustable tile font sizes in px, global (not per theme), stored under cfg.fonts. Empty by
+// default so the CSS keeps its built-in sizes until a value is entered. Each row carries its own
+// range; `def` is where the input sits until the rider sets a value, `varName` the matching CSS var.
+const FONT_META = [
+  { key: 'speedVal', varName: '--sz-speed-val', id: 'dsp-font-speed-val', def: 64, min: 20, max: 72 },
+  { key: 'speedLbl', varName: '--sz-speed-lbl', id: 'dsp-font-speed-lbl', def: 14, min: 10, max: 40 },
+  { key: 'heroVal',  varName: '--sz-hero-val',  id: 'dsp-font-hero-val',  def: 38, min: 10, max: 48 },
+  { key: 'heroLbl',  varName: '--sz-hero-lbl',  id: 'dsp-font-hero-lbl',  def: 13, min: 10, max: 40 },
+  { key: 'm1Top', varName: '--sz-m1-top', id: 'dsp-font-m1-top', def: 12, min: 10, max: 40 },
+  { key: 'm1Mid', varName: '--sz-m1-mid', id: 'dsp-font-m1-mid', def: 32, min: 10, max: 48 },
+  { key: 'm1Bot', varName: '--sz-m1-bot', id: 'dsp-font-m1-bot', def: 12, min: 10, max: 40 },
+  { key: 'm2Top', varName: '--sz-m2-top', id: 'dsp-font-m2-top', def: 12, min: 10, max: 40 },
+  { key: 'm2Mid', varName: '--sz-m2-mid', id: 'dsp-font-m2-mid', def: 32, min: 10, max: 48 },
+  { key: 'm2Bot', varName: '--sz-m2-bot', id: 'dsp-font-m2-bot', def: 12, min: 10, max: 40 }
+];
+
 function loadDisplayCfg() {
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(DISPLAY_KEY) || 'null'); } catch (e) {}
-  const out = { dark: Object.assign({}, DISPLAY_DEFAULTS.dark), light: Object.assign({}, DISPLAY_DEFAULTS.light) };
+  const out = { dark: Object.assign({}, DISPLAY_DEFAULTS.dark), light: Object.assign({}, DISPLAY_DEFAULTS.light), fonts: {} };
   if (saved) {
     ['dark', 'light'].forEach(k => { if (saved[k]) Object.assign(out[k], saved[k]); });
+    if (saved.fonts) Object.assign(out.fonts, saved.fonts);
   }
   return out;
 }
@@ -1259,6 +1323,22 @@ function applyDisplay() {
   });
 }
 
+// Push the rider's tile font sizes onto :root as CSS custom properties, then re-fit the fold so the
+// layout adapts. A key that is not set is removed, so the stylesheet falls back to the built-in size.
+function applyFontSizes() {
+  const f = loadDisplayCfg().fonts || {};
+  const root = document.documentElement;
+  FONT_META.forEach(m => {
+    if (f[m.key] != null) {
+      const px = Math.max(m.min, Math.min(m.max, Number(f[m.key]) || m.def));
+      root.style.setProperty(m.varName, px + 'px');
+    } else {
+      root.style.removeProperty(m.varName);
+    }
+  });
+  try { scheduleFitFold(); } catch (e) {}
+}
+
 function initDisplayPage() {
   const cfg = loadDisplayCfg();
   const bind = (theme, key, id, isRange) => {
@@ -1290,6 +1370,31 @@ function initDisplayPage() {
   if (rd) rd.addEventListener('click', () => reset('dark'));
   const rl = document.getElementById('btn-dsp-reset-light');
   if (rl) rl.addEventListener('click', () => reset('light'));
+
+  FONT_META.forEach(m => {
+    const el = document.getElementById(m.id);
+    if (!el) return;
+    el.min = String(m.min); el.max = String(m.max);
+    el.value = String(cfg.fonts[m.key] != null ? cfg.fonts[m.key] : m.def);
+    el.addEventListener('change', () => {
+      let v = Math.round(Number(el.value));
+      if (isNaN(v)) v = m.def;
+      v = Math.max(m.min, Math.min(m.max, v));
+      el.value = String(v);
+      const now = loadDisplayCfg();
+      now.fonts[m.key] = v;
+      saveDisplayCfg(now);
+      applyFontSizes();
+    });
+  });
+  const rf = document.getElementById('btn-dsp-reset-fonts');
+  if (rf) rf.addEventListener('click', () => {
+    const now = loadDisplayCfg();
+    now.fonts = {};
+    saveDisplayCfg(now);
+    applyFontSizes();
+    refreshDisplayControls();
+  });
 }
 
 function refreshDisplayControls() {
@@ -1301,6 +1406,7 @@ function refreshDisplayControls() {
   put('dsp-light-card', cfg.light.card);
   put('dsp-light-bg',   cfg.light.bg);
   put('dsp-light-lum',  String(cfg.light.lum));
+  FONT_META.forEach(m => put(m.id, String(cfg.fonts[m.key] != null ? cfg.fonts[m.key] : m.def)));
 }
 
 function openDisplayPage() {
@@ -1328,6 +1434,7 @@ function applyTheme(dark) {
   // The rider's own colours are inline properties on :root and therefore outrank the stylesheet's
   // theme block, so the other theme's set has to be written now that the theme has changed.
   try { applyDisplay(); } catch (e) {}
+  try { applyFontSizes(); } catch (e) {}
 }
 
 function initTheme() {
@@ -2658,6 +2765,48 @@ function openVersionInfo() {
 function closeVersionInfo() {
   const o = document.getElementById('verinfo-overlay');
   if (o) o.classList.remove('open');
+}
+
+// Prefilled bug report from the version/disclaimer dialog. Collects only non-personal device/app
+// facts (Android version, phone model, UI language, app version) plus the already-masked debug-log
+// tail. No name, account, GPS, serial or advertising id; the scooter/model stays a free field.
+function reportFromApp() {
+  const isDe = (document.documentElement.getAttribute('lang') || 'en').toLowerCase() === 'de';
+  let appVer = '';
+  try { appVer = (typeof appVersionString === 'function' ? appVersionString() : '') || ''; } catch (e) {}
+  let di = {};
+  try { if (typeof LB !== 'undefined' && LB.deviceInfo) di = JSON.parse(LB.deviceInfo() || '{}'); } catch (e) {}
+  let log = '';
+  try { if (typeof LB !== 'undefined' && LB.recentLog) log = LB.recentLog() || ''; } catch (e) {}
+  const F = String.fromCharCode(96, 96, 96);
+  const android = (di.androidRelease ? 'Android ' + di.androidRelease : 'Android ?') + (di.sdk ? ' (API ' + di.sdk + ')' : '');
+  const phone = ((di.manufacturer || '') + ' ' + (di.model || '')).trim() || (isDe ? '(unbekannt)' : '(unknown)');
+  const lang = di.lang || (isDe ? 'de' : 'en');
+  const lines = [];
+  if (isDe) {
+    lines.push('**App:** Teverun LB Edition ' + appVer);
+    lines.push('**Android:** ' + android);
+    lines.push('**Handy:** ' + phone);
+    lines.push('**Sprache:** ' + lang);
+    lines.push('**Scooter / Modell:**');
+    lines.push('', '---', '');
+    lines.push('**Dein Anliegen:**', '', '(bitte beschreiben)', '');
+    lines.push(log ? '**Debug-Log (automatisch angehängt):**' : '**Debug-Log:** (keins vorhanden - Debug-Modus einschalten und erneut melden)');
+  } else {
+    lines.push('**App:** Teverun LB Edition ' + appVer);
+    lines.push('**Android:** ' + android);
+    lines.push('**Phone:** ' + phone);
+    lines.push('**Language:** ' + lang);
+    lines.push('**Scooter / model:**');
+    lines.push('', '---', '');
+    lines.push('**Your request:**', '', '(please describe)', '');
+    lines.push(log ? '**Debug log (attached automatically):**' : '**Debug log:** (none yet - enable debug mode and report again)');
+  }
+  if (log) { lines.push('', F, log, F); }
+  const title = '[tr-lb-edition] ' + (isDe ? 'Rückmeldung' : 'Feedback');
+  const url = 'https://github.com/Laufbursche42/Laufbursche42/issues/new?title=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(lines.join('\n'));
+  if (typeof LB !== 'undefined' && LB.openUrl) { try { LB.openUrl(url); return; } catch (e) {} }
+  try { window.open(url, '_blank', 'noopener'); } catch (e) {}
 }
 
 /* ── Connect page (BLE scan / connect / disconnect via LB bridge) ── */
@@ -4780,6 +4929,7 @@ function wireEvents() {
     openVersionInfo();
   });
   document.getElementById('verinfo-close').addEventListener('click', closeVersionInfo);
+  { const vr = document.getElementById('verinfo-report'); if (vr) vr.addEventListener('click', reportFromApp); }
   document.getElementById('verinfo-overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('verinfo-overlay')) closeVersionInfo();
   });

@@ -969,6 +969,51 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Non-personal device/app facts for a prefilled bug report: Android version, phone model,
+         *  UI language. No name, account, GPS, serial or advertising id. */
+        @JavascriptInterface
+        public String deviceInfo() {
+            try {
+                JSONObject o = new JSONObject();
+                o.put("androidRelease", Build.VERSION.RELEASE);
+                o.put("sdk", Build.VERSION.SDK_INT);
+                o.put("manufacturer", Build.MANUFACTURER);
+                o.put("model", Build.MODEL);
+                o.put("lang", Locale.getDefault().getLanguage());
+                return o.toString();
+            } catch (Throwable t) {
+                return "{}";
+            }
+        }
+
+        /** Tail (~2500 chars) of the already-masked debug log, for auto-attaching to a bug report.
+         *  Returns "" when there is no log. Same file exportLogs() shares; no extra data. */
+        @JavascriptInterface
+        public String recentLog() {
+            try {
+                File f = debugLog != null ? debugLog.getLogFile() : null;
+                if (f == null || !f.exists() || f.length() == 0) return "";
+                final int MAX = 2500;
+                long len = f.length();
+                long start = Math.max(0, len - MAX);
+                byte[] buf;
+                try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(f, "r")) {
+                    raf.seek(start);
+                    int n = (int) Math.min((long) MAX, len - start);
+                    buf = new byte[n];
+                    raf.readFully(buf);
+                }
+                String s = new String(buf, java.nio.charset.StandardCharsets.UTF_8);
+                if (start > 0) {
+                    int nl = s.indexOf('\n');
+                    if (nl >= 0 && nl < s.length() - 1) s = s.substring(nl + 1);
+                }
+                return s;
+            } catch (Throwable t) {
+                return "";
+            }
+        }
+
         // ── App update ──
 
         /** Fetch the latest app release from GitHub and push it to window.__onAppUpdate. Network runs off
