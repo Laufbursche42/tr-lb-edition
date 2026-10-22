@@ -20,6 +20,7 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Permanently open build.</b> The firmware patcher has a new \"Permanently open\" build: it removes the speed limiter for good, so the scooter runs open after every restart with no switchable lock. Private property only - not eKFV-legal on public roads.",
       "<b>Report an issue from the app.</b> The Version / disclaimer dialog now has a \"Report issue\" button. It opens a pre-filled GitHub issue with your app version, Android version and phone model and attaches your (already masked) debug log - no personal data. Just describe what happened and submit.",
       "<b>Choose your tile font sizes.</b> Display settings now has a Font sizes section: set the speed value and its label, the upper tiles and each lower tile row independently, each with its own range. Reset puts them all back to the built-in sizes.",
       "<b>Guided firmware patcher in the app.</b> Pick a stock firmware file and the app now shows the same patch options as the web patcher: choose the build (standard, kickstart or EEPROM reset) with its reported version, set both speed clamps (while locked, and after an unlock) and the blinker fix, then press Build. The app patches the image, shows the build details, saves it to Downloads and stages it for the flasher - flashed over its own stable Bluetooth, no browser or Web Bluetooth needed (reliable on Samsung phones too). The options appear only for a recognised stock image (R5.4.19 / R5.4.21); any other file still flashes as-is.",
@@ -165,10 +166,12 @@ window.I18N = {
     "fw.patch.variant": "Build",
     "fw.patch.variant.standard": "Standard",
     "fw.patch.variant.kickstart": "Kickstart",
+    "fw.patch.variant.permaopen": "Permanently open",
     "fw.patch.variant.eepromerase": "EEPROM reset",
     "fw.patch.variant.noversion": "(no reported version)",
     "fw.patch.hint.standard": "Speed unlock with the on/off Bluetooth lock. The normal choice for most scooters.",
     "fw.patch.hint.kickstart": "For older controllers that cannot turn kick-start off: forces it on. On any other scooter the throttle stops responding, so only pick this if standard does not pull away.",
+    "fw.patch.hint.permaopen": "Permanently open: removes the limiter for good - the scooter runs open after every restart, with no switchable lock. The four 22 km/h clamps in the controller frame are removed (Spooonky-style speed unlock). Private property only, not eKFV-legal.",
     "fw.patch.hint.eepromerase": "No unlock. Writes the EEPROM settings block back to the factory values on the first boot; flash this once, let it boot, then flash a genuine stock firmware over it.",
     "fw.patch.clamphelp": "What should the scooter be clamped to while it is locked?",
     "fw.patch.clampstock": "Clamp: never unlocked since power on",
@@ -740,6 +743,7 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Variante \"Permanent offen\".</b> Der Firmware-Patcher hat eine neue Variante \"Permanent offen\": sie hebt die Drossel dauerhaft auf, der Roller fährt nach jedem Neustart offen, ganz ohne schaltbare Sperre. Nur für Privatgelände - auf öffentlichen Straßen nicht eKFV-konform.",
       "<b>Fehler direkt aus der App melden.</b> Der Version-/Haftungs-Dialog hat jetzt einen \"Fehler melden\"-Knopf. Er öffnet ein vorausgefülltes GitHub-Issue mit App-Version, Android-Version und Handy-Modell und hängt dein (bereits maskiertes) Debug-Log an - keine persönlichen Daten. Einfach beschreiben was passiert ist und absenden.",
       "<b>Schriftgrößen der Kacheln selbst wählen.</b> Die Display-Einstellungen haben jetzt den Bereich Schriftgrößen: Tacho-Wert und -Beschriftung, die oberen Kacheln und jede untere Kachelreihe einzeln einstellbar, jeweils mit eigenem Bereich. Zurücksetzen stellt alles auf die eingebauten Größen zurück.",
       "<b>Geführter Firmware-Patcher in der App.</b> Wähle eine Stock-Firmware, und die App zeigt jetzt dieselben Patch-Optionen wie der Web-Patcher: Variante (Standard, Kickstart oder EEPROM-Reset) samt gemeldeter Version, beide Drossel-Werte (gesperrt, und nach einem Entsperren) und den Blinker-Fix, dann auf Bauen. Die App patcht das Image, zeigt die Build-Details, speichert in die Downloads und übergibt es an den Flasher - geflasht über ihr eigenes, stabiles Bluetooth, ganz ohne Browser oder Web-Bluetooth (auch auf Samsung-Handys zuverlässig). Die Optionen erscheinen nur bei einem erkannten Stock-Image (R5.4.19 / R5.4.21); jede andere Datei wird weiterhin unverändert geflasht.",
@@ -885,10 +889,12 @@ window.I18N = {
     "fw.patch.variant": "Variante",
     "fw.patch.variant.standard": "Standard",
     "fw.patch.variant.kickstart": "Kickstart",
+    "fw.patch.variant.permaopen": "Permanent offen",
     "fw.patch.variant.eepromerase": "EEPROM zurücksetzen",
     "fw.patch.variant.noversion": "(keine gemeldete Version)",
     "fw.patch.hint.standard": "Entdrosselung mit der über Bluetooth schaltbaren Sperre. Der Normalfall für die meisten Scooter.",
     "fw.patch.hint.kickstart": "Für ältere Controller, die Kickstart nicht abschalten können: schaltet es fest ein. Bei allen anderen nimmt der Roller dann kein Gas mehr an - nur wählen, wenn Standard nicht anfährt.",
+    "fw.patch.hint.permaopen": "Permanent offen: hebt die Drossel dauerhaft auf - der Roller fährt nach jedem Neustart offen, ohne schaltbare Sperre. Die vier 22-km/h-Klemmen im Controller-Frame werden entfernt (wie Spooonkys Speed-Freigabe). Nur für Privatgelände, nicht eKFV-konform.",
     "fw.patch.hint.eepromerase": "Keine Entsperrung. Schreibt beim ersten Start den Einstellungsblock im EEPROM auf die Werksvorgaben zurück; einmal flashen, starten lassen, danach eine echte Serien-Firmware darüber flashen.",
     "fw.patch.clamphelp": "Worauf soll der Roller geklemmt werden, solange er gesperrt ist?",
     "fw.patch.clampstock": "Klemme: seit dem Einschalten nie entsperrt",

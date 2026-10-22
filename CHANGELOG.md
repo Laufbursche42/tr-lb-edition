@@ -14,6 +14,9 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.30
+- Firmware patcher: new "Permanently open" build that removes the speed limiter for good (Spooonky-style - the four 22 km/h clamps in the controller frame), so the scooter runs open after every restart with no switchable lock. Private property only, not eKFV-legal on public roads.
+
 ## 1.1.29
 
 - Display settings now has a Font sizes section: set the speed value and its label, the upper tiles and each lower tile row (Tile row 1 and Tile row 2) independently, each with its own range. Reset puts them all back to the built-in sizes.

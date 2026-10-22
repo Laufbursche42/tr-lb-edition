@@ -22,6 +22,8 @@ var FW_BUILD_KICK = 248;
 // The eraser writes no version byte and its file is named by its own tag, so this
 // number stays inside the patcher and reaches nothing the rider sees.
 var FW_BUILD_ERASE = 147;
+// "Permanent offen" carries no CORE either, so this stamp is never written (see verTag); it only labels the build.
+var FW_BUILD_PERMA = 148;
 var PATCHES = {
   CORE: [
     [0x08007150, [0x00,0x48,0x00,0x47], [0x16,0xF0,0x10,0xBD]],
@@ -95,6 +97,17 @@ var PATCHES = {
                         0x00,0x50,0x40,0x81,0xF8,0x32,0x00,0x91,0xF8,0x33,0x00,0x50,0x40,
                         0x81,0xF8,0x33,0x00,0xF9,0xF7,0x69,0xFB,0xF9,0xF7,0x94,0xFB,0x00,
                         0xBD,0x00,0xBF,0x28,0x1A,0x00,0x20]],
+  ],
+  // "Permanent offen" (Spooonky-style speed unlock): NOP only the clamp assignment
+  // `movs r7,#0x16` in each of the four controller frame builders, so the setpoint
+  // passes through uncapped -> full speed, permanently, across every restart. No CORE,
+  // no switchable lock. Anchored at the clamp SITE (same bytes CORE expects there),
+  // only bytes [+4,+5] change (16 27 -> 00 BF), so the 5.4.21 site map relocates it.
+  PERMAOPEN: [
+    [0x08010058, [0x16,0x2F,0x03,0xDD,0x16,0x27], [0x16,0x2F,0x03,0xDD,0x00,0xBF]],
+    [0x08010208, [0x16,0x2F,0x03,0xDD,0x16,0x27], [0x16,0x2F,0x03,0xDD,0x00,0xBF]],
+    [0x080103B0, [0x16,0x2F,0x03,0xDD,0x16,0x27], [0x16,0x2F,0x03,0xDD,0x00,0xBF]],
+    [0x080105D0, [0x16,0x2F,0x03,0xDD,0x16,0x27], [0x16,0x2F,0x03,0xDD,0x00,0xBF]],
   ],
 };
 
@@ -261,6 +274,13 @@ var VARIANTS = {
     stamp: FW_BUILD_KICK,
     groups: ["CORE", "WHEEL", "KICKSTART", "DEFAULTS", "DURCOMP"],
     clampScale: 2
+  },
+  // Permanent offen: the four clamp NOPs, no CORE, no switchable lock -> always open.
+  permaopen: {
+    key: "permaopen",
+    stamp: FW_BUILD_PERMA,
+    groups: ["PERMAOPEN"],
+    clampScale: 1
   },
   eepromerase: {
     key: "eepromerase",
