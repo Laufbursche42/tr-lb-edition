@@ -130,3 +130,16 @@ jobs:
             --target "${{ github.sha }}" \
             --title "Laufbursche Edition ${{ steps.ver.outputs.tag }}" \
             --notes-file "$RUNNER_TEMP/release-notes.md"
+
+      - name: Refresh the profile-page roster so the new APK shows at once
+        if: steps.exists.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.ROSTER_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "ROSTER_DISPATCH_TOKEN secret not set - skipping; the profile-page cron will pick this release up on its next run."
+            exit 0
+          fi
+          gh workflow run refresh-roster.yml --repo Laufbursche42/Laufbursche42 \
+            && echo "triggered the profile-page roster refresh" \
+            || echo "roster dispatch failed (non-fatal) - the cron will pick this release up later."
