@@ -16,6 +16,7 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Telemetry - Teverun LB</title>
 <link rel="stylesheet" href="dashboard.css">
+<link id="theme-css-link" rel="stylesheet" href="active-theme.css">
 </head>
 <body>
 <div id="app">
@@ -394,6 +395,7 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       </div>
     </div>
     <button id="btn-open-display" class="settings-btn mt-10"><span data-i18n="settings.display.colors.action">&#127912; Display settings</span></button>
+    <button id="btn-open-theme" class="settings-btn mt-8" data-i18n="theme.settings.action">&#127912; Theme manager</button>
   </div>
 
   <!-- Debug logging -->
@@ -898,6 +900,23 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       </div>
       <button type="button" id="btn-dsp-reset-fonts" class="settings-btn mt-10" data-i18n="display.fonts.reset">Reset font sizes</button>
     </div>
+  </div>
+</div>
+
+<!-- ── Theme manager page ────────────────────────── -->
+<div id="theme-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-theme-back" aria-label="Back" data-i18n-aria="fw.nav.back.label" data-i18n="fw.nav.back.icon">&#8592;</button>
+    </div>
+    <span class="tb-title" data-i18n="theme.page.title">Theme manager</span>
+    <div class="tb-right"><span class="tb-spacer"></span></div>
+  </div>
+  <div id="theme-scroller">
+    <p class="settings-row-sublabel" data-i18n="theme.page.hint">Import an HTML + CSS file pair to customise the dashboard layout.</p>
+    <button type="button" id="btn-theme-import" class="settings-btn" data-i18n="theme.import.action">&#8682; Import theme</button>
+    <p class="settings-row-sublabel m-6-0-2" data-i18n="theme.import.hint">Pick the .html file first, then the .css file.</p>
+    <div id="theme-list"></div>
   </div>
 </div>
 
@@ -1869,6 +1888,7 @@ function tickBLE() {
   // its connected/disconnected enabled state.
   reflectMotorModeMain();
   reflectDriveQuick();
+  try { updateThemeHooks(data); } catch (e) {}
   // Accumulate per-gear/assist values and keep the gear editor live (without clobbering edits).
   updateGearCache();
   maybeLiveRefreshGearEditor();
@@ -3400,6 +3420,126 @@ function wireBminiSpeeds() {
   _bminiSpeedsWired = true;
 }
 
+/* ── Theme Manager ─────────────────────────────────────────────
+   Phase 1: import HTML+CSS pairs, activate, export, delete.
+   Theme HTML is injected into #fold-inner; live values are bound
+   to data-lb attributes every tick. No script runs from themes. */
+
+let _themeActive = '';   // mirrors prefs at page-load and after activate/reload
+
+function openThemePage() {
+  document.getElementById('theme-page').classList.add('open');
+  renderThemeList();
+}
+function closeThemePage() {
+  document.getElementById('theme-page').classList.remove('open');
+}
+
+function renderThemeList() {
+  const list = document.getElementById('theme-list');
+  if (!list) return;
+  let themes = [];
+  try {
+    if (typeof LB !== 'undefined' && LB.listThemes) themes = JSON.parse(LB.listThemes() || '[]');
+  } catch (e) {}
+  list.innerHTML = '';
+  themes.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'theme-row';
+    const left = document.createElement('div');
+    left.className = 'theme-row-left';
+    const namEl = document.createElement('span');
+    namEl.className = 'theme-name';
+    namEl.textContent = item.name;
+    left.appendChild(namEl);
+    if (item.active) {
+      const badge = document.createElement('span');
+      badge.className = 'theme-active-badge';
+      badge.setAttribute('data-i18n', 'theme.badge.active');
+      badge.textContent = t('theme.badge.active');
+      left.appendChild(badge);
+    }
+    row.appendChild(left);
+    const actions = document.createElement('div');
+    actions.className = 'theme-row-actions';
+    if (!item.active) {
+      const btnAct = document.createElement('button');
+      btnAct.textContent = t('theme.action.activate');
+      btnAct.addEventListener('click', () => activateTheme(item.name));
+      actions.appendChild(btnAct);
+    }
+    if (item.name !== 'Default') {
+      const btnExp = document.createElement('button');
+      btnExp.textContent = t('theme.action.export');
+      btnExp.addEventListener('click', () => {
+        if (typeof LB !== 'undefined' && LB.exportTheme) LB.exportTheme(item.name);
+        else showToast(t('msg.app.only.in.app'));
+      });
+      actions.appendChild(btnExp);
+      const btnDel = document.createElement('button');
+      btnDel.textContent = t('theme.action.delete');
+      btnDel.addEventListener('click', () => confirmDeleteTheme(item.name));
+      actions.appendChild(btnDel);
+    }
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+}
+
+function activateTheme(name) {
+  if (typeof LB === 'undefined' || !LB.activateTheme) { showToast(t('msg.app.only.in.app')); return; }
+  LB.activateTheme(name === 'Default' ? '' : name);
+  // Reload to apply the new CSS (shouldInterceptRequest picks it up fresh).
+  location.reload();
+}
+
+function confirmDeleteTheme(name) {
+  document.getElementById('confirm-title').textContent = t('theme.action.delete');
+  document.getElementById('confirm-msg').textContent = name;
+  state.confirmCb = () => {
+    if (typeof LB !== 'undefined' && LB.deleteTheme) LB.deleteTheme(name);
+    renderThemeList();
+  };
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+/* Fill data-lb attribute hooks in the currently-active theme HTML. Called every tick. */
+function updateThemeHooks(data) {
+  if (!data) return;
+  // data-lb="key" -> textContent = data[key]
+  document.querySelectorAll('#fold-inner [data-lb]').forEach(el => {
+    const key = el.getAttribute('data-lb');
+    const val = data[key];
+    if (val !== undefined && val !== null) el.textContent = val;
+  });
+  // data-lb-state="key:class" -> toggle class based on truthy data[key]
+  document.querySelectorAll('#fold-inner [data-lb-state]').forEach(el => {
+    const spec = el.getAttribute('data-lb-state');
+    const sep = spec.indexOf(':');
+    if (sep < 0) return;
+    const key = spec.substring(0, sep);
+    const cls = spec.substring(sep + 1);
+    el.classList.toggle(cls, !!data[key]);
+  });
+}
+
+/* Re-attach the triple-tap speed-unlock listener to [data-lb-action="speed-unlock"]
+   in the injected theme HTML. Called after theme injection. */
+function reattachSpeedUnlock() {
+  const el = document.querySelector('#fold-inner [data-lb-action="speed-unlock"]');
+  if (el) el.addEventListener('click', onVcuTileTap);
+}
+
+window.__onThemeEvent = function(ev) {
+  if (!ev) return;
+  if (ev.event === 'imported') {
+    renderThemeList();
+    showToast(ev.name + ' imported');
+  } else if (ev.event === 'error') {
+    showToast(ev.message || 'import error', 4000, 'err');
+  }
+};
+
 // Copy the Bluetooth advertised name (from live BLE data) to the Android clipboard.
 function copyBtName() {
   const bt = liveRaw().btName;
@@ -4861,6 +5001,16 @@ function wireEvents() {
     openDisplayPage();
   });
   document.getElementById('btn-display-back').addEventListener('click', closeDisplayPage);
+
+  document.getElementById('btn-open-theme').addEventListener('click', () => {
+    closeSettings();
+    openThemePage();
+  });
+  document.getElementById('btn-theme-back').addEventListener('click', closeThemePage);
+  document.getElementById('btn-theme-import').addEventListener('click', () => {
+    if (typeof LB !== 'undefined' && LB.pickThemeFiles) LB.pickThemeFiles();
+    else showToast(t('msg.app.only.in.app'));
+  });
 
   document.getElementById('btn-copy-btname').addEventListener('click', copyBtName);
   document.getElementById('btn-copy-serial').addEventListener('click', copySerial);

@@ -23,6 +23,7 @@ import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -57,6 +58,8 @@ public class MainActivity extends Activity {
     private static final String TAG = "lbedition";
     private static final int REQ_PERMS = 4711;
     private static final int REQ_OTA_FILE = 4712;
+    private static final int REQ_THEME_HTML = 4713;
+    private static final int REQ_THEME_CSS = 4714;
 
     // Picked firmware file, held natively until the user starts the flash (never round-trips through
     // JS - only its metadata does). Guarded by the main thread (set in onActivityResult, read in the
@@ -64,11 +67,16 @@ public class MainActivity extends Activity {
     private volatile String otaHexText = null;
     private volatile String otaFileName = null;
 
+    // Theme import: HTML file picked first, CSS file picked second.
+    private volatile String pendingThemeHtmlName = null;
+    private volatile byte[] pendingThemeHtmlBytes = null;
+
     private WebView webView;
     private BleManager ble;
     private DebugLog debugLog;
     private RideLogger rideLogger;
     private SharedPreferences prefs;
+    private ThemeManager themeManager;
     // Auto-reconnect to the remembered scooter is attempted at most once per process.
     private boolean autoConnectTried = false;
     // Tracks the BLE connection state so ride-logging transitions fire exactly once per change.
@@ -89,6 +97,7 @@ public class MainActivity extends Activity {
         // Android status bar (battery / clock / notifications) shows and content sits below it.
         // Delegated to UiChrome so every screen (main + native) shares the exact same inset logic.
         prefs = getSharedPreferences("lb", MODE_PRIVATE);
+        themeManager = new ThemeManager(this);
         UiChrome.applyFullscreen(this);
 
         configureWebView();
@@ -170,6 +179,29 @@ public class MainActivity extends Activity {
                 Uri u = request != null ? request.getUrl() : null;
                 String url = u != null ? u.toString() : "";
                 return !url.startsWith("file:///android_asset/");   // true = cancel the navigation
+            }
+
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                Uri u = request != null ? request.getUrl() : null;
+                if (u != null && "file:///android_asset/dashboard/active-theme.css".equals(u.toString())) {
+                    try {
+                        String name = themeManager.getActiveThemeName();
+                        if (!name.isEmpty()) {
+                            byte[] css = themeManager.readThemeCss(name);
+                            if (css != null) {
+                                return new WebResourceResponse("text/css", "UTF-8",
+                                        new java.io.ByteArrayInputStream(css));
+                            }
+                        }
+                    } catch (Throwable t) {
+                        Log.e(TAG, "theme CSS intercept failed", t);
+                    }
+                    // No active theme or file missing: serve empty CSS (page loads normally).
+                    return new WebResourceResponse("text/css", "UTF-8",
+                            new java.io.ByteArrayInputStream(new byte[0]));
+                }
+                return super.shouldInterceptRequest(view, request);
             }
         });
 
@@ -320,6 +352,14 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_THEME_HTML) {
+            handleThemeHtmlPick(resultCode, data);
+            return;
+        }
+        if (requestCode == REQ_THEME_CSS) {
+            handleThemeCssPick(resultCode, data);
+            return;
+        }
         if (requestCode != REQ_OTA_FILE) return;
         if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
             pushOtaFile("{\"ok\":false,\"cancelled\":true}");
@@ -343,6 +383,76 @@ public class MainActivity extends Activity {
             otaFileName = null;
             pushOtaFile("{\"ok\":false,\"error\":\"read failed\"}");
         }
+    }
+
+    private void handleThemeHtmlPick(int resultCode, Intent data) {
+        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
+            pendingThemeHtmlName = null;
+            pendingThemeHtmlBytes = null;
+            pushThemeEvent("{\"event\":\"cancelled\"}");
+            return;
+        }
+        try {
+            Uri uri = data.getData();
+            String name = queryDisplayName(uri);
+            // Strip extension to get theme name.
+            if (name.toLowerCase(java.util.Locale.US).endsWith(".html"))
+                name = name.substring(0, name.length() - 5);
+            pendingThemeHtmlName = name;
+            pendingThemeHtmlBytes = readAllBytes(uri);
+            // Now ask for the CSS file.
+            runOnUiThread(() -> {
+                try {
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("*/*");
+                    startActivityForResult(i, REQ_THEME_CSS);
+                } catch (Throwable t) {
+                    Log.e(TAG, "theme CSS picker failed", t);
+                    pendingThemeHtmlName = null;
+                    pendingThemeHtmlBytes = null;
+                    pushThemeEvent("{\"event\":\"error\",\"message\":\"no file picker\"}");
+                }
+            });
+        } catch (Throwable t) {
+            Log.e(TAG, "theme HTML pick failed", t);
+            pendingThemeHtmlName = null;
+            pendingThemeHtmlBytes = null;
+            pushThemeEvent("{\"event\":\"error\",\"message\":\"read failed\"}");
+        }
+    }
+
+    private void handleThemeCssPick(int resultCode, Intent data) {
+        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
+            pendingThemeHtmlName = null;
+            pendingThemeHtmlBytes = null;
+            pushThemeEvent("{\"event\":\"cancelled\"}");
+            return;
+        }
+        String name = pendingThemeHtmlName;
+        byte[] htmlBytes = pendingThemeHtmlBytes;
+        pendingThemeHtmlName = null;
+        pendingThemeHtmlBytes = null;
+        if (name == null || htmlBytes == null) {
+            pushThemeEvent("{\"event\":\"error\",\"message\":\"session lost\"}");
+            return;
+        }
+        try {
+            byte[] cssBytes = readAllBytes(data.getData());
+            String err = themeManager.importTheme(name, htmlBytes, cssBytes);
+            if (err != null) {
+                pushThemeEvent("{\"event\":\"error\",\"message\":" + jsonStr(err) + "}");
+            } else {
+                pushThemeEvent("{\"event\":\"imported\",\"name\":" + jsonStr(name) + "}");
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "theme CSS pick failed", t);
+            pushThemeEvent("{\"event\":\"error\",\"message\":\"read failed\"}");
+        }
+    }
+
+    private void pushThemeEvent(String json) {
+        runJs("(function(){try{if(window.__onThemeEvent)window.__onThemeEvent(" + json + ");}catch(e){}})();");
     }
 
     /** Push the picked-file metadata (JSON) to the WebView (window.__onOtaFile). */
@@ -1296,6 +1406,102 @@ public class MainActivity extends Activity {
                         Toast.makeText(MainActivity.this, "Export failed", Toast.LENGTH_SHORT).show();
                     } catch (Throwable ignored) {
                     }
+                }
+            });
+        }
+
+        // ── Theme manager ──
+
+        /** JSON array [{name, active}] of available themes; "Default" is always first. */
+        @JavascriptInterface
+        public String listThemes() {
+            try {
+                return themeManager.listThemes();
+            } catch (Throwable t) {
+                return "[]";
+            }
+        }
+
+        /** Sanitized HTML of a named theme, or "" if it does not exist. */
+        @JavascriptInterface
+        public String getThemeHtml(String name) {
+            try {
+                String html = themeManager.getThemeHtml(name);
+                return html == null ? "" : html;
+            } catch (Throwable t) {
+                return "";
+            }
+        }
+
+        /** Activate a theme by name; empty string = built-in Default. */
+        @JavascriptInterface
+        public void activateTheme(String name) {
+            try {
+                Log.i(TAG, "LB.activateTheme(" + logSafe(name) + ")");
+                themeManager.activateTheme(name == null ? "" : name);
+            } catch (Throwable t) {
+                Log.e(TAG, "activateTheme bridge failed", t);
+            }
+        }
+
+        /** Delete an imported theme. No-op if the theme does not exist. */
+        @JavascriptInterface
+        public void deleteTheme(String name) {
+            try {
+                Log.i(TAG, "LB.deleteTheme(" + logSafe(name) + ")");
+                themeManager.deleteTheme(name);
+            } catch (Throwable t) {
+                Log.e(TAG, "deleteTheme bridge failed", t);
+            }
+        }
+
+        /** Share the HTML and CSS files of a named theme via the system chooser. */
+        @JavascriptInterface
+        public void exportTheme(final String name) {
+            Log.i(TAG, "LB.exportTheme(" + logSafe(name) + ")");
+            runOnUiThread(() -> {
+                try {
+                    File html = themeManager.getThemeFile(name, "html");
+                    File css = themeManager.getThemeFile(name, "css");
+                    if (!html.exists() || !css.exists()) {
+                        Toast.makeText(MainActivity.this, "Theme files not found", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    String pkg = getPackageName() + ".fileprovider";
+                    Uri uHtml = FileProvider.getUriForFile(MainActivity.this, pkg, html);
+                    Uri uCss = FileProvider.getUriForFile(MainActivity.this, pkg, css);
+                    ArrayList<Uri> uris = new ArrayList<>();
+                    uris.add(uHtml);
+                    uris.add(uCss);
+                    Intent send = new Intent(Intent.ACTION_SEND_MULTIPLE);
+                    send.setType("*/*");
+                    send.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                    send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    Intent chooser = Intent.createChooser(send, "Export theme");
+                    chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(chooser);
+                } catch (Throwable t) {
+                    Log.e(TAG, "exportTheme failed", t);
+                    try {
+                        Toast.makeText(MainActivity.this, "Export failed", Toast.LENGTH_SHORT).show();
+                    } catch (Throwable ignored) {}
+                }
+            });
+        }
+
+        /** Open SAF file picker for the HTML file (CSS is picked in the second step). */
+        @JavascriptInterface
+        public void pickThemeFiles() {
+            Log.i(TAG, "LB.pickThemeFiles()");
+            runOnUiThread(() -> {
+                try {
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("*/*");
+                    startActivityForResult(i, REQ_THEME_HTML);
+                } catch (Throwable t) {
+                    Log.e(TAG, "pickThemeFiles failed", t);
+                    pushThemeEvent("{\"event\":\"error\",\"message\":\"no file picker\"}");
                 }
             });
         }

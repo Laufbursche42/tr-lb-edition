@@ -20,6 +20,8 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Theme Manager.</b> Import your own dashboard layout: pick an HTML + CSS file pair and the app stores it, applies the CSS and binds live speed, battery and motor values to your <code>data-lb</code> hooks every half second. Activate, export or delete themes from a new Theme manager screen in Display settings. The built-in layout is always one tap away.",
+      "<b>Safe theme import.</b> Imported HTML is sanitised before storage: script tags, inline event handlers, <code>javascript:</code> URLs and external resource URLs are removed. Theme code never runs; only structure and CSS are kept.",
       "<b>Permanently open build.</b> The firmware patcher has a new \"Permanently open\" build: it removes the speed limiter for good, so the scooter runs open after every restart with no switchable lock. Private property only - not eKFV-legal on public roads.",
       "<b>Report an issue from the app.</b> The Version / disclaimer dialog now has a \"Report issue\" button. It opens a pre-filled GitHub issue with your app version, Android version and phone model and attaches your (already masked) debug log - no personal data. Just describe what happened and submit.",
       "<b>Choose your tile font sizes.</b> Display settings now has a Font sizes section: set the speed value and its label, the upper tiles and each lower tile row independently, each with its own range. Reset puts them all back to the built-in sizes.",
@@ -140,6 +142,16 @@ window.I18N = {
     "display.fonts.m2.mid": "Tile row 2 - value (middle)",
     "display.fonts.m2.bot": "Tile row 2 - unit (bottom)",
     "display.fonts.reset": "Reset font sizes",
+
+    "theme.page.title": "Theme manager",
+    "theme.page.hint": "Import an HTML + CSS file pair to customise the dashboard layout.",
+    "theme.import.action": "&#8682; Import theme",
+    "theme.import.hint": "Pick the .html file first, then the .css file.",
+    "theme.settings.action": "&#127912; Theme manager",
+    "theme.badge.active": "Active",
+    "theme.action.activate": "Activate",
+    "theme.action.export": "Export",
+    "theme.action.delete": "Delete",
 
     "disclaimer.accept": "Accept",
     "disclaimer.close": "Close",
@@ -743,6 +755,8 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Theme-Manager.</b> Eigenes Dashboard-Layout importieren: ein HTML + CSS Datei-Paar auswählen, die App legt es ab, wendet das CSS an und bindet Tempo, Akku und Motor-Werte alle halbe Sekunde an deine <code>data-lb</code>-Hooks. Themes aktivieren, exportieren oder löschen - über den neuen Bereich Theme-Manager in den Display-Einstellungen. Das eingebaute Layout ist immer einen Tap entfernt.",
+      "<b>Sichere Theme-Importierung.</b> Importiertes HTML wird vor der Ablage bereinigt: Script-Tags, Inline-Event-Handler, <code>javascript:</code>-URLs und externe Ressourcen-URLs werden entfernt. Theme-Code wird nie ausgeführt; nur Struktur und CSS bleiben.",
       "<b>Variante \"Permanent offen\".</b> Der Firmware-Patcher hat eine neue Variante \"Permanent offen\": sie hebt die Drossel dauerhaft auf, der Roller fährt nach jedem Neustart offen, ganz ohne schaltbare Sperre. Nur für Privatgelände - auf öffentlichen Straßen nicht eKFV-konform.",
       "<b>Fehler direkt aus der App melden.</b> Der Version-/Haftungs-Dialog hat jetzt einen \"Fehler melden\"-Knopf. Er öffnet ein vorausgefülltes GitHub-Issue mit App-Version, Android-Version und Handy-Modell und hängt dein (bereits maskiertes) Debug-Log an - keine persönlichen Daten. Einfach beschreiben was passiert ist und absenden.",
       "<b>Schriftgrößen der Kacheln selbst wählen.</b> Die Display-Einstellungen haben jetzt den Bereich Schriftgrößen: Tacho-Wert und -Beschriftung, die oberen Kacheln und jede untere Kachelreihe einzeln einstellbar, jeweils mit eigenem Bereich. Zurücksetzen stellt alles auf die eingebauten Größen zurück.",
@@ -863,6 +877,16 @@ window.I18N = {
     "display.fonts.m2.mid": "Kachelreihe 2 - Wert (Mitte)",
     "display.fonts.m2.bot": "Kachelreihe 2 - Einheit (unten)",
     "display.fonts.reset": "Schriftgrößen zurücksetzen",
+
+    "theme.page.title": "Theme-Manager",
+    "theme.page.hint": "Ein HTML + CSS Datei-Paar importieren, um das Dashboard-Layout anzupassen.",
+    "theme.import.action": "&#8682; Theme importieren",
+    "theme.import.hint": "Zuerst die .html-Datei auswählen, dann die .css-Datei.",
+    "theme.settings.action": "&#127912; Theme-Manager",
+    "theme.badge.active": "Aktiv",
+    "theme.action.activate": "Aktivieren",
+    "theme.action.export": "Exportieren",
+    "theme.action.delete": "Löschen",
 
     "disclaimer.accept": "Annehmen",
     "disclaimer.close": "Schließen",

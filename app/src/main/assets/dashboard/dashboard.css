@@ -603,22 +603,22 @@ html, body {
    Every sub-page is the same full-screen sheet that slides in from the right, so one shell
    carries all of them. #routes-scroller keeps its own block: it clips instead of scrolling. */
 #routes-page, #streaming-page,
-#connect-page, #scooter-page, #error-reports-page, #info-page, #battery-page, #firmware-page, #display-page {
+#connect-page, #scooter-page, #error-reports-page, #info-page, #battery-page, #firmware-page, #display-page, #theme-page {
   position: fixed; inset: 0; z-index: 120; background: var(--bg);
   display: flex; flex-direction: column;
   transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
 }
 #routes-page.open, #streaming-page.open,
-#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #battery-page.open, #firmware-page.open, #display-page.open { transform: translateX(0); }
+#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #battery-page.open, #firmware-page.open, #display-page.open, #theme-page.open { transform: translateX(0); }
 #streaming-scroller,
-#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #battery-scroller, #firmware-scroller, #display-scroller {
+#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #battery-scroller, #firmware-scroller, #display-scroller, #theme-scroller {
   flex: 1; min-height: 0; overflow-y: auto; padding: var(--gap);
   display: flex; flex-direction: column; gap: 4px;
   padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px) + 12px);
 }
 /* children must NOT shrink, otherwise the flex column squashes instead of scrolling */
 #routes-scroller > *, #streaming-scroller > *,
-#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > *, #battery-scroller > *, #firmware-scroller > *, #display-scroller > * { flex-shrink: 0; }
+#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > *, #battery-scroller > *, #firmware-scroller > *, #display-scroller > *, #theme-scroller > * { flex-shrink: 0; }
 
 /* ── Battery Info page ── */
 .bat-health {
@@ -971,3 +971,20 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
   background: var(--card); border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
 }
 .range-ctrl { width: 100%; accent-color: var(--btnfill); height: 28px; cursor: pointer; }
+
+/* ── Theme manager page ── */
+.theme-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--card);
+}
+.theme-row-left { flex: 1; min-width: 0; }
+.theme-name { font-size: var(--fs-md); color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.theme-active-badge {
+  display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .4px;
+  background: color-mix(in srgb, var(--good) 20%, transparent);
+  color: var(--good); border: 1px solid var(--good);
+  border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: middle;
+}
+.theme-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.theme-row-actions button { padding: 5px 10px; font-size: var(--fs-sm); }

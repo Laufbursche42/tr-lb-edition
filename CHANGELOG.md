@@ -14,6 +14,9 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.31
+- Theme Manager Phase 1: import an HTML + CSS file pair from local storage; the imported theme is stored in app-private storage and applied as a dashboard overlay; live values are bound to `data-lb` hooks in the theme HTML every 500 ms tick. Themes can be activated, exported (Android share intent) and deleted from a new Theme manager screen in Display settings. The built-in default layout is always available and reachable via Activate. Security: script content (script tags, inline event handlers, javascript: URLs, external http/https URLs) is stripped from imported HTML before storage; theme code never runs.
+
 ## 1.1.30
 - Firmware patcher: new "Permanently open" build that removes the speed limiter for good (Spooonky-style - the four 22 km/h clamps in the controller frame), so the scooter runs open after every restart with no switchable lock. Private property only, not eKFV-legal on public roads.
 

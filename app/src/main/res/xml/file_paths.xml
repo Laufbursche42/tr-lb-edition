@@ -8,4 +8,6 @@
     <cache-path name="exports" path="exports/"/>
     <!-- Covers the public Downloads folder for the update APK/firmware share on API < 29. -->
     <external-path name="downloads" path="Download/"/>
+    <!-- Covers getFilesDir()/themes/*.html and *.css for the theme export FileProvider share. -->
+    <files-path name="themes" path="themes/"/>
 </paths>
