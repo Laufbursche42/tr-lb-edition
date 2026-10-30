@@ -3953,6 +3953,17 @@ function renderTileEditor(themeName) {
       });
     }
   }
+
+  // "Show all" reset: one tap re-shows every hidden tile (checks all toggles, saves, applies live).
+  var resetBtn = document.createElement('button');
+  resetBtn.type = 'button';
+  resetBtn.className = 'tile-editor-reset-btn';
+  resetBtn.textContent = t('theme.editor.tiles.show.all');
+  resetBtn.addEventListener('click', function() {
+    el.querySelectorAll('.tile-toggle').forEach(function(cb) { cb.checked = true; });
+    _saveTileEditorState(themeName, el, order);
+  });
+  el.appendChild(resetBtn);
 }
 
 function _saveTileEditorState(themeName, el, order) {
@@ -4790,6 +4801,20 @@ function _onBtnTouchStart(e) {
 function _beginBtnDrag(el) {
   _btnDragEl = el;
   el.classList.add('btn-drag-active');
+  // Reveal hidden buttons as faint "ghost" slots so a button can be dragged into a currently hidden
+  // position. Cap the grid at 4 columns (same 4-per-row geometry) so the revealed ghosts wrap into
+  // rows of four instead of one over-wide row that runs off-screen.
+  var grid = document.getElementById('quick-grid');
+  if (grid) {
+    var all = grid.querySelectorAll('[data-btn-id]');
+    all.forEach(function(b) {
+      if (b.style.display === 'none') { b.style.display = ''; b.classList.add('btn-ghost-slot'); }
+    });
+    if (all.length) {
+      grid.style.gridTemplateColumns = 'repeat(' + Math.min(all.length, 4) + ', 1fr)';
+      grid.style.justifyContent = '';
+    }
+  }
   document.addEventListener('touchmove', _onBtnDragMove, { passive: false });
   document.addEventListener('touchend', _onBtnDragEnd, { once: true });
   document.addEventListener('touchcancel', _onBtnDragEnd, { once: true });
@@ -4822,6 +4847,8 @@ function _onBtnDragEnd(e) {
   document.removeEventListener('touchcancel', _onBtnDragEnd);
   var grid = document.getElementById('quick-grid');
   if (grid) grid.querySelectorAll('.btn-drop-target').forEach(function(s) { s.classList.remove('btn-drop-target'); });
+  // Drop the ghost-slot reveal; applyButtonRowConfig() below restores the real visibility + grid.
+  if (grid) grid.querySelectorAll('.btn-ghost-slot').forEach(function(s) { s.classList.remove('btn-ghost-slot'); });
   var cancelled = e && e.type === 'touchcancel';
   if (_btnDragTarget && !cancelled) {
     var parent = el.parentElement;

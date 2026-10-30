@@ -999,6 +999,8 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 .tile-editor-add-row { opacity: .85; }
 .tile-add-btn { padding: 2px 10px; font-size: var(--fs-sm); border-radius: var(--radius); background: var(--btnfill); color: var(--btntext); border: none; cursor: pointer; flex-shrink: 0; }
 .tile-remove-btn { padding: 2px 7px; font-size: var(--fs-sm); border-radius: var(--radius); background: transparent; color: var(--label); border: 1px solid var(--border); cursor: pointer; flex-shrink: 0; }
+.tile-editor-reset-btn { display: block; width: 100%; margin-top: 10px; padding: 8px; font-size: var(--fs-sm); font-weight: var(--fw-bold); border-radius: var(--radius); background: transparent; color: var(--label); border: 1px solid var(--border); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.tile-editor-reset-btn:active { background: var(--border); }
 .tile-source-sel { font-size: var(--fs-sm); background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 4px; flex-shrink: 0; }
 .theme-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .theme-row-actions button {

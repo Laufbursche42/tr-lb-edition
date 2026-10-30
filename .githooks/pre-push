@@ -22,6 +22,51 @@
 set -u
 
 # =================================================================
+# VERSION-COUNTER GATE - releaseCount/codeBase are CI-managed (bumped per push).
+# Block a push that changes releaseCount vs origin (no series bump) or whose next
+# version is already tagged, else CI silently skips the build (the v1.1.33 incident).
+# Skip: SKIP_VERSION_GATE=1 git push   | auto-skip on first push.
+# =================================================================
+if [ -z "${SKIP_VERSION_GATE:-}" ] && git rev-parse origin/main >/dev/null 2>&1; then
+  _ov() { git show "origin/main:version.properties" 2>/dev/null | sed -n "s/^$1=//p" | tr -d '[:space:]'; }
+  _nv() { git show "HEAD:version.properties"         2>/dev/null | sed -n "s/^$1=//p" | tr -d '[:space:]'; }
+  OG_MAJOR=$(_ov major); HD_MAJOR=$(_nv major)
+  OG_MINOR=$(_ov minor); HD_MINOR=$(_nv minor)
+  OG_RC=$(_ov releaseCount); HD_RC=$(_nv releaseCount)
+  OG_CB=$(_ov codeBase);     HD_CB=$(_nv codeBase)
+  SERIES=0
+  [ -n "$OG_MAJOR" ] && [ "$HD_MAJOR" != "$OG_MAJOR" ] && SERIES=1
+  [ -n "$OG_MINOR" ] && [ "$HD_MINOR" != "$OG_MINOR" ] && SERIES=1
+  VG_OK=1
+  if [ "$SERIES" = "0" ]; then
+    if [ -n "$OG_RC" ] && [ "$HD_RC" != "$OG_RC" ]; then
+      echo "BLOCK: releaseCount changed vs origin/main (origin=$OG_RC, HEAD=$HD_RC) without a series bump."
+      echo "  releaseCount is CI-managed; commits must never change it."
+      echo "  -> if your branch is behind the last CI release bump: git pull --rebase origin main"
+      echo "  -> never hand-edit releaseCount. To release, just push; CI bumps the patch."
+      VG_OK=0
+    fi
+    if [ -n "$OG_CB" ] && [ "$HD_CB" != "$OG_CB" ]; then
+      echo "BLOCK: codeBase changed vs origin/main (origin=$OG_CB, HEAD=$HD_CB) without a series bump."
+      VG_OK=0
+    fi
+  fi
+  NEXT_VER="${HD_MAJOR}.${HD_MINOR}.$(( ${HD_RC:-0} + 1 ))"
+  if git ls-remote --exit-code --tags origin "refs/tags/v${NEXT_VER}" >/dev/null 2>&1; then
+    echo "BLOCK: this push computes next version v${NEXT_VER}, but tag v${NEXT_VER} already exists on origin."
+    echo "  CI would recompute an already-released version and SILENTLY skip the build."
+    echo "  -> releaseCount is stale; sync with origin: git pull --rebase origin main"
+    VG_OK=0
+  fi
+  if [ "$VG_OK" = "1" ]; then
+    echo "OK    [version-gate] releaseCount/codeBase match origin (CI-managed); next release = v${NEXT_VER}"
+  else
+    echo "  (bypass a genuine exception with: SKIP_VERSION_GATE=1 git push)"
+    exit 1
+  fi
+fi
+
+# =================================================================
 # RELEASE DOCUMENTATION GATE
 # A push that contains new app/src/main changes must be documented:
 #   - CHANGELOG.md must have a '## <next-version>' section, and

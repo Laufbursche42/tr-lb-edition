@@ -316,6 +316,41 @@ if [ -n "$EXP_EMAIL" ]; then
 fi
 
 # =================================================================
+# PHASE E - version-counter guard
+# releaseCount/codeBase are CI-managed; a commit must not change them (except a series
+# bump that also changes minor/major) -> prevents the silent release-skip (v1.1.33).
+# Bypass: LB_ALLOW_VERSION_EDIT=1 git commit ...
+# =================================================================
+if [ -z "${LB_ALLOW_VERSION_EDIT:-}" ] && grep -aqzF -- "version.properties" "$STAGED_LIST" 2>/dev/null; then
+  _sv() { git show ":version.properties"     2>/dev/null | sed -n "s/^$1=//p" | tr -d '[:space:]'; }  # staged (new)
+  _hv() { git show "HEAD:version.properties"  2>/dev/null | sed -n "s/^$1=//p" | tr -d '[:space:]'; }  # HEAD (old)
+  N_MAJOR=$(_sv major); O_MAJOR=$(_hv major)
+  N_MINOR=$(_sv minor); O_MINOR=$(_hv minor)
+  N_RC=$(_sv releaseCount); O_RC=$(_hv releaseCount)
+  N_CB=$(_sv codeBase);     O_CB=$(_hv codeBase)
+  SERIES=0
+  [ -n "$O_MAJOR" ] && [ "$N_MAJOR" != "$O_MAJOR" ] && SERIES=1
+  [ -n "$O_MINOR" ] && [ "$N_MINOR" != "$O_MINOR" ] && SERIES=1
+  if [ "$SERIES" = "0" ]; then
+    if [ -n "$O_RC" ] && [ "$N_RC" != "$O_RC" ]; then
+      echo "BLOCK version.properties : releaseCount changed by this commit ($O_RC -> $N_RC)."
+      echo "  releaseCount is CI-managed (bumped once per push); a commit must NEVER change it."
+      echo "  -> revert that line. To release, just push - CI bumps the patch automatically."
+      echo "  -> new series only: also bump minor/major, or: LB_ALLOW_VERSION_EDIT=1 git commit ..."
+      RC=1
+    fi
+    if [ -n "$O_CB" ] && [ "$N_CB" != "$O_CB" ]; then
+      echo "BLOCK version.properties : codeBase changed without a minor/major series bump ($O_CB -> $N_CB)."
+      echo "  codeBase only changes on a new series bump. -> revert, or bump minor/major too."
+      RC=1
+    fi
+    [ "$RC" -eq 0 ] && echo "OK    [version] releaseCount/codeBase unchanged (CI-managed)"
+  else
+    echo "OK    [version] new series bump ($O_MAJOR.$O_MINOR -> $N_MAJOR.$N_MINOR) - releaseCount/codeBase edits allowed"
+  fi
+fi
+
+# =================================================================
 # Result
 # =================================================================
 echo "-----------------------------------------------------------------"
