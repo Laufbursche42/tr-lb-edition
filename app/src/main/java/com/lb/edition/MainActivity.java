@@ -43,6 +43,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
+
 /**
  * Host activity: a full-screen WebView that renders the offline dashboard
  * (file:///android_asset/dashboard/telemetry.html) and exposes a "LB" JavaScript
@@ -114,6 +117,21 @@ public class MainActivity extends Activity {
             if (debugLog.isEnabled()) debugLog.start();
         } catch (Throwable t) {
             Log.e(TAG, "debug resume failed", t);
+        }
+
+        // On API 33+ (Android 13) the legacy onBackPressed() path is deprecated and removed in
+        // API 36. Register the modern handler so back navigation works on all supported devices,
+        // including Samsung One UI which may bypass onBackPressed() even on API 34-35.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                () -> {
+                    if (jsCanGoBack && webView != null) {
+                        webView.evaluateJavascript("if(window.__navBack)window.__navBack();", null);
+                    } else {
+                        finish();
+                    }
+                });
         }
 
         requestRuntimePermissions();

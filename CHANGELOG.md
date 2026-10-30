@@ -14,6 +14,13 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.33
+
+### Bug fixes
+
+- **Android back button works on all modern devices.**  Replaced the deprecated `onBackPressed()` path with the Android 13+ `OnBackInvokedDispatcher` API.  Devices running Android 13-16 and Samsung Galaxy phones (One UI 6+) no longer exit the app when pressing back from a sub-page; `onBackPressed()` remains as fallback for Android 12 and below.
+- **Back from sub-pages goes directly to the main screen.**  Opening Scooter Info, Battery Info or Error Reports now closes the Settings sheet first, so one back press returns to the main screen instead of leaving the Settings sheet open underneath.
+
 ## 1.1.32
 
 ### Bundled themes

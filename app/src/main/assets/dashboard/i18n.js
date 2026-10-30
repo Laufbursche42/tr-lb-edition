@@ -20,12 +20,8 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
-      "<b>Carbon &amp; Lambo themes pre-installed.</b> Two polished production themes ship with the app and appear in the Theme Manager on first install &mdash; ready to activate straight away. They are never overwritten after that.",
-      "<b>Style Editor: live-tune any theme.</b> All colours, font sizes and tile heights are directly editable &mdash; changes are saved per theme and survive updates. Three new transparency sliders (Tile&nbsp;/ Button&nbsp;/ Gauge) let you set opacity from 0&nbsp;% (solid) to 100&nbsp;% (invisible). A Full&nbsp;Reset button restores all defaults at once.",
-      "<b>Per-tile and per-field show&nbsp;/ hide + button row overhaul.</b> Every individual dashboard element &mdash; each speed drum, hero cell, motor row and data field &mdash; can be shown or hidden independently. Each button slot picks its function from a dropdown; buttons wrap onto a second row; row alignment is configurable; drag to reorder.",
-      "<b>Tile drag-to-reorder.</b> Long-press any tile on the main screen for 500&nbsp;ms to start dragging; drop it at a new position &mdash; tiles shift, they do not swap. Order is saved per theme and restored after app updates.",
-      "<b>Theme guide expanded.</b> The offline guide now has a complete SVG circular speed gauge section (with worked geometry), a full-scope example theme &laquo;Orbit&raquo; with line-by-line comments, and a floating back-to-top button. Open it with the 🎨 button at the bottom of the Theme Manager.",
-      "<b>Theme flash fix &amp; full i18n pass.</b> Themes now apply before the first paint &mdash; no more brief flash of the default layout on startup or when switching themes. Every label in the Style Editor, Tile Manager and Button Row Editor is now fully translated in German and English.",
+      "<b>Back button fixed on Samsung &amp; Android 13&ndash;16.</b> Pressing the Android back button no longer exits the app from sub-pages. The app now uses the modern back gesture API &mdash; fully compatible with Samsung One UI 6+, Android 13 through 16 and all gesture navigation modes.",
+      "<b>One tap back to the main screen.</b> Opening Scooter Info, Battery Info or Error Reports now closes the Settings menu first &mdash; one back press returns directly to the main screen.",
     ],
 
     'disclaimer.points': [
@@ -869,12 +865,8 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
-      "<b>Carbon &amp; Lambo Themes vorinstalliert.</b> Zwei fertige Produktions-Themes werden mit der App mitgeliefert und erscheinen beim ersten Start sofort im Theme-Manager &mdash; bereit zum Aktivieren. Sie werden danach nie &uuml;berschrieben.",
-      "<b>Stil-Editor: jedes Theme live anpassen.</b> Alle Farben, Schriftgr&ouml;&szlig;en und Kachel-H&ouml;hen sind direkt editierbar &mdash; &Auml;nderungen werden pro Theme gespeichert und &uuml;berleben Updates. Drei neue Transparenz-Schieberegler (Kachel&nbsp;/ Button&nbsp;/ Tacho) von 0&nbsp;% (solide) bis 100&nbsp;% (unsichtbar). Ein Komplett-Reset stellt alle Standardwerte auf einmal wieder her.",
-      "<b>Kacheln und Felder einzeln ein-/ausblenden + Schnellkn&ouml;pfe &uuml;berarbeitet.</b> Jedes einzelne Dashboard-Element &mdash; Tacho-Anzeige, Hero-Kachel, Motoren-Zeile, Datenfeld &mdash; kann unabh&auml;ngig ein- oder ausgeblendet werden. Jeder Button-Slot w&auml;hlt seine Funktion per Dropdown; Kn&ouml;pfe umbrechen in zweite Reihe; Ausrichtung einstellbar; Sortieren per Drag.",
-      "<b>Kacheln per Drag verschieben.</b> Kachel 500&nbsp;ms gedr&uuml;ckt halten, an neue Position ziehen &mdash; andere Kacheln r&uuml;cken nach, tauschen nicht. Reihenfolge wird pro Theme gespeichert und nach App-Updates wiederhergestellt.",
-      "<b>Theme-Anleitung erweitert.</b> Die Offline-Anleitung hat jetzt einen kompletten Abschnitt f&uuml;r einen SVG-Rundtacho (mit Geometrie-Beispiel), ein vollst&auml;ndig kommentiertes Vollbild-Beispiel-Theme &laquo;Orbit&raquo; und einen schwebenden Zur&uuml;ck-nach-oben-Knopf. &Ouml;ffnen mit dem 🎨-Knopf unten im Theme-Manager.",
-      "<b>Kein Theme-Flackern mehr &amp; vollst&auml;ndige &Uuml;bersetzung.</b> Themes werden jetzt vor dem ersten Zeichnen angewendet &mdash; kein kurzes Aufblitzen des Standard-Layouts beim Start oder beim Theme-Wechsel mehr. Alle Beschriftungen im Stil-Editor, Kachel-Manager und Button-Editor sind jetzt vollst&auml;ndig auf Deutsch und Englisch &uuml;bersetzt.",
+      "<b>Zur&uuml;ck-Taste auf Samsung &amp; Android 13&ndash;16 repariert.</b> Die Android-Zur&uuml;ck-Taste schlie&szlig;t die App nicht mehr, wenn man sich auf einer Unterseite befindet. Die App verwendet jetzt die moderne Gesten-API &mdash; vollst&auml;ndig kompatibel mit Samsung One UI 6+, Android 13 bis 16 und allen Navigationsmodi.",
+      "<b>Einmal Zur&uuml;ck direkt zur Hauptseite.</b> Scooter-Info, Akku-Info oder Fehlerberichte &ouml;ffnen schlie&szlig;t das Einstellungs-Men&uuml; automatisch &mdash; ein Tastendruck bringt direkt zur Hauptseite.",
     ],
 
     'disclaimer.points': [

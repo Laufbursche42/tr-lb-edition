@@ -3351,6 +3351,7 @@ function renderErrorReports() {
 
 let _errTimer = null;
 function openErrorReports() {
+  closeSettings();
   renderErrorReports();
   document.getElementById('error-reports-page').classList.add('open');
   clearInterval(_errTimer);
@@ -3625,7 +3626,7 @@ function _updateNavState() {
     ['confirm-overlay','whatsnew-overlay','verinfo-overlay','disclaimer-overlay',
      'guide-page','firmware-page','battery-page','error-reports-page','info-page',
      'scooter-page','connect-page','theme-page','display-page','routes-page',
-     'settings-sheet'].some(function(id) {
+     'streaming-page','settings-sheet'].some(function(id) {
       var el = document.getElementById(id);
       if (el && el.classList.contains('open')) { open = true; return true; }
     });
@@ -3659,6 +3660,7 @@ window.__navBack = function() {
     ['theme-page',         closeThemePage],
     ['display-page',       closeDisplayPage],
     ['routes-page',        function() { document.getElementById('routes-page').classList.remove('open'); }],
+    ['streaming-page',     function() { document.getElementById('streaming-page').classList.remove('open'); }],
     ['settings-sheet',     closeSettings],
   ];
   for (var j = 0; j < pageMap.length; j++) {
@@ -5419,6 +5421,7 @@ function renderRideLog() {
 
 let _infoTimer = null;
 function openInfoPage() {
+  closeSettings();
   _btNamePrefilled = false;   // re-prefill the identity editor with the current FIN on open
   renderInfoPage();
   renderRideLog();                                  // toggle state + last-3-rides list, refreshed on open
@@ -5524,6 +5527,7 @@ function renderBatteryPage() {
 
 let _batteryTimer = null;
 function openBatteryPage() {
+  closeSettings();
   renderBatteryPage();
   document.getElementById('battery-page').classList.add('open');
   clearInterval(_batteryTimer);
