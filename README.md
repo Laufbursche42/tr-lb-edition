@@ -1,4 +1,4 @@
-# Laufbursche Edition
+﻿# Laufbursche Edition
 
 An alternative app for Teverun e-scooters.
 
@@ -24,6 +24,7 @@ An alternative app for Teverun e-scooters.
     - [Offline bicycle navigation](#offline-bicycle-navigation)
     - [Offline maps](#offline-maps)
     - [Recording, logging & preferences](#recording-logging--preferences)
+    - [Custom themes](#custom-themes)
   - [Firmware: update and flash](#firmware-update-and-flash)
   - [Screenshots](#screenshots)
   - [Installing the app](#installing-the-app)
@@ -146,6 +147,14 @@ Step-by-step in [Firmware: update and flash](#firmware-update-and-flash). Implem
 - **In-app debug logging** - persistent, with a red banner while active and an **export** button. No PC needed.
 - **Full-screen toggle** (when off, the app sits below the Android status bar), **km / mph** units (mph converts both speed and distance - Trip, Odometer and saved-route distances - to miles), **light / dark app theme** and a **"Version Info & Disclaimer"** entry.
 - **A language switch in the Display settings** turns the whole interface, help popups included, English or German. On the first start the app follows your phone's language and your choice sticks after that.
+
+### Custom themes
+
+Replace the main-screen fold area with your own HTML and CSS layout. A theme with `"scope":"full"` in its `theme.json` replaces the entire scrollable dashboard - both the fold and the data tiles below. Live scooter values (speed, SOC, gear, temperatures, ...) are fed into your HTML automatically every 500 ms via `data-lb` attribute hooks  -  no JavaScript required or allowed. The tile manager lets users show/hide and drag-reorder your declared tile blocks, and the Style Editor on top of your theme lets them adjust colours, brightness and font sizes without touching your files.
+
+Themes are distributed as a **ZIP bundle** (`theme.html` + `theme.css` + optional `theme.json`). The format is shared across Laufbursche apps, so a theme built for one app can be imported into any other. Import via **Settings → Display → Theme manager → Import theme**; export any installed theme via the share button in the theme list.
+
+**[→ Full theme authoring guide: THEME-GUIDE.md](THEME-GUIDE.md)**
 
 ## Firmware: update and flash
 

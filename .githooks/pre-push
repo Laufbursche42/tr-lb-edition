@@ -21,6 +21,53 @@
 
 set -u
 
+# =================================================================
+# RELEASE DOCUMENTATION GATE
+# A push that contains new app/src/main changes must be documented:
+#   - CHANGELOG.md must have a '## <next-version>' section, and
+#   - i18n.js must carry >=2 new what's-new <b> points (vs origin/main).
+#
+# The "next version" is computed from version.properties: major.minor.(releaseCount+1).
+# CI will bump releaseCount after this push, so this gate checks the documentation
+# matches what the release will be called.
+#
+# Skip: SKIP_RELEASE_GATE=1 git push  (genuine false-positive only)
+# Auto-bypassed: when origin/main does not exist (first push to remote).
+# =================================================================
+if [ -z "${SKIP_RELEASE_GATE:-}" ] && git rev-parse origin/main >/dev/null 2>&1; then
+  # Check whether this push touches release-relevant app/src/main paths.
+  AHEAD_APP=$(git log --oneline origin/main..HEAD -- app/src/main/ 2>/dev/null \
+              | grep -cv '^$' | tr -d '[:space:]')
+  if [ "${AHEAD_APP:-0}" -gt 0 ]; then
+    MAJOR=$(sed -n 's/^major=//p' version.properties 2>/dev/null || echo 1)
+    MINOR=$(sed -n 's/^minor=//p' version.properties 2>/dev/null || echo 1)
+    RCOUNT=$(sed -n 's/^releaseCount=//p' version.properties 2>/dev/null || echo 0)
+    NEXT_VER="${MAJOR}.${MINOR}.$((RCOUNT + 1))"
+    CL_FILE="CHANGELOG.md"
+    WN_FILE="app/src/main/assets/dashboard/i18n.js"
+    RG_OK=1
+    if grep -qF "## ${NEXT_VER}" "$CL_FILE" 2>/dev/null; then
+      echo "OK    [release-gate] CHANGELOG has ## ${NEXT_VER}"
+    else
+      echo "BLOCK: push would release v${NEXT_VER} but CHANGELOG.md has no '## ${NEXT_VER}' section."
+      echo "  -> Add '## ${NEXT_VER}' to the top of CHANGELOG.md before pushing."
+      RG_OK=0
+    fi
+    WN_ADDED=$(git diff origin/main..HEAD -- "$WN_FILE" 2>/dev/null \
+               | grep -cE '^\+[[:space:]]*"<b>' || echo 0)
+    if [ "${WN_ADDED:-0}" -ge 2 ]; then
+      echo "OK    [release-gate] ${WN_ADDED} what's-new point(s) added in i18n.js"
+    else
+      echo "BLOCK: i18n.js adds ${WN_ADDED:-0} what's-new <b> point(s) vs origin/main; need >=2."
+      echo "  -> Add at least one <b>...</b> what's-new point per language (EN + DE) in i18n.js."
+      RG_OK=0
+    fi
+    [ "$RG_OK" = "0" ] && exit 1
+  else
+    echo "OK    [release-gate] no app/src/main changes in this push - documentation gate skipped."
+  fi
+fi
+
 if [ -n "${SKIP_SAST:-}" ]; then
   echo "pre-push: SKIP_SAST set -> SAST scan skipped."
   exit 0

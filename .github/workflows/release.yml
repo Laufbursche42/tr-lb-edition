@@ -24,6 +24,7 @@ on:
       - '.github/**'
       - '.githooks/**'
       - 'firmware/**'
+      - 'version.properties'
   workflow_dispatch:
 
 permissions:
@@ -34,30 +35,31 @@ jobs:
     name: Build and publish signed APK
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (full history for commit-count versioning)
+      - name: Checkout
         uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
-      - name: Compute version from git commit count
+      - name: Bump releaseCount and compute version
         id: ver
         run: |
-          # The patch counts ONLY commits that change release-relevant paths - the exact
-          # complement of the paths-ignore list below, so "a commit that bumps the number"
-          # and "a commit that triggers this workflow" are the same set and versions stay gapless.
-          # Must match RELEASE_EXCLUDES in app/build.gradle so the tag and the APK agree.
-          COUNT=$(git rev-list --count HEAD -- . \
-            ':(exclude)*.md' ':(exclude)screenshots' ':(exclude)LICENSE' \
-            ':(exclude).gitattributes' ':(exclude).gitignore' \
-            ':(exclude).github' ':(exclude).githooks' ':(exclude)firmware')
-          # The series comes from version.properties, the same file the gradle build reads.
+          # releaseCount in version.properties is the patch of the LAST release.
+          # Incrementing it here means: this push = one new release.
           MAJOR=$(sed -n 's/^major=//p' version.properties)
           MINOR=$(sed -n 's/^minor=//p' version.properties)
-          ZERO=$(sed -n 's/^patchZeroAt=//p' version.properties)
-          PATCH=$(( COUNT - ZERO )); [ "$PATCH" -lt 0 ] && PATCH=0
-          echo "version=$MAJOR.$MINOR.$PATCH" >> "$GITHUB_OUTPUT"
-          echo "tag=v$MAJOR.$MINOR.$PATCH" >> "$GITHUB_OUTPUT"
-          echo "Version $MAJOR.$MINOR.$PATCH  (release-commit count $COUNT, patch 0 at $ZERO)"
+          OLD_COUNT=$(sed -n 's/^releaseCount=//p' version.properties)
+          NEW_COUNT=$(( OLD_COUNT + 1 ))
+          # Update version.properties in-place.
+          sed -i "s/^releaseCount=.*/releaseCount=$NEW_COUNT/" version.properties
+          echo "version=$MAJOR.$MINOR.$NEW_COUNT" >> "$GITHUB_OUTPUT"
+          echo "tag=v$MAJOR.$MINOR.$NEW_COUNT" >> "$GITHUB_OUTPUT"
+          echo "Version $MAJOR.$MINOR.$NEW_COUNT  (releaseCount bumped $OLD_COUNT -> $NEW_COUNT)"
+
+      - name: Commit bumped releaseCount back to main
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.properties
+          git commit -m "ci: release ${{ steps.ver.outputs.tag }} [skip ci]"
+          git push
 
       - name: Skip if this version was already released
         id: exists

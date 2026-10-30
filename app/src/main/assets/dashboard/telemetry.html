@@ -4,7 +4,7 @@ Copyright (c) 2026 Laufbursche (https://github.com/Laufbursche42)
 Source-available under the PolyForm Noncommercial License 1.0.0 with Additional Terms. See license.md.
 -->
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" data-theme-loading>
 <head>
 <meta charset="UTF-8">
 <!-- Styling may only come from a file next to this page, never from the document
@@ -45,6 +45,13 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <div class="fw-req-banner is-hidden" id="bmini-fw-banner" data-i18n="dash.bmini.fw.required">&#9888; Firmware 3.4.6 required for Blade Mini Ultra</div>
   </div>
 
+  <!-- ── Bottom navigation bar (shown when bottom-nav mode is active) ── -->
+  <div id="bottombar">
+    <button class="icon-btn bb-btn" id="bb-btn-left" aria-label="Left shortcut"></button>
+    <button class="icon-btn bb-btn" id="bb-btn-settings" aria-label="Settings" data-i18n-aria="dash.topbar.settings" data-i18n="dash.topbar.settings.icon">&#9881;</button>
+    <button class="icon-btn bb-btn" id="bb-btn-right" aria-label="Right shortcut"></button>
+  </div>
+
   <!-- ── Scrollable Content ─────────────────────────── -->
   <div id="scroller">
 
@@ -55,29 +62,29 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
      <div id="fold-inner">
 
     <!-- Speed Drums -->
-    <div id="speed-row">
-      <div class="speed-drum ble-drum">
+    <div id="speed-row" data-section-container>
+      <div class="speed-drum ble-drum" data-tile-id="tile-speed-ble" data-tile-label="Speed VCU" data-i18n-tile-label="tile.label.speed.ble">
         <div class="sd-val" id="ble-speed">-</div>
         <div class="sd-unit" data-i18n="dash.speed.vcu.unit">km/h &middot; VCU</div>
       </div>
-      <div class="speed-drum gps-drum">
+      <div class="speed-drum gps-drum" data-tile-id="tile-speed-gps" data-tile-label="Speed GPS" data-i18n-tile-label="tile.label.speed.gps">
         <div class="sd-val" id="gps-speed">-</div>
         <div class="sd-unit" data-i18n="dash.speed.gps.unit">km/h &middot; GPS</div>
       </div>
     </div>
 
     <!-- Hero Metrics -->
-    <div id="hero-row">
-      <div class="hero-cell">
+    <div id="hero-row" data-section-container>
+      <div class="hero-cell" data-cell-id="hero-battery" data-tile-id="tile-hero-soc" data-tile-label="Battery %" data-i18n-tile-label="tile.label.battery">
         <div class="hc-val" id="soc-val">-</div>
         <div class="hc-unit" data-i18n="dash.hero.battery.unit">Battery %</div>
       </div>
-      <div class="hero-cell">
+      <div class="hero-cell" data-cell-id="hero-gear" data-tile-id="tile-hero-gear" data-tile-label="Gear" data-i18n-tile-label="tile.label.gear">
         <div class="hc-val" id="gear-val">-</div>
         <div class="hc-unit" data-i18n="dash.hero.gear.label">Gear</div>
         <div class="hc-tag is-hidden" id="gear-tag"></div>
       </div>
-      <div class="hero-cell" id="current-cell">
+      <div class="hero-cell" id="current-cell" data-cell-id="hero-current" data-tile-id="tile-hero-cur" data-tile-label="A Current" data-i18n-tile-label="tile.label.current">
         <div class="hc-val" id="current-val">-</div>
         <div class="hc-unit" data-i18n="dash.hero.current.unit">A Current</div>
       </div>
@@ -85,124 +92,127 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
 
     <!-- Motors (dual motor: rear + front). One value per tile: the temperatures and the power in
          the first row, the currents in the second. -->
+    <div id="motors-section" data-section-container>
     <div class="section-hdr sub-hdr">
       <span data-i18n="dash.motors.section">Motors</span>
     </div>
     <div id="motor-area">
-      <div id="motor-row">
-        <div class="motor-cell">
+      <div id="motor-row" data-tile-id="tile-motor-r1" data-tile-label="Motors row 1" data-i18n-tile-label="tile.label.motor.r1">
+        <div class="motor-cell" data-cell-id="motor-rear-t">
           <div class="mc-title" data-i18n="dash.motor.rear.title">REAR</div>
           <div class="mc-main"><span id="mr-temp">-</span></div>
           <div class="mc-unit" data-i18n="dash.motor.rear.temp.unit">°C</div>
         </div>
-        <div class="motor-cell">
+        <div class="motor-cell" data-cell-id="motor-front-t">
           <div class="mc-title" data-i18n="dash.motor.front.title">FRONT</div>
           <div class="mc-main"><span id="mf-temp">-</span></div>
           <div class="mc-unit" data-i18n="dash.motor.front.temp.unit">°C</div>
         </div>
-        <div class="motor-cell">
+        <div class="motor-cell" data-cell-id="motor-power">
           <div class="mc-title" data-i18n="dash.motor.power.title">POWER</div>
           <div class="mc-main"><span id="m-power">-</span></div>
           <div class="mc-unit" data-i18n="dash.motor.power.unit">kW</div>
         </div>
       </div>
-      <div id="motor-row-2">
-        <div class="motor-cell">
+      <div id="motor-row-2" data-tile-id="tile-motor-r2" data-tile-label="Motors row 2" data-i18n-tile-label="tile.label.motor.r2">
+        <div class="motor-cell" data-cell-id="motor-rear-a">
           <div class="mc-title" data-i18n="dash.motor.rear.title">REAR</div>
           <div class="mc-main"><span id="mr-cur">-</span></div>
           <div class="mc-unit" data-i18n="dash.motor.rear.current.unit">A</div>
         </div>
-        <div class="motor-cell">
+        <div class="motor-cell" data-cell-id="motor-front-a">
           <div class="mc-title" data-i18n="dash.motor.front.title">FRONT</div>
           <div class="mc-main"><span id="mf-cur">-</span></div>
           <div class="mc-unit" data-i18n="dash.motor.front.current.unit">A</div>
         </div>
-        <div class="motor-cell">
+        <div class="motor-cell" data-cell-id="motor-total-a">
           <div class="mc-title" data-i18n="dash.motor.current.total.title">TOTAL</div>
           <div class="mc-main"><span id="m-total-cur">-</span></div>
           <div class="mc-unit" data-i18n="dash.motor.rear.current.unit">A</div>
         </div>
       </div>
     </div>
+    </div><!-- end #motors-section -->
 
-    <!-- Quick motor-mode toggle (mirrors the settings-sheet #motor-mode-seg codes).
-         Disabled (greyed, non-interactive) until the scooter is connected. -->
-    <div id="motor-quick" class="mq-disabled" role="group" aria-label="Motor mode quick toggle" data-i18n-aria="dash.motors.quick.group">
-      <button type="button" class="mq-btn" data-mm="2" aria-label="Front motor only" data-i18n-aria="dash.motors.mode.front.aria" data-i18n="dash.motors.mode.front">Front</button>
-      <button type="button" class="mq-btn" data-mm="1" aria-label="Rear motor only" data-i18n-aria="dash.motors.mode.rear.aria" data-i18n="dash.motors.mode.rear">Rear</button>
-      <button type="button" class="mq-btn" data-mm="0" aria-label="Both motors" data-i18n-aria="dash.motors.mode.both.aria" data-i18n="dash.motors.mode.both">Both</button>
-      <button type="button" class="mq-btn mq-smart" aria-label="Toggle Smart (TCS)" data-i18n-aria="dash.motors.mode.smart.aria" data-i18n="dash.motors.mode.smart">Smart</button>
-    </div>
-
-    <!-- Quick drive-mode toggles. Same controller keys as the scooter-settings sheet, but written
-         immediately instead of on Save. Greyed out until the scooter is connected. -->
-    <div id="drive-quick" class="dq-disabled" role="group" aria-label="Drive mode quick toggles" data-i18n-aria="dash.drive.quick.group">
-      <button type="button" class="dq-btn" data-dq="startMode" aria-label="Toggle kick start" data-i18n-aria="dash.drive.quick.kickstart.aria" data-i18n="dash.drive.quick.kickstart">Kickstart</button>
-      <button type="button" class="dq-btn" data-dq="abs" aria-label="Toggle ABS" data-i18n-aria="dash.drive.quick.abs.aria" data-i18n="dash.drive.quick.abs">ABS</button>
-      <button type="button" class="dq-btn" data-dq="ecoMode" aria-label="Toggle eco mode" data-i18n-aria="dash.drive.quick.eco.aria" data-i18n="dash.drive.quick.eco">Eco</button>
-      <button type="button" class="dq-btn" data-dq="cruise" aria-label="Toggle cruise control" data-i18n-aria="dash.drive.quick.cruise.aria" data-i18n="dash.drive.quick.cruise">Cruise</button>
+    <!-- Quick action grid: motor-mode + drive-mode buttons merged into one 8-cell grid.
+         Each button has data-btn-id so they can be individually drag-sorted between rows.
+         Greyed out (qg-disabled) until the scooter is connected. -->
+    <div id="quick-grid" class="qg-disabled" role="group" data-tile-id="quick-actions" data-tile-label="Quick Buttons" data-tile-no-editor="true">
+      <button type="button" class="mq-btn" data-mm="2" aria-label="Front motor only" data-i18n-aria="dash.motors.mode.front.aria" data-i18n="dash.motors.mode.front" data-btn-id="btn-mm-front" data-bb-shortcut="mm-front" data-bb-label="Front">Front</button>
+      <button type="button" class="mq-btn" data-mm="1" aria-label="Rear motor only" data-i18n-aria="dash.motors.mode.rear.aria" data-i18n="dash.motors.mode.rear" data-btn-id="btn-mm-rear" data-bb-shortcut="mm-rear" data-bb-label="Rear">Rear</button>
+      <button type="button" class="mq-btn" data-mm="0" aria-label="Both motors" data-i18n-aria="dash.motors.mode.both.aria" data-i18n="dash.motors.mode.both" data-btn-id="btn-mm-both" data-bb-shortcut="mm-both" data-bb-label="Both">Both</button>
+      <button type="button" class="mq-btn mq-smart" aria-label="Toggle Smart (TCS)" data-i18n-aria="dash.motors.mode.smart.aria" data-i18n="dash.motors.mode.smart" data-btn-id="btn-mm-smart" data-bb-shortcut="mm-smart" data-bb-label="Smart">Smart</button>
+      <button type="button" class="dq-btn" data-dq="startMode" aria-label="Toggle kick start" data-i18n-aria="dash.drive.quick.kickstart.aria" data-i18n="dash.drive.quick.kickstart" data-btn-id="btn-dq-kick" data-bb-shortcut="dq-kick" data-bb-label="Kick">Kickstart</button>
+      <button type="button" class="dq-btn" data-dq="abs" aria-label="Toggle ABS" data-i18n-aria="dash.drive.quick.abs.aria" data-i18n="dash.drive.quick.abs" data-btn-id="btn-dq-abs" data-bb-shortcut="dq-abs" data-bb-label="ABS">ABS</button>
+      <button type="button" class="dq-btn" data-dq="ecoMode" aria-label="Toggle eco mode" data-i18n-aria="dash.drive.quick.eco.aria" data-i18n="dash.drive.quick.eco" data-btn-id="btn-dq-eco" data-bb-shortcut="dq-eco" data-bb-label="Eco">Eco</button>
+      <button type="button" class="dq-btn" data-dq="cruise" aria-label="Toggle cruise control" data-i18n-aria="dash.drive.quick.cruise.aria" data-i18n="dash.drive.quick.cruise" data-btn-id="btn-dq-cruise" data-bb-shortcut="dq-cruise" data-bb-label="Cruise">Cruise</button>
     </div>
 
      </div>
     </div>
     <!-- end of fold -->
 
-    <!-- Data Grid -->
+    <!-- Data Grid - Fahrzeug & Batterie -->
+    <div id="sect-vehicle" data-section-container>
     <div class="section-hdr sub-hdr" data-i18n="dash.grid.vehicle.section">Vehicle &amp; battery</div>
     <div id="data-grid">
-      <div class="dg-row">
+      <div class="dg-row" data-tile-id="tile-dg-speed" data-tile-label="Avg / Max Speed" data-i18n-tile-label="tile.label.dg.speed">
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.ride.speed.avg">Avg speed</span><span class="dg-value" id="dg-avg">-</span></div>
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.grid.speed.max">Max speed</span><span class="dg-value" id="dg-max">-</span></div>
       </div>
-      <div class="dg-row">
+      <div class="dg-row" data-tile-id="tile-dg-volt" data-tile-label="Voltage / Pole volt" data-i18n-tile-label="tile.label.dg.volt">
         <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label" data-i18n="dash.grid.voltage">Voltage</span><button type="button" class="set-help" data-set-help="dg-volt" aria-label="What is this?" data-i18n-aria="dash.help.what" data-i18n="dash.help.icon">?</button></span><span class="dg-value" id="dg-volt">-</span></div>
         <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label" data-i18n="dash.grid.pole.voltage">Pole volt</span><button type="button" class="set-help" data-set-help="dg-pole" aria-label="What is this?" data-i18n-aria="dash.help.what" data-i18n="dash.help.icon">?</button></span><span class="dg-value" id="dg-pole">-</span></div>
       </div>
-      <div class="dg-row">
+      <div class="dg-row" data-tile-id="tile-dg-soh" data-tile-label="SOH / Recuperation" data-i18n-tile-label="tile.label.dg.soh">
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.grid.battery.soh">Battery SOH</span><span class="dg-value" id="dg-soh">-</span></div>
         <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label dg-label-wide" data-i18n="dash.grid.recuperation">Recuperation</span><button type="button" class="set-help" data-set-help="dg-recup" aria-label="What is this?" data-i18n-aria="dash.help.what" data-i18n="dash.help.icon">?</button></span><span class="dg-value" id="dg-fb">-</span></div>
       </div>
-      <div class="dg-row">
+      <div class="dg-row" data-tile-id="tile-dg-odo" data-tile-label="Total / Trip km" data-i18n-tile-label="tile.label.dg.odo">
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.grid.odo.total">Total</span><span class="dg-value" id="dg-total">-</span></div>
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.grid.odo.trip">Trip</span><span class="dg-value" id="dg-single">-</span></div>
       </div>
-      <div class="dg-row">
+      <div class="dg-row" data-tile-id="tile-dg-rssi" data-tile-label="RSSI / Error" data-i18n-tile-label="tile.label.dg.rssi">
         <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label" data-i18n="dash.grid.rssi">RSSI</span><button type="button" class="set-help" data-set-help="dg-rssi" aria-label="What is this?" data-i18n-aria="dash.help.what" data-i18n="dash.help.icon">?</button></span><span class="dg-value" id="dg-rssi">-</span></div>
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.grid.error">Error</span><span class="dg-value" id="dg-err">-</span></div>
       </div>
     </div>
+    </div><!-- /sect-vehicle -->
 
-    <!-- Active gear (per-gear values the controller is delivering in the current gear) -->
+    <!-- Active gear -->
+    <div id="sect-gear" data-section-container>
     <div class="section-hdr sub-hdr" data-i18n="dash.gear.section">Active gear</div>
-    <div id="data-grid">
-      <div class="dg-row">
+    <div id="data-grid-gear">
+      <div class="dg-row" data-tile-id="tile-gear-start" data-tile-label="Front / Rear Start" data-i18n-tile-label="tile.label.gear.start">
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.gear.front.start">Front start</span><span class="dg-value" id="dg-fstart">-</span></div>
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.gear.rear.start">Rear start</span><span class="dg-value" id="dg-rstart">-</span></div>
       </div>
-      <div class="dg-row">
+      <div class="dg-row" data-tile-id="tile-gear-curlim" data-tile-label="Cur. Limit" data-i18n-tile-label="tile.label.gear.curlim">
         <div class="dg-cell"><span class="dg-label dg-label-wide" data-i18n="dash.gear.front.current.limit">Front cur. limit</span><span class="dg-value" id="dg-fcurlim">-</span></div>
         <div class="dg-cell"><span class="dg-label dg-label-wide" data-i18n="dash.gear.rear.current.limit">Rear cur. limit</span><span class="dg-value" id="dg-rcurlim">-</span></div>
       </div>
-      <div class="dg-row one-col">
+      <div class="dg-row one-col" data-tile-id="tile-gear-eabs" data-tile-label="EABS Level" data-i18n-tile-label="tile.label.gear.eabs">
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.gear.eabs.level">EABS level</span><span class="dg-value" id="dg-eabs">-</span></div>
       </div>
     </div>
+    </div><!-- /sect-gear -->
 
     <!-- Current ride (GPS) -->
+    <div id="sect-ride" data-section-container>
     <div class="section-hdr sub-hdr" data-i18n="dash.ride.section">Current ride (GPS)</div>
-    <div id="data-grid">
-      <div class="dg-row">
+    <div id="data-grid-ride">
+      <div class="dg-row" data-tile-id="tile-ride-disttime" data-tile-label="Distance / Time" data-i18n-tile-label="tile.label.ride.disttime">
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.ride.distance">Distance</span><span class="dg-value" id="dg-dist">-</span></div>
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.ride.time">Time</span><span class="dg-value" id="dg-time">-</span></div>
       </div>
-      <div class="dg-row one-col">
+      <div class="dg-row one-col" data-tile-id="tile-ride-avg" data-tile-label="Avg Speed (ride)" data-i18n-tile-label="tile.label.ride.avg">
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.ride.speed.avg">Avg speed</span><span class="dg-value" id="dg-ride-avg">-</span></div>
       </div>
-      <div class="dg-row">
+      <div class="dg-row" data-tile-id="tile-ride-alt" data-tile-label="Altitude / Elevation" data-i18n-tile-label="tile.label.ride.alt">
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.ride.altitude">Altitude</span><span class="dg-value" id="dg-alt">-</span></div>
         <div class="dg-cell"><span class="dg-label" data-i18n="dash.ride.elevation">Elev +/-</span><span class="dg-value" id="dg-hm">-</span></div>
       </div>
-      <div class="dg-row">
+      <div class="dg-row" data-tile-id="tile-ride-gps" data-tile-label="GPS Fix / Points" data-i18n-tile-label="tile.label.ride.gps">
         <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label" data-i18n="dash.ride.gps.fix">GPS fix</span><button type="button" class="set-help" data-set-help="dg-gps" aria-label="What is this?" data-i18n-aria="dash.help.what" data-i18n="dash.help.icon">?</button></span><span class="dg-value" id="dg-gps">-</span></div>
         <div class="dg-cell"><span class="dg-labwrap"><span class="dg-label" data-i18n="dash.ride.points">Points</span><button type="button" class="set-help" data-set-help="dg-pts" aria-label="What is this?" data-i18n-aria="dash.help.what" data-i18n="dash.help.icon">?</button></span><span class="dg-value" id="dg-pts">-</span></div>
       </div>
@@ -210,16 +220,22 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
         <button type="button" id="btn-stop-ride" class="ride-stop-btn" data-i18n="dash.ride.stop">Stop ride</button>
       </div>
     </div>
+    </div><!-- /sect-ride -->
 
-    <!-- All battery/cell values (scrollable like Lite) -->
+    <!-- All battery/cell values -->
+    <div id="sect-allvals" data-section-container data-tile-id="tile-allvals" data-tile-label="All values" data-i18n-tile-label="tile.label.allvals">
     <div class="section-hdr sub-hdr" data-i18n="dash.allvalues.section">All values</div>
     <div id="all-values">
       <div class="no-routes" id="all-values-empty" data-i18n="dash.allvalues.empty">Connect the scooter to see all values</div>
     </div>
+    </div><!-- /grid-allvals -->
 
     <!-- Bottom Spacer -->
     <div class="icon-16"></div>
   </div><!-- /scroller -->
+  <!-- Standard tile pool: Standard-tile DOM nodes park here while a custom theme is active.
+       display:none keeps it invisible; element IDs stay live so data-update getElementById calls work. -->
+  <div id="std-tile-pool"></div>
 </div><!-- /app -->
 
 <!-- ── Routes page ────────────────────────────────── -->
@@ -278,13 +294,16 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
   <button type="button" id="rb-stop" aria-label="Stop ride" data-i18n-aria="dash.ride.stop" data-i18n="dash.ride.stop">Stop ride</button>
 </div>
 
-<!-- ── Settings Overlay ────────────────────────────── -->
-<div id="settings-overlay"></div>
+<!-- ── Settings page ───────────────────────────────── -->
 <div id="settings-sheet">
-  <div class="settings-topbar">
-    <h2 data-i18n="routes.settings.title">Settings</h2>
-    <button class="icon-btn" id="btn-close-settings" data-i18n="settings.close.symbol">&#10005;</button>
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-close-settings" aria-label="Back" data-i18n-aria="settings.connect.back.aria" data-i18n="settings.connect.back.symbol">&#8592;</button>
+    </div>
+    <span class="tb-title" data-i18n="routes.settings.title">Settings</span>
+    <div class="tb-right"><span class="tb-spacer"></span></div>
   </div>
+  <div id="settings-scroller">
 
   <div id="update-banners">
     <button type="button" id="upd-app" class="update-banner is-hidden">
@@ -346,6 +365,16 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
         <option value="30" data-i18n="settings.gps.interval.option.30s">30 s</option>
       </select>
     </div>
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label" data-i18n="settings.ridebanner.dock.label">Recording banner andocken</div>
+        <div class="settings-row-sublabel" data-i18n="settings.ridebanner.dock.hint">Banner bleibt oben fixiert, nicht verschiebbar</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="toggle-ride-banner-dock">
+        <label class="toggle-label" for="toggle-ride-banner-dock"></label>
+      </div>
+    </div>
     <button id="btn-open-routes" class="mt-10"><span data-i18n="settings.scooter.routes.action">&#128506; Recorded routes</span><span id="routes-count-badge"></span></button>
   </div>
 
@@ -394,8 +423,52 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
         <label class="toggle-label" for="toggle-fullscreen"></label>
       </div>
     </div>
-    <button id="btn-open-display" class="settings-btn mt-10"><span data-i18n="settings.display.colors.action">&#127912; Display settings</span></button>
-    <button id="btn-open-theme" class="settings-btn mt-8" data-i18n="theme.settings.action">&#127912; Theme manager</button>
+    <div class="settings-row mt-10">
+      <div class="settings-row-left">
+        <div class="settings-row-label" data-i18n="settings.streaming.label">Streaming-Icon</div>
+        <div class="settings-row-sublabel" data-i18n="settings.streaming.hint">📡-Button in der Topbar anzeigen</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="toggle-streaming-btn">
+        <label class="toggle-label" for="toggle-streaming-btn"></label>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label" data-i18n="settings.bottomnav.label">Navigation unten</div>
+        <div class="settings-row-sublabel" data-i18n="settings.bottomnav.hint">Menüleiste unten statt oben rechts</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="toggle-bottom-nav">
+        <label class="toggle-label" for="toggle-bottom-nav"></label>
+      </div>
+    </div>
+    <div id="bb-shortcut-rows">
+      <div class="settings-row-sublabel note-gap" data-i18n="settings.bottomnav.sc.hint">Scooter-Buttons erst sichtbar nach Verbinden</div>
+      <div class="settings-row mt-6">
+        <div class="settings-row-left">
+          <div class="settings-row-label" data-i18n="settings.bottomnav.left.label">Shortcut links</div>
+        </div>
+        <select class="set-ctrl" id="bb-left-sel"></select>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label" data-i18n="settings.bottomnav.right.label">Shortcut rechts</div>
+        </div>
+        <select class="set-ctrl" id="bb-right-sel"></select>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label" data-i18n="settings.dashlock.label">Dashboard sperren</div>
+        <div class="settings-row-sublabel" data-i18n="settings.dashlock.hint">Kacheln können nicht durch langes Drücken verschoben werden</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="toggle-dash-lock">
+        <label class="toggle-label" for="toggle-dash-lock"></label>
+      </div>
+    </div>
+    <button id="btn-open-theme" class="settings-btn mt-10" data-i18n="theme.settings.action">&#127912; Theme manager</button>
   </div>
 
   <!-- Debug logging -->
@@ -426,6 +499,8 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <div class="settings-row-sublabel note-gap" data-i18n="settings.whatsnew.sub">What changed in this version</div>
     <button id="btn-version-info" data-i18n="settings.version.info.action">&#8505; Version Info &amp; Disclaimer</button>
   </div>
+
+  </div><!-- end #settings-scroller -->
 </div>
 
 <!-- ── Connect page ───────────────────────────────── -->
@@ -801,13 +876,6 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
      theme. The background picker is what OLED riders reach for: set it to pure black and the
      unlit pixels really switch off. -->
 <div id="display-page">
-  <div id="topbar">
-    <div class="tb-left">
-      <button class="icon-btn" id="btn-display-back" aria-label="Back" data-i18n-aria="info.nav.back">&#8592;</button>
-    </div>
-    <span class="tb-title" data-i18n="display.title">Display settings</span>
-    <div class="tb-right"><span class="tb-spacer"></span></div>
-  </div>
   <div id="display-scroller">
     <div class="settings-row-sublabel mb-10" data-i18n="display.hint">
       Colours are stored per theme: what you set here applies to the theme you are editing, the other one keeps its own values.
@@ -913,11 +981,32 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <div class="tb-right"><span class="tb-spacer"></span></div>
   </div>
   <div id="theme-scroller">
-    <p class="settings-row-sublabel" data-i18n="theme.page.hint">Import an HTML + CSS file pair to customise the dashboard layout.</p>
-    <button type="button" id="btn-theme-import" class="settings-btn" data-i18n="theme.import.action">&#8682; Import theme</button>
-    <p class="settings-row-sublabel m-6-0-2" data-i18n="theme.import.hint">Pick the .html file first, then the .css file.</p>
+    <p class="settings-row-sublabel" data-i18n="theme.page.hint">Import a .zip bundle to customise the dashboard layout. The zip must contain theme.html and theme.css.</p>
+    <button type="button" id="btn-theme-import" class="settings-btn" data-i18n="theme.import.action">&#8682; Import theme (.zip)</button>
+    <p class="settings-row-sublabel m-6-0-2" data-i18n="theme.import.hint">Pick a single .zip file - one zip = one theme.</p>
     <div id="theme-list"></div>
+    <div id="tile-editor"></div>
+    <div id="btn-row-editor"></div>
+    <div id="style-editor"></div>
+    <button type="button" id="btn-open-guide" class="settings-btn settings-btn-secondary" data-i18n="theme.guide.btn">&#127912; Theme creation guide</button>
   </div>
+</div>
+
+<!-- ── Theme guide page ──────────────────────────── -->
+<div id="guide-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-guide-back" aria-label="Back" data-i18n-aria="fw.nav.back.label" data-i18n="fw.nav.back.icon">&#8592;</button>
+    </div>
+    <span class="tb-title" data-i18n="theme.guide.title">Theme Guide</span>
+    <div class="tb-right"><span class="tb-spacer"></span></div>
+  </div>
+  <div id="guide-scroller">
+    <div id="guide-body"></div>
+  </div>
+  <button id="guide-totop" class="guide-totop" aria-hidden="true" data-i18n-aria="theme.guide.totop.aria">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>
+  </button>
 </div>
 
 <!-- ── Firmware update page ───────────────────────── -->
@@ -1317,45 +1406,75 @@ function hexToHsl(hex) {
   return { h: h, s: s * 100, l: l * 100 };
 }
 
-function applyDisplay() {
-  const cfg = loadDisplayCfg();
-  const theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-  const c = cfg[theme];
-  const root = document.documentElement;
-  root.style.setProperty('--card', c.card);
-  root.style.setProperty('--bg', c.bg);
-  const t = displayTextColors(theme, c.lum);
-  root.style.setProperty('--text', t.text);
-  root.style.setProperty('--label', t.label);
-
-  // The same slider dims the coloured readouts: one brightness control for the whole screen.
-  // 100 leaves the palette exactly as designed; lower values pull every coloured readout towards
-  // the background, dark mode downwards and light mode upwards.
-  const a = Math.max(0, Math.min(100, Number(c.lum)));
-  const k = 0.35 + 0.65 * (a / 100);
-  const base = DISPLAY_ACCENTS[theme];
-  Object.keys(base).forEach(name => {
-    const hsl = hexToHsl(base[name]);
-    if (!hsl) return;
-    const l = theme === 'dark' ? hsl.l * k : 100 - (100 - hsl.l) * k;
-    root.style.setProperty('--' + name, `hsl(${hsl.h.toFixed(0)} ${hsl.s.toFixed(0)}% ${l.toFixed(1)}%)`);
-  });
+function applySrtVisibility(show) {
+  var btn = document.getElementById('btn-streaming');
+  if (btn) btn.style.display = show ? '' : 'none';
 }
 
-// Push the rider's tile font sizes onto :root as CSS custom properties, then re-fit the fold so the
-// layout adapts. A key that is not set is removed, so the stylesheet falls back to the built-in size.
-function applyFontSizes() {
-  const f = loadDisplayCfg().fonts || {};
-  const root = document.documentElement;
-  FONT_META.forEach(m => {
-    if (f[m.key] != null) {
-      const px = Math.max(m.min, Math.min(m.max, Number(f[m.key]) || m.def));
-      root.style.setProperty(m.varName, px + 'px');
-    } else {
-      root.style.removeProperty(m.varName);
-    }
+// Fixed app-level shortcuts (always available regardless of scooter model)
+var BB_SHORTCUTS = {
+  'none':       { label: '',         labelKey: 'settings.bottomnav.sc.none' },
+  'connect':    { label: 'Connect',  labelKey: 'settings.bottomnav.sc.connect', action: function() { openConnectPage(); } },
+  'theme':      { label: 'Theme',    labelKey: 'settings.bottomnav.sc.theme',   action: function() { openThemePage(); } },
+  'routes':     { label: 'Routes',   labelKey: 'settings.bottomnav.sc.routes',  action: function() { renderRoutes(); document.getElementById('routes-page').classList.add('open'); } },
+  'navigation': { label: 'Nav',      labelKey: 'settings.bottomnav.sc.nav',     action: function() { if (window.LB && LB.openNavigation) LB.openNavigation(); else showToast(t('msg.app.only.in.app')); } },
+};
+
+// Discover scooter-action shortcuts from [data-bb-shortcut] elements in the DOM.
+// Hidden-from-grid buttons (via applyButtonRowConfig) are still included - the user
+// may want to reach them via bottom-nav even while keeping them off the quick-grid.
+function _bbDashShortcuts() {
+  var result = [];
+  document.querySelectorAll('[data-bb-shortcut]').forEach(function(el) {
+    // Exclude only elements that are structurally absent (e.g. inside a hidden theme section)
+    if (!el.isConnected) return;
+    var key = el.dataset.bbShortcut;
+    result.push({
+      key: key,
+      label: el.dataset.bbLabel || el.textContent.trim().substring(0, 6),
+      el: el
+    });
   });
-  try { scheduleFitFold(); } catch (e) {}
+  return result;
+}
+
+function applyBottomShortcuts() {
+  var lKey = (typeof storage !== 'undefined' ? storage.get('lb_bb_left') : null) || 'none';
+  var rKey = (typeof storage !== 'undefined' ? storage.get('lb_bb_right') : null) || 'none';
+  // Build a merged lookup: fixed + currently visible scooter buttons
+  var allSc = {};
+  Object.keys(BB_SHORTCUTS).forEach(function(k) { allSc[k] = BB_SHORTCUTS[k]; });
+  _bbDashShortcuts().forEach(function(d) {
+    allSc[d.key] = { label: d.label, action: function() { d.el.click(); } };
+  });
+  function wire(btnId, key) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    var sc = allSc[key] || BB_SHORTCUTS['none'];
+    btn.textContent = sc.label || '';
+    btn.style.visibility = sc.label ? 'visible' : 'hidden';
+    btn.onclick = sc.action || null;
+  }
+  wire('bb-btn-left', lKey);
+  wire('bb-btn-right', rKey);
+}
+
+function applyBottomNav(enabled) {
+  document.body.classList.toggle('bottom-nav-active', !!enabled);
+  var bb = document.getElementById('bottombar');
+  if (bb) bb.style.display = enabled ? 'flex' : 'none';
+  var rows = document.getElementById('bb-shortcut-rows');
+  if (rows) rows.style.display = enabled ? 'block' : 'none';
+  if (enabled) applyBottomShortcuts();
+  try { scheduleFitFold(); } catch(e) {}
+}
+
+function applyDisplay() {
+  injectThemeVars();
+}
+
+function applyFontSizes() {
+  injectThemeVars();
 }
 
 function initDisplayPage() {
@@ -1749,8 +1868,10 @@ function setTxt(id, v) { const el = document.getElementById(id); if (el) el.text
 function updateBLEUI(data) {
   const bleDot     = document.getElementById('ble-dot');
 
-  document.querySelector('.ble-drum .sd-unit').textContent = speedUnit();
-  document.querySelector('.gps-drum .sd-unit').textContent = speedUnitGPS();
+  const _bleSdUnit = document.querySelector('.ble-drum .sd-unit');
+  const _gpsSdUnit = document.querySelector('.gps-drum .sd-unit');
+  if (_bleSdUnit) _bleSdUnit.textContent = speedUnit();
+  if (_gpsSdUnit) _gpsSdUnit.textContent = speedUnitGPS();
 
   const DASH = ['ble-speed','soc-val','gear-val','current-val','dg-avg','dg-max',
     'dg-volt','dg-pole','dg-soh','dg-fb','dg-total','dg-single','dg-rssi',
@@ -1791,6 +1912,7 @@ function updateBLEUI(data) {
 
   // Speed
   setTxt('ble-speed', convSpeed(data.speed));
+  document.documentElement.style.setProperty('--cur-speed', data.speed);
   // VCU speed colour = speed-lock state: red when UNLOCKED (speed uncapped). Driven by the streamed
   // 55 71 lock byte (data.vcuUnlock: 0 = LOCKED, 1 = UNLOCKED) on TESTLOCK firmware; falls back to the
   // FIN "TDE" heuristic only when the byte is absent (-1 / old fw). Triple-tap the VCU tile to toggle.
@@ -1808,7 +1930,10 @@ function updateBLEUI(data) {
       unlocked = known ? (data.vcuUnlock === 1) : (finU && !finU.includes('TDE'));
       colour = true;
     }
-    if (spEl) spEl.style.color = (colour && unlocked) ? 'var(--danger)' : '';
+    if (spEl) spEl.style.color = (colour && unlocked) ? 'var(--unlock, var(--danger))' : '';
+    // Expose lock state to theme CSS: class lb-unlocked on <html> + CSS var --throttle-unlocked (0|1).
+    document.documentElement.classList.toggle('lb-unlocked', unlocked);
+    document.documentElement.style.setProperty('--throttle-unlocked', unlocked ? '1' : '0');
   }
   setTxt('dg-avg', `${convSpeed(data.avgSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
   setTxt('dg-max', `${convSpeed(data.maxSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
@@ -2407,6 +2532,7 @@ function loadSettings() {
   const mphVal = storage.get('lb_units');
   state.useMph = mphVal === 'mph';
   document.getElementById('toggle-mph').checked = state.useMph;
+  document.documentElement.classList.toggle('lb-mph', state.useMph);
 
   // GPS auto
   const gpsAuto = storage.get('lb_gps_auto');
@@ -2557,12 +2683,11 @@ function stopSrtStream() {
 }
 
 function openSettings() {
-  document.getElementById('settings-overlay').classList.add('open');
   document.getElementById('settings-sheet').classList.add('open');
+  if (window._repopulateBbSelects) _repopulateBbSelects();
 }
 
 function closeSettings() {
-  document.getElementById('settings-overlay').classList.remove('open');
   document.getElementById('settings-sheet').classList.remove('open');
 }
 
@@ -2611,6 +2736,16 @@ function applyLang() {
   document.querySelectorAll('#lang-switch button').forEach(b => {
     b.setAttribute('aria-pressed', String(b.dataset.lang === lang));
   });
+  // Tile labels stored in data-tile-label must follow the active language.
+  document.querySelectorAll('[data-i18n-tile-label]').forEach(n => {
+    const v = t(n.getAttribute('data-i18n-tile-label'));
+    if (v) n.dataset.tileLabel = v;
+  });
+  // Re-render the theme page editors if open so editor strings update immediately.
+  try {
+    var _tp = document.getElementById('theme-page');
+    if (_tp && _tp.classList.contains('open')) renderThemeList();
+  } catch(e) {}
   // Text the script owns: the dropdown and the gear note need a rebuild, the model banner
   // only once it shows a looked-up name.
   populateModelSelect();
@@ -3425,7 +3560,112 @@ function wireBminiSpeeds() {
    Theme HTML is injected into #fold-inner; live values are bound
    to data-lb attributes every tick. No script runs from themes. */
 
+// CSS variables exposed for user customisation on the Default theme.
+// Custom themes declare their own cssVars in theme.json; Default uses this constant.
+// group: 'dark'|'light'|'accents'|'fonts' drives section headers in renderStyleEditor.
+const DEFAULT_CSS_VARS = {
+  // Dark mode colours
+  '--dark-card':   { label: 'style.var.dark-card',   type: 'color', default: '#111420', group: 'dark'    },
+  '--dark-bg':     { label: 'style.var.dark-bg',     type: 'color', default: '#0A0C10', group: 'dark'    },
+  '--dark-border': { label: 'style.var.dark-border', type: 'color', default: '#1C2035', group: 'dark'    },
+  '--dark-text':   { label: 'style.var.dark-text',   type: 'color', default: '#E4EDF6', group: 'dark'    },
+  '--dark-label':  { label: 'style.var.dark-label',  type: 'color', default: '#C6D2E2', group: 'dark'    },
+  '--dark-lum':    { label: 'style.var.dark-lum',    type: 'range', default: 90, min: 0, max: 100,        group: 'dark'    },
+  // Light mode colours
+  '--light-card':   { label: 'style.var.light-card',   type: 'color', default: '#ffffff',  group: 'light'   },
+  '--light-bg':     { label: 'style.var.light-bg',     type: 'color', default: '#e8edf5',  group: 'light'   },
+  '--light-border': { label: 'style.var.light-border', type: 'color', default: '#CDD5E4',  group: 'light'   },
+  '--light-text':   { label: 'style.var.light-text',   type: 'color', default: '#0A0D18',  group: 'light'   },
+  '--light-label':  { label: 'style.var.light-label',  type: 'color', default: '#0A0D18',  group: 'light'   },
+  '--light-lum':    { label: 'style.var.light-lum',    type: 'range', default: 100, min: 0, max: 100,        group: 'light'   },
+  // Accent colours (applied in both modes; influence dark/light brightness automatically)
+  '--value':   { label: 'style.var.value',   type: 'color', default: '#BCEB39', group: 'accents' },
+  '--ble':     { label: 'style.var.ble',     type: 'color', default: '#B8F020', group: 'accents' },
+  '--gps':     { label: 'style.var.gps',     type: 'color', default: '#3DB8FF', group: 'accents' },
+  '--good':    { label: 'style.var.good',    type: 'color', default: '#1EE89A', group: 'accents' },
+  '--btnfill': { label: 'style.var.btnfill', type: 'color', default: '#B8F020', group: 'accents' },
+  '--warn':    { label: 'style.var.warn',    type: 'color', default: '#FFAA18', group: 'accents' },
+  '--danger':  { label: 'style.var.danger',  type: 'color', default: '#FF5050', group: 'accents' },
+  '--unlock':  { label: 'style.var.unlock',  type: 'color', default: '#FF5050', group: 'accents' },
+  // Font sizes
+  '--sz-speed-val': { label: 'style.var.sz-speed-val', type: 'number', default: 64, min: 20, max: 72, unit: 'px', group: 'fonts' },
+  '--sz-speed-lbl': { label: 'style.var.sz-speed-lbl', type: 'number', default: 14, min: 10, max: 40, unit: 'px', group: 'fonts' },
+  '--sz-hero-val':  { label: 'style.var.sz-hero-val',  type: 'number', default: 38, min: 10, max: 48, unit: 'px', group: 'fonts' },
+  '--sz-hero-lbl':  { label: 'style.var.sz-hero-lbl',  type: 'number', default: 13, min: 10, max: 40, unit: 'px', group: 'fonts' },
+  '--sz-m1-top':    { label: 'style.var.sz-m1-top',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fonts' },
+  '--sz-m1-mid':    { label: 'style.var.sz-m1-mid',    type: 'number', default: 32, min: 10, max: 48, unit: 'px', group: 'fonts' },
+  '--sz-m1-bot':    { label: 'style.var.sz-m1-bot',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fonts' },
+  '--sz-m2-top':    { label: 'style.var.sz-m2-top',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fonts' },
+  '--sz-m2-mid':    { label: 'style.var.sz-m2-mid',    type: 'number', default: 32, min: 10, max: 48, unit: 'px', group: 'fonts' },
+  '--sz-m2-bot':    { label: 'style.var.sz-m2-bot',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fonts' },
+  // Tile min-heights (0 = natural content height; increase to make a tile taller)
+  '--tile-h-speed':   { label: 'style.var.tile-h-speed',   type: 'number', default: 0,   min: 0, max: 400, unit: 'px', group: 'tiles' },
+  '--tile-h-hero':    { label: 'style.var.tile-h-hero',    type: 'number', default: 0,   min: 0, max: 400, unit: 'px', group: 'tiles' },
+  '--tile-h-motors':  { label: 'style.var.tile-h-motors',  type: 'number', default: 0,   min: 0, max: 400, unit: 'px', group: 'tiles' },
+  // Transparency: slider stores TRANSPARENCY t (0=solid, 100=fully transparent).
+  // CSS var is injected as OPACITY = 1 - t/100 (1.0=opaque, 0.0=invisible).
+  '--tile-alpha':  { label: 'style.var.tile-alpha',  type: 'range', default: 0, min: 0, max: 100, unit: '%', group: 'tiles' },
+  '--btn-alpha':   { label: 'style.var.btn-alpha',   type: 'range', default: 0, min: 0, max: 100, unit: '%', group: 'tiles' },
+  '--gauge-alpha': { label: 'style.var.gauge-alpha', type: 'range', default: 0, min: 0, max: 100, unit: '%', group: 'tiles' },
+};
+
 let _themeActive = '';   // mirrors prefs at page-load and after activate/reload
+var _themeScope = 'fold';  // 'fold' = inject into #fold-inner; 'full' = inject into #scroller
+
+/* ── Android back-button navigation ─────────────────────────────────────
+   LB.setCanGoBack(bool) tells the native side whether a back press should
+   navigate within the WebView (true) or exit the app (false).
+   window.__navBack() is called by MainActivity.onBackPressed when canGoBack
+   is true; it closes the topmost open page/overlay and returns immediately. */
+var _navCanGoBack = false;
+function _updateNavState() {
+  var open = false;
+  if (!open && avHelpModal && avHelpModal.classList && avHelpModal.classList.contains('open')) open = true;
+  if (!open) {
+    ['confirm-overlay','whatsnew-overlay','verinfo-overlay','disclaimer-overlay',
+     'guide-page','firmware-page','battery-page','error-reports-page','info-page',
+     'scooter-page','connect-page','theme-page','display-page','routes-page',
+     'settings-sheet'].some(function(id) {
+      var el = document.getElementById(id);
+      if (el && el.classList.contains('open')) { open = true; return true; }
+    });
+  }
+  if (open === _navCanGoBack) return;
+  _navCanGoBack = open;
+  try { if (typeof LB !== 'undefined' && LB.setCanGoBack) LB.setCanGoBack(open); } catch(e) {}
+}
+window.__navBack = function() {
+  // Modals / overlays (deepest first)
+  if (avHelpModal && avHelpModal.classList.contains('open')) { closeAvHelp(); return; }
+  var overlayMap = [
+    ['confirm-overlay',    function() { document.getElementById('confirm-overlay').classList.remove('open'); }],
+    ['whatsnew-overlay',   closeWhatsNew],
+    ['verinfo-overlay',    closeVersionInfo],
+    ['disclaimer-overlay', function() { if (!disclaimerIsAsking()) closeDisclaimer(); }],
+  ];
+  for (var i = 0; i < overlayMap.length; i++) {
+    var el = document.getElementById(overlayMap[i][0]);
+    if (el && el.classList.contains('open')) { overlayMap[i][1](); return; }
+  }
+  // Sub-pages first (deeper in the nav hierarchy), then top-level sheets
+  var pageMap = [
+    ['guide-page',         closeGuidePage],
+    ['firmware-page',      closeFirmwarePage],
+    ['battery-page',       closeBatteryPage],
+    ['error-reports-page', closeErrorReports],
+    ['info-page',          closeInfoPage],
+    ['scooter-page',       closeScooterPage],
+    ['connect-page',       closeConnectPage],
+    ['theme-page',         closeThemePage],
+    ['display-page',       closeDisplayPage],
+    ['routes-page',        function() { document.getElementById('routes-page').classList.remove('open'); }],
+    ['settings-sheet',     closeSettings],
+  ];
+  for (var j = 0; j < pageMap.length; j++) {
+    var pe = document.getElementById(pageMap[j][0]);
+    if (pe && pe.classList.contains('open')) { pageMap[j][1](); return; }
+  }
+};
 
 function openThemePage() {
   document.getElementById('theme-page').classList.add('open');
@@ -3435,6 +3675,36 @@ function closeThemePage() {
   document.getElementById('theme-page').classList.remove('open');
 }
 
+var _guideLoaded = false;
+function openGuidePage() {
+  document.getElementById('guide-page').classList.add('open');
+  if (!_guideLoaded) {
+    var body = document.getElementById('guide-body');
+    if (!body) return;
+    var html = '';
+    try { if (typeof LB !== 'undefined' && LB.getAsset) html = LB.getAsset('theme-guide.html'); } catch(e) {}
+    if (html) { body.innerHTML = html; _guideLoaded = true; }
+    else body.textContent = 'Guide not available.';
+  }
+}
+function closeGuidePage() {
+  document.getElementById('guide-page').classList.remove('open');
+}
+
+(function() {
+  var _gs = document.getElementById('guide-scroller');
+  var _gt = document.getElementById('guide-totop');
+  if (!_gs || !_gt) return;
+  _gs.addEventListener('scroll', function() {
+    var show = _gs.scrollTop > 200;
+    _gt.classList.toggle('guide-totop--visible', show);
+    _gt.setAttribute('aria-hidden', show ? 'false' : 'true');
+  });
+  _gt.addEventListener('click', function() {
+    _gs.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+
 function renderThemeList() {
   const list = document.getElementById('theme-list');
   if (!list) return;
@@ -3443,27 +3713,69 @@ function renderThemeList() {
     if (typeof LB !== 'undefined' && LB.listThemes) themes = JSON.parse(LB.listThemes() || '[]');
   } catch (e) {}
   list.innerHTML = '';
+  let activeCustomTheme = null;
+
+  // Single collapsible section wrapping all theme rows
+  const toggle = document.createElement('div');
+  toggle.className = 'theme-list-toggle open';
+  const toggleLabel = document.createElement('span');
+  toggleLabel.className = 'theme-list-toggle-label';
+  toggleLabel.textContent = t('theme.list.label') || 'Themes';
+  const chevron = document.createElement('span');
+  chevron.className = 'theme-list-chevron';
+  chevron.textContent = '▶';
+  toggle.appendChild(toggleLabel);
+  toggle.appendChild(chevron);
+
+  const body = document.createElement('div');
+  body.className = 'theme-list-body open';
+
+  toggle.addEventListener('click', () => {
+    toggle.classList.toggle('open');
+    body.classList.toggle('open');
+  });
+
+  list.appendChild(toggle);
+  list.appendChild(body);
+
   themes.forEach(item => {
     const row = document.createElement('div');
     row.className = 'theme-row';
+
     const left = document.createElement('div');
     left.className = 'theme-row-left';
     const namEl = document.createElement('span');
     namEl.className = 'theme-name';
-    namEl.textContent = item.name;
+    namEl.textContent = item.name.replace(/\s+v\d+(\.\d+)*\s*$/i, '').trim() || item.name;
     left.appendChild(namEl);
+    if (item.name !== 'Default') {
+      try {
+        var _tmv = {};
+        if (typeof LB !== 'undefined' && LB.getThemeMeta)
+          _tmv = JSON.parse(LB.getThemeMeta(item.name) || '{}');
+        {
+          const verEl = document.createElement('span');
+          verEl.className = 'theme-version';
+          verEl.textContent = _tmv.version ? ('v' + _tmv.version) : 'none';
+          left.appendChild(verEl);
+        }
+      } catch(e) {}
+    }
     if (item.active) {
       const badge = document.createElement('span');
       badge.className = 'theme-active-badge';
       badge.setAttribute('data-i18n', 'theme.badge.active');
       badge.textContent = t('theme.badge.active');
       left.appendChild(badge);
+      if (item.name !== 'Default') activeCustomTheme = item.name;
     }
     row.appendChild(left);
+
     const actions = document.createElement('div');
     actions.className = 'theme-row-actions';
     if (!item.active) {
       const btnAct = document.createElement('button');
+      btnAct.className = 'tm-btn-primary';
       btnAct.textContent = t('theme.action.activate');
       btnAct.addEventListener('click', () => activateTheme(item.name));
       actions.appendChild(btnAct);
@@ -3477,13 +3789,20 @@ function renderThemeList() {
       });
       actions.appendChild(btnExp);
       const btnDel = document.createElement('button');
+      btnDel.className = 'tm-btn-danger';
       btnDel.textContent = t('theme.action.delete');
       btnDel.addEventListener('click', () => confirmDeleteTheme(item.name));
       actions.appendChild(btnDel);
     }
     row.appendChild(actions);
-    list.appendChild(row);
+    body.appendChild(row);
   });
+
+  // Show tile + style editors for the active theme (custom or Default)
+  const editorTheme = activeCustomTheme || 'Default';
+  renderTileEditor(editorTheme);
+  renderButtonRowEditor(editorTheme);
+  renderStyleEditor(editorTheme);
 }
 
 function activateTheme(name) {
@@ -3493,11 +3812,564 @@ function activateTheme(name) {
   location.reload();
 }
 
+/* ── Tile editor ────────────────────────────────────────────── */
+function renderTileEditor(themeName) {
+  var el = document.getElementById('tile-editor');
+  if (!el) return;
+  var tiles = Array.from(document.querySelectorAll('#scroller [data-tile-id]')).filter(function(t) { return !t.dataset.tileNoEditor; });
+  if (tiles.length === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+
+  var cfg = {};
+  try {
+    if (typeof LB !== 'undefined' && LB.getTileConfig)
+      cfg = JSON.parse(LB.getTileConfig(themeName) || '{}');
+  } catch(e) {}
+  var hidden = cfg.hidden || [];
+  var order  = cfg.order  || tiles.map(function(t) { return t.dataset.tileId; });
+  tiles.forEach(function(t) { if (order.indexOf(t.dataset.tileId) < 0) order.push(t.dataset.tileId); });
+
+  el.innerHTML = '';
+
+  // Split tiles into fold-section (visible above fold) and scroll-section
+  var foldEl = document.getElementById('fold');
+  var foldMap = {};
+  tiles.forEach(function(t) { if (foldEl && foldEl.contains(t)) foldMap[t.dataset.tileId] = true; });
+  var foldCount = Object.keys(foldMap).length;
+  var hasBothGroups = foldCount > 0 && foldCount < tiles.length;
+
+  function _addTileRow(id, tile) {
+    var rowLabel = tile.dataset.tileLabel || id;
+    var isHidden = hidden.indexOf(id) >= 0;
+    var row = document.createElement('div');
+    row.className = 'tile-editor-row';
+    row.dataset.id = id;
+    var cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.className = 'tile-toggle'; cb.dataset.id = id;
+    cb.checked = !isHidden;
+    var lbl = document.createElement('span');
+    lbl.className = 'tile-edit-lbl'; lbl.textContent = rowLabel;
+    var handle = document.createElement('span');
+    handle.className = 'tile-drag-handle'; handle.textContent = '≡';
+    handle.setAttribute('aria-label', t('theme.drag.handle.aria'));
+    row.appendChild(cb); row.appendChild(lbl);
+    if (tile.dataset.tilePooled) {
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button'; removeBtn.className = 'tile-remove-btn';
+      removeBtn.textContent = '×'; removeBtn.title = t('theme.editor.remove.title');
+      (function(tileId) {
+        removeBtn.addEventListener('click', function() { _deactivatePoolTile(tileId, themeName); });
+      })(id);
+      row.appendChild(removeBtn);
+    }
+    row.appendChild(handle);
+    el.appendChild(row);
+    cb.addEventListener('change', function() { _saveTileEditorState(themeName, el, order); });
+    _initEditorRowDrag(handle, row, el, order, themeName);
+  }
+
+  if (hasBothGroups) {
+    var hdr1 = document.createElement('div');
+    hdr1.className = 'theme-section-title';
+    hdr1.textContent = t('theme.editor.section.fold');
+    var h1hint = document.createElement('span'); h1hint.className = 'theme-hint'; h1hint.textContent = ' - ' + t('theme.editor.section.fold.hint');
+    hdr1.appendChild(h1hint);
+    el.appendChild(hdr1);
+    order.forEach(function(id) {
+      var tile = tiles.find(function(t) { return t.dataset.tileId === id; });
+      if (tile && foldMap[id]) _addTileRow(id, tile);
+    });
+    var hdr2 = document.createElement('div');
+    hdr2.className = 'theme-section-title';
+    hdr2.textContent = t('theme.editor.section.scroll');
+    var h2hint = document.createElement('span'); h2hint.className = 'theme-hint'; h2hint.textContent = ' - ' + t('theme.editor.section.scroll.hint');
+    hdr2.appendChild(h2hint);
+    el.appendChild(hdr2);
+    order.forEach(function(id) {
+      var tile = tiles.find(function(t) { return t.dataset.tileId === id; });
+      if (tile && !foldMap[id]) _addTileRow(id, tile);
+    });
+  } else {
+    var hdr = document.createElement('div');
+    hdr.className = 'theme-section-title';
+    hdr.textContent = t('theme.editor.section.tiles');
+    var hhint = document.createElement('span'); hhint.className = 'theme-hint'; hhint.textContent = ' - ' + t('theme.editor.section.tiles.hint');
+    hdr.appendChild(hhint);
+    el.appendChild(hdr);
+    order.forEach(function(id) {
+      var tile = tiles.find(function(t) { return t.dataset.tileId === id; });
+      if (tile) _addTileRow(id, tile);
+    });
+  }
+
+  // "Available to add" section: catalog concepts whose pool tile(s) exist and aren't yet placed
+  var _pool = document.getElementById('std-tile-pool');
+  if (_pool) {
+    var _cfg2 = {};
+    try { if (typeof LB !== 'undefined' && LB.getTileConfig) _cfg2 = JSON.parse(LB.getTileConfig(themeName) || '{}'); } catch(e) {}
+    var _poolSrc = _cfg2.poolSources || {};
+    var _availCatalog = TILE_CATALOG.filter(function(concept) {
+      if (concept.sources) {
+        return concept.sources.some(function(s) { return _tileIsInPool(s.domId); });
+      }
+      return _tileIsInPool(concept.id);
+    });
+    if (_availCatalog.length > 0) {
+      var hdrAdd = document.createElement('div');
+      hdrAdd.className = 'theme-section-title';
+      hdrAdd.textContent = t('theme.editor.section.add');
+      var hdrAddHint = document.createElement('span'); hdrAddHint.className = 'theme-hint'; hdrAddHint.textContent = ' - ' + t('theme.editor.section.add.hint');
+      hdrAdd.appendChild(hdrAddHint);
+      el.appendChild(hdrAdd);
+      _availCatalog.forEach(function(concept) {
+        var row = document.createElement('div');
+        row.className = 'tile-editor-row tile-editor-add-row';
+        var lbl = document.createElement('span');
+        lbl.className = 'tile-edit-lbl'; lbl.textContent = _resolveVarLabel(concept.label);
+        row.appendChild(lbl);
+        var _srcSel = null;
+        if (concept.sources) {
+          var availSrc = concept.sources.filter(function(s) { return _tileIsInPool(s.domId); });
+          _srcSel = document.createElement('select');
+          _srcSel.className = 'tile-source-sel';
+          availSrc.forEach(function(s) {
+            var opt = document.createElement('option');
+            opt.value = s.val; opt.textContent = _resolveVarLabel(s.label);
+            if ((_poolSrc[concept.id] || 'ble') === s.val) opt.selected = true;
+            _srcSel.appendChild(opt);
+          });
+          row.appendChild(_srcSel);
+        }
+        var addBtn = document.createElement('button');
+        addBtn.type = 'button'; addBtn.className = 'tile-add-btn'; addBtn.textContent = '+';
+        var _cid = concept.id, _sel = _srcSel;
+        addBtn.addEventListener('click', function() {
+          _activatePoolTile(_cid, _sel ? _sel.value : null, themeName);
+        });
+        row.appendChild(addBtn);
+        el.appendChild(row);
+      });
+    }
+  }
+}
+
+function _saveTileEditorState(themeName, el, order) {
+  var hidden = [];
+  el.querySelectorAll('.tile-toggle').forEach(function(cb) {
+    if (!cb.checked) hidden.push(cb.dataset.id);
+  });
+  // Preserve poolEnabled/poolSources that _activatePoolTile/_deactivatePoolTile manage
+  var existing = {};
+  try { if (typeof LB !== 'undefined' && LB.getTileConfig) existing = JSON.parse(LB.getTileConfig(themeName) || '{}'); } catch(e) {}
+  var cfg = JSON.stringify(Object.assign({}, existing, { order: order.slice(), hidden: hidden }));
+  if (typeof LB !== 'undefined' && LB.saveTileConfig) LB.saveTileConfig(themeName, cfg);
+  applyTileConfig();
+}
+
+/* ── Button-row configurator (per theme) ─────────────────────── */
+/* Max buttons = all buttons the model's quick-grid offers (no hardcoded cap). */
+var _BTN_ROW_DEFAULT = ['btn-mm-front', 'btn-mm-rear', 'btn-mm-both', 'btn-mm-smart', 'btn-dq-kick', 'btn-dq-abs', 'btn-dq-eco', 'btn-dq-cruise'];
+
+function _getBtnRowConfig(theme) {
+  var key = 'lb_btn_row_' + (theme || 'Default');
+  try {
+    var s = (typeof storage !== 'undefined' ? storage.get(key) : null);
+    var parsed = JSON.parse(s || 'null');
+    if (Array.isArray(parsed)) return parsed;
+  } catch(e) {}
+  return _BTN_ROW_DEFAULT.slice();
+}
+
+function _saveBtnRowConfig(theme, cfg) {
+  var key = 'lb_btn_row_' + (theme || 'Default');
+  if (typeof storage !== 'undefined') storage.set(key, JSON.stringify(cfg));
+}
+
+function applyButtonRowConfig(theme) {
+  var grid = document.getElementById('quick-grid');
+  if (!grid) return;
+  var cfg = _getBtnRowConfig(theme || _themeActive || 'Default');
+  /* Re-apply the stored button order first so visible buttons stay in their saved order. */
+  var btns = {};
+  grid.querySelectorAll('[data-btn-id]').forEach(function(b) { btns[b.dataset.btnId] = b; });
+  cfg.forEach(function(id) { if (btns[id]) grid.appendChild(btns[id]); });
+
+  var anyVisible = false, visCount = 0;
+  grid.querySelectorAll('[data-btn-id]').forEach(function(b) {
+    var visible = cfg.indexOf(b.dataset.btnId) >= 0;
+    b.style.display = visible ? '' : 'none';
+    if (visible) { anyVisible = true; visCount++; }
+  });
+  // If no configured button matched (empty saved config or mismatch after theme import),
+  // fall back to showing ALL buttons rather than hiding the grid entirely.
+  if (!anyVisible) {
+    grid.querySelectorAll('[data-btn-id]').forEach(function(b) {
+      b.style.display = '';
+      anyVisible = true; visCount++;
+    });
+  }
+  grid.style.display = anyVisible ? '' : 'none';
+  if (anyVisible) {
+    /* Max 4 per row; items wrap to additional rows automatically via CSS grid. */
+    var cols = Math.min(visCount, 4);
+    var align = '';
+    try { align = (typeof storage !== 'undefined' ? storage.get('lb_btn_row_align') : '') || ''; } catch(e) {}
+    if (align === 'center') {
+      grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, auto))';
+      grid.style.justifyContent = 'center';
+    } else if (align === 'edges') {
+      grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, auto))';
+      grid.style.justifyContent = 'space-between';
+    } else {
+      grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+      grid.style.justifyContent = '';
+    }
+  }
+}
+
+function renderButtonRowEditor(theme) {
+  var el = document.getElementById('btn-row-editor');
+  if (!el) return;
+  var grid = document.getElementById('quick-grid');
+  if (!grid) { el.style.display = 'none'; return; }
+  var allBtns = Array.from(grid.querySelectorAll('[data-btn-id]'));
+  if (allBtns.length === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+
+  /* Build label map from the model's available buttons. Max = all available. */
+  var labelMap = {};
+  allBtns.forEach(function(b) {
+    labelMap[b.dataset.btnId] = b.dataset.bbLabel || b.textContent.trim();
+  });
+  var maxSlots = allBtns.length;
+
+  el.innerHTML = '';
+  var hdr = document.createElement('div');
+  hdr.className = 'theme-section-title';
+  hdr.textContent = t('theme.btnrow.section');
+  el.appendChild(hdr);
+
+  function _rebuildSlotRows() {
+    el.querySelectorAll('.btn-slot-row, .btn-slot-add').forEach(function(r) { r.remove(); });
+    var cfg = _getBtnRowConfig(theme);
+
+    cfg.forEach(function(btnId, idx) {
+      var row = document.createElement('div');
+      row.className = 'tile-editor-row btn-slot-row';
+      row.dataset.id = btnId;
+
+      var sel = document.createElement('select');
+      sel.className = 'theme-sel btn-slot-sel';
+      allBtns.forEach(function(b) {
+        var opt = document.createElement('option');
+        opt.value = b.dataset.btnId;
+        opt.textContent = labelMap[b.dataset.btnId];
+        sel.appendChild(opt);
+      });
+      sel.value = btnId;
+
+      var handle = document.createElement('span');
+      handle.className = 'tile-drag-handle'; handle.textContent = '≡';
+      handle.setAttribute('aria-label', t('theme.drag.handle.aria'));
+
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button'; delBtn.className = 'btn-slot-del'; delBtn.textContent = '×';
+      delBtn.addEventListener('click', function() {
+        var c = _getBtnRowConfig(theme);
+        c.splice(idx, 1);
+        _saveBtnRowConfig(theme, c);
+        applyButtonRowConfig(theme);
+        _rebuildSlotRows();
+      });
+
+      row.appendChild(handle); row.appendChild(sel); row.appendChild(delBtn);
+      /* Insert before the add-row placeholder (appended last). */
+      el.appendChild(row);
+
+      sel.addEventListener('change', function() {
+        var c = _getBtnRowConfig(theme);
+        c[idx] = sel.value;
+        _saveBtnRowConfig(theme, c);
+        applyButtonRowConfig(theme);
+      });
+
+      /* Reuse the tile-editor drag helper; order array = cfg slice. */
+      var order = _getBtnRowConfig(theme);
+      _initBtnSlotDrag(handle, row, el, order, theme);
+    });
+
+    /* "+" row: only shown when fewer slots than available buttons. */
+    if (cfg.length < maxSlots) {
+      var addRow = document.createElement('div');
+      addRow.className = 'tile-editor-row btn-slot-add';
+      var addSel = document.createElement('select');
+      addSel.className = 'theme-sel btn-slot-add-sel';
+      var emptyOpt = document.createElement('option');
+      emptyOpt.value = ''; emptyOpt.textContent = t('theme.editor.add.placeholder');
+      addSel.appendChild(emptyOpt);
+      var usedIds = _getBtnRowConfig(theme);
+      allBtns.forEach(function(b) {
+        if (usedIds.indexOf(b.dataset.btnId) < 0) {
+          var opt = document.createElement('option');
+          opt.value = b.dataset.btnId;
+          opt.textContent = labelMap[b.dataset.btnId];
+          addSel.appendChild(opt);
+        }
+      });
+      addSel.addEventListener('change', function() {
+        if (!addSel.value) return;
+        var c = _getBtnRowConfig(theme);
+        if (c.indexOf(addSel.value) < 0 && c.length < maxSlots) {
+          c.push(addSel.value);
+          _saveBtnRowConfig(theme, c);
+          applyButtonRowConfig(theme);
+          _rebuildSlotRows();
+        }
+        addSel.value = '';
+      });
+      addRow.appendChild(addSel);
+      el.appendChild(addRow);
+    }
+  }
+
+  _rebuildSlotRows();
+
+  /* Alignment - with a clear label explaining what it controls. */
+  var alignHdr = document.createElement('div');
+  alignHdr.className = 'theme-section-title';
+  alignHdr.textContent = t('theme.btnrow.align.section');
+  var alignHint = document.createElement('span'); alignHint.className = 'theme-hint'; alignHint.textContent = ' - ' + t('theme.btnrow.align.section.hint');
+  alignHdr.appendChild(alignHint);
+  el.appendChild(alignHdr);
+
+  var alignRow = document.createElement('div');
+  alignRow.className = 'settings-row';
+  var alignSel = document.createElement('select');
+  alignSel.className = 'theme-sel';
+  [
+    ['fill', 'Verteilt (Reihe füllen)', 'settings.btnrow.align.fill'],
+    ['center', 'Zentriert', 'settings.btnrow.align.center'],
+    ['edges', 'Rand an Rand', 'settings.btnrow.align.edges']
+  ].forEach(function(opt) {
+    var o = document.createElement('option');
+    o.value = opt[0]; o.textContent = opt[1]; o.setAttribute('data-i18n', opt[2]);
+    alignSel.appendChild(o);
+  });
+  var storedAlign = '';
+  try { storedAlign = (typeof storage !== 'undefined' ? storage.get('lb_btn_row_align') : '') || ''; } catch(e) {}
+  alignSel.value = storedAlign || 'fill';
+  alignRow.appendChild(alignSel);
+  el.appendChild(alignRow);
+
+  alignSel.addEventListener('change', function() {
+    if (typeof storage !== 'undefined') storage.set('lb_btn_row_align', alignSel.value);
+    applyButtonRowConfig(theme);
+  });
+}
+
+/* Drag-reorder for button slots in the editor (separate from tile-editor drag). */
+function _initBtnSlotDrag(handle, row, listEl, order, theme) {
+  var _edTarget = null;
+  handle.addEventListener('touchstart', function(e) {
+    e.stopPropagation();
+    row.classList.add('tile-drag-active');
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd, { once: true });
+  }, { passive: true });
+
+  function onMove(e) {
+    e.preventDefault();
+    var y = e.touches[0].clientY;
+    var rows = Array.from(listEl.querySelectorAll('.btn-slot-row')).filter(function(r) { return r !== row; });
+    rows.forEach(function(r) { r.classList.remove('tile-drop-above', 'tile-drop-below'); });
+    var best = null, bestDist = Infinity;
+    rows.forEach(function(r) {
+      var rect = r.getBoundingClientRect();
+      var mid = rect.top + rect.height / 2;
+      var d = Math.abs(y - mid);
+      if (d < bestDist) { bestDist = d; best = { el: r, above: y < mid }; }
+    });
+    if (best) best.el.classList.add(best.above ? 'tile-drop-above' : 'tile-drop-below');
+    _edTarget = best;
+  }
+
+  function onEnd() {
+    row.classList.remove('tile-drag-active');
+    document.removeEventListener('touchmove', onMove);
+    listEl.querySelectorAll('.tile-drop-above, .tile-drop-below').forEach(function(r) {
+      r.classList.remove('tile-drop-above', 'tile-drop-below');
+    });
+    if (_edTarget) {
+      var id = row.dataset.id;
+      var targetId = _edTarget.el.dataset.id;
+      var cfg = _getBtnRowConfig(theme);
+      var i = cfg.indexOf(id), ti = cfg.indexOf(targetId);
+      if (i >= 0 && ti >= 0 && i !== ti) {
+        cfg.splice(i, 1);
+        var ni = cfg.indexOf(targetId);
+        _edTarget.above ? cfg.splice(ni, 0, id) : cfg.splice(ni + 1, 0, id);
+        _saveBtnRowConfig(theme, cfg);
+        applyButtonRowConfig(theme);
+        /* Re-render all slot rows to reflect new order. */
+        renderButtonRowEditor(theme);
+      }
+    }
+    _edTarget = null;
+  }
+}
+
+/* ── Style editor (CSS variable overrides) ─────────────────── */
+// Read a CSS custom-property from the live document - returns the theme's actual value.
+// Used to seed editor defaults so they match the active theme, not the global fallback palette.
+function _readCssVar(varName) {
+  try {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    return v || null;
+  } catch(e) { return null; }
+}
+function _resolveVarLabel(label) {
+  if (!label) return label;
+  if (typeof label === 'object') { return label[lang] || label.en || Object.values(label)[0] || ''; }
+  return t(label);
+}
+function renderStyleEditor(themeName) {
+  var el = document.getElementById('style-editor');
+  if (!el) return;
+  var meta = {};
+  try {
+    if (themeName === 'Default') {
+      meta = { cssVars: DEFAULT_CSS_VARS };
+    } else if (typeof LB !== 'undefined' && LB.getThemeMeta) {
+      meta = JSON.parse(LB.getThemeMeta(themeName) || '{}');
+    }
+  } catch(e) {}
+  // All themes always get the full DEFAULT_CSS_VARS set (fonts, brightness, tile heights, base colors).
+  // Custom theme cssVars add or override any key they declare; this is how themes expose their own tokens.
+  var cssVars = {};
+  Object.keys(DEFAULT_CSS_VARS).forEach(function(k) { cssVars[k] = DEFAULT_CSS_VARS[k]; });
+  if (themeName !== 'Default') {
+    var themeCssVars = meta.cssVars || {};
+    Object.keys(themeCssVars).forEach(function(k) { cssVars[k] = themeCssVars[k]; });
+  }
+  var keys = Object.keys(cssVars);
+  if (keys.length === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+
+  var saved = {};
+  try {
+    if (typeof LB !== 'undefined' && LB.getThemeVars)
+      saved = JSON.parse(LB.getThemeVars(themeName) || '{}');
+  } catch(e) {}
+
+  var _groupLabels = { dark: 'style.group.dark', light: 'style.group.light', accents: 'style.group.accents', fonts: 'style.group.fonts', tiles: 'style.group.tiles' };
+  var _lastGroup = null;
+  el.innerHTML = '';
+  keys.forEach(function(varName) {
+    var def = cssVars[varName];
+    if (def.group && def.group !== _lastGroup) {
+      _lastGroup = def.group;
+      var ghdr = document.createElement('div');
+      ghdr.className = 'theme-section-title';
+      ghdr.textContent = t(_groupLabels[def.group]) || def.group;
+      el.appendChild(ghdr);
+    }
+    var current = saved[varName] !== undefined
+      ? String(saved[varName])
+      : (_readCssVar(varName) || (def.default !== undefined ? String(def.default) : ''));
+    var row = document.createElement('div');
+    row.className = 'style-editor-row';
+    var lbl = document.createElement('label');
+    lbl.className = 'style-var-lbl'; lbl.textContent = _resolveVarLabel(def.label) || varName;
+    row.appendChild(lbl);
+
+    if (def.type === 'color') {
+      var inp = document.createElement('input');
+      inp.type = 'color'; inp.className = 'style-var-color';
+      inp.value = current || def.default || '#ffffff';
+      inp.addEventListener('change', function() { _saveStyleVar(themeName, varName, inp.value); });
+      row.appendChild(inp);
+    } else if (def.type === 'number') {
+      var unit = def.unit || '';
+      var numInp = document.createElement('input');
+      numInp.type = 'number';
+      numInp.min = def.min !== undefined ? def.min : 1;
+      numInp.max = def.max !== undefined ? def.max : 999;
+      numInp.value = parseInt(current) || def.default || 16;
+      numInp.className = 'style-var-num';
+      (function(inp, d, u) {
+        inp.addEventListener('change', function() {
+          var mn = d.min !== undefined ? d.min : 1;
+          var mx = d.max !== undefined ? d.max : 999;
+          var v = Math.max(mn, Math.min(mx, parseInt(inp.value) || d.default || 16));
+          inp.value = v;
+          _saveStyleVar(themeName, varName, v + u);
+        });
+      })(numInp, def, unit);
+      row.appendChild(numInp);
+      if (unit) { var uSpan = document.createElement('span'); uSpan.className = 'style-var-unit'; uSpan.textContent = unit; row.appendChild(uSpan); }
+    } else if (def.type === 'range') {
+      var unit = def.unit || '';
+      var wrap = document.createElement('div');
+      wrap.className = 'style-var-range-wrap';
+      var rng = document.createElement('input');
+      rng.type = 'range';
+      rng.min = def.min !== undefined ? def.min : 8;
+      rng.max = def.max !== undefined ? def.max : 120;
+      // Alpha vars: slider shows TRANSPARENCY t (0=solid, 100=see-through).
+      // Saved override: "50%" → parseInt → 50 (transparency). No override: CSS var is OPACITY
+      // 0-1 float → convert to transparency: t = (1 - opacity) * 100.
+      rng.value = (varName === '--tile-alpha' || varName === '--btn-alpha' || varName === '--gauge-alpha')
+        ? (saved[varName] !== undefined
+            ? (parseInt(current) || 0)
+            : Math.round((1 - (parseFloat(current) || 1)) * 100))
+        : (parseInt(current) || def.default || 16);
+      rng.className = 'style-var-range';
+      var valLbl = document.createElement('span');
+      valLbl.className = 'style-var-val'; valLbl.textContent = rng.value + unit;
+      rng.addEventListener('input', function() {
+        valLbl.textContent = rng.value + unit;
+        if (varName === '--tile-alpha' || varName === '--btn-alpha' || varName === '--gauge-alpha') {
+          var opacity = 1 - Math.max(0, Math.min(100, parseInt(rng.value) || 0)) / 100;
+          document.documentElement.style.setProperty(varName, String(opacity));
+        }
+      });
+      rng.addEventListener('change', function() { _saveStyleVar(themeName, varName, rng.value + unit); });
+      wrap.appendChild(rng); wrap.appendChild(valLbl);
+      row.appendChild(wrap);
+    }
+    el.appendChild(row);
+  });
+
+  // Reset button
+  var btnReset = document.createElement('button');
+  btnReset.textContent = t('style.editor.reset'); btnReset.className = 'style-reset-btn';
+  btnReset.addEventListener('click', function() {
+    if (typeof LB !== 'undefined' && LB.saveThemeVars) LB.saveThemeVars(themeName, '{}');
+    injectThemeVars();
+    renderStyleEditor(themeName);
+  });
+  el.appendChild(btnReset);
+}
+
+function _saveStyleVar(themeName, varName, value) {
+  var saved = {};
+  try {
+    if (typeof LB !== 'undefined' && LB.getThemeVars)
+      saved = JSON.parse(LB.getThemeVars(themeName) || '{}');
+  } catch(e) {}
+  saved[varName] = value;
+  if (typeof LB !== 'undefined' && LB.saveThemeVars) LB.saveThemeVars(themeName, JSON.stringify(saved));
+  injectThemeVars();
+}
+
 function confirmDeleteTheme(name) {
   document.getElementById('confirm-title').textContent = t('theme.action.delete');
   document.getElementById('confirm-msg').textContent = name;
   state.confirmCb = () => {
     if (typeof LB !== 'undefined' && LB.deleteTheme) LB.deleteTheme(name);
+    // If the deleted theme was active, the injected HTML is still in the DOM.
+    // Reload to restore the native Default dashboard cleanly.
+    if (name === _themeActive) { location.reload(); return; }
     renderThemeList();
   };
   document.getElementById('confirm-overlay').classList.add('open');
@@ -3507,13 +4379,14 @@ function confirmDeleteTheme(name) {
 function updateThemeHooks(data) {
   if (!data) return;
   // data-lb="key" -> textContent = data[key]
-  document.querySelectorAll('#fold-inner [data-lb]').forEach(el => {
+  var _themeQueryRoot = _themeScope === 'full' ? '#scroller' : '#fold-inner';
+  document.querySelectorAll(_themeQueryRoot + ' [data-lb]').forEach(el => {
     const key = el.getAttribute('data-lb');
     const val = data[key];
     if (val !== undefined && val !== null) el.textContent = val;
   });
   // data-lb-state="key:class" -> toggle class based on truthy data[key]
-  document.querySelectorAll('#fold-inner [data-lb-state]').forEach(el => {
+  document.querySelectorAll(_themeQueryRoot + ' [data-lb-state]').forEach(el => {
     const spec = el.getAttribute('data-lb-state');
     const sep = spec.indexOf(':');
     if (sep < 0) return;
@@ -3523,11 +4396,849 @@ function updateThemeHooks(data) {
   });
 }
 
-/* Re-attach the triple-tap speed-unlock listener to [data-lb-action="speed-unlock"]
-   in the injected theme HTML. Called after theme injection. */
+/* Re-attach the triple-tap speed-unlock listener after theme injection.
+   Targets all [data-lb-action="speed-unlock"] elements (VCU + GPS drums). */
 function reattachSpeedUnlock() {
-  const el = document.querySelector('#fold-inner [data-lb-action="speed-unlock"]');
-  if (el) el.addEventListener('click', onVcuTileTap);
+  const root = _themeScope === 'full' ? '#scroller' : '#fold-inner';
+  document.querySelectorAll(root + ' [data-lb-action="speed-unlock"]').forEach(function(el) {
+    el.removeEventListener('click', onVcuTileTap);
+    el.addEventListener('click', onVcuTileTap);
+  });
+}
+
+/* Re-attach motor-mode and drive-quick click handlers to the theme's #quick-grid buttons.
+   Page-load init wires handlers to the original DOM; after theme injection the buttons are
+   new elements and need re-wiring. Called immediately after reattachSpeedUnlock(). */
+function reattachQuickGridHandlers() {
+  var grid = document.getElementById('quick-grid');
+  if (!grid) return;
+  grid.querySelectorAll('.mq-btn[data-mm]').forEach(function(btn) {
+    btn.removeEventListener('click', btn._mmHandler);
+    btn._mmHandler = function() { setMotorMode(parseInt(btn.dataset.mm, 10)); };
+    btn.addEventListener('click', btn._mmHandler);
+  });
+  var smart = grid.querySelector('.mq-smart');
+  if (smart) {
+    smart.removeEventListener('click', toggleSmartMain);
+    smart.addEventListener('click', toggleSmartMain);
+  }
+  grid.querySelectorAll('.dq-btn[data-dq]').forEach(function(btn) {
+    btn.removeEventListener('click', btn._dqHandler);
+    btn._dqHandler = function() { toggleDriveQuick(btn.dataset.dq); };
+    btn.addEventListener('click', btn._dqHandler);
+  });
+}
+
+/* Apply saved tile visibility + order to all [data-tile-id] elements in #scroller. */
+function applyTileConfig() {
+  var name = _themeActive || 'Default';
+  var cfg = {};
+  try {
+    if (typeof LB !== 'undefined' && LB.getTileConfig)
+      cfg = JSON.parse(LB.getTileConfig(name) || '{}');
+  } catch(e) {}
+  var hidden = cfg.hidden || [];
+  var order  = cfg.order  || [];
+  // Restore cross-parent placements: move each tile to its saved container before ordering
+  if (cfg.placements && typeof cfg.placements === 'object') {
+    Object.keys(cfg.placements).forEach(function(tileId) {
+      var savedParentId = cfg.placements[tileId];
+      var tile = document.querySelector('#scroller [data-tile-id="' + tileId + '"]');
+      var savedParent = document.getElementById(savedParentId);
+      if (tile && savedParent && tile.parentElement !== savedParent) {
+        savedParent.appendChild(tile);
+      }
+    });
+  }
+  // Visibility (skip data-tile-no-editor tiles - those manage their own visibility)
+  document.querySelectorAll('#scroller [data-tile-id]').forEach(function(el) {
+    if (el.dataset.tileNoEditor) return;
+    el.style.display = hidden.indexOf(el.dataset.tileId) >= 0 ? 'none' : '';
+  });
+  // Auto-collapse section-container wrappers when all their tile children are hidden
+  document.querySelectorAll('[data-section-container]').forEach(function(sect) {
+    var tiles = Array.from(sect.querySelectorAll('[data-tile-id]')).filter(function(t) { return !t.dataset.tileNoEditor; });
+    var anyVisible = tiles.length === 0 || tiles.some(function(t) { return t.style.display !== 'none'; });
+    sect.style.display = anyVisible ? '' : 'none';
+  });
+  // Order within each parent group independently (fold-inner + scroller)
+  if (order.length > 0) {
+    var parents = [];
+    document.querySelectorAll('#scroller [data-tile-id]').forEach(function(el) {
+      if (parents.indexOf(el.parentElement) < 0) parents.push(el.parentElement);
+    });
+    parents.forEach(function(parent) {
+      var children = Array.from(parent.querySelectorAll(':scope > [data-tile-id]'));
+      children.sort(function(a, b) {
+        var ai = order.indexOf(a.dataset.tileId);
+        var bi = order.indexOf(b.dataset.tileId);
+        return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+      });
+      children.forEach(function(c) { parent.appendChild(c); });
+    });
+  }
+  initTileDrag();
+  try { scheduleFitFold(); } catch(e2) {}
+}
+
+/* ── Dashboard lock ─────────────────────────────────────────── */
+function _isDashLocked() {
+  try { return (typeof storage !== 'undefined' ? storage.get('lb_dash_locked') : null) === 'true'; } catch(e) { return false; }
+}
+
+/* ── Dashboard long-press drag (fold tiles only) ───────────── */
+var _foldDragEl = null, _foldDragTarget = null, _foldLongTimer = null;
+
+function initTileDrag() {
+  document.querySelectorAll('#scroller [data-tile-id]').forEach(function(el) {
+    el.removeEventListener('touchstart', _onFoldTouchStart);
+    el.addEventListener('touchstart', _onFoldTouchStart, { passive: true });
+  });
+}
+
+function _onFoldTouchStart(e) {
+  if (_isDashLocked() || _foldDragEl) return;
+  if (_foldLongTimer) { clearTimeout(_foldLongTimer); _foldLongTimer = null; }
+  var el = this;
+  var t0 = e.touches[0];
+  var ox = t0.clientX, oy = t0.clientY;
+  function _cancelFoldLong(e2) {
+    if (e2.type === 'touchmove' && e2.touches && e2.touches[0]) {
+      var t2 = e2.touches[0];
+      if (Math.abs(t2.clientX - ox) < 12 && Math.abs(t2.clientY - oy) < 12) return;
+    }
+    if (_foldLongTimer) { clearTimeout(_foldLongTimer); _foldLongTimer = null; }
+    document.removeEventListener('touchmove', _cancelFoldLong);
+    document.removeEventListener('touchend', _cancelFoldLong);
+    document.removeEventListener('touchcancel', _cancelFoldLong);
+  }
+  _foldLongTimer = setTimeout(function() {
+    _foldLongTimer = null;
+    document.removeEventListener('touchmove', _cancelFoldLong);
+    document.removeEventListener('touchend', _cancelFoldLong);
+    document.removeEventListener('touchcancel', _cancelFoldLong);
+    _beginFoldDrag(el);
+  }, 500);
+  document.addEventListener('touchmove', _cancelFoldLong, { passive: true });
+  document.addEventListener('touchend', _cancelFoldLong, { once: true });
+  document.addEventListener('touchcancel', _cancelFoldLong, { once: true });
+}
+
+function _beginFoldDrag(el) {
+  _foldDragEl = el;
+  el.classList.add('tile-drag-active');
+  document.addEventListener('touchmove', _onFoldDragMove, { passive: false });
+  document.addEventListener('touchend', _onFoldDragEnd, { once: true });
+  document.addEventListener('touchcancel', _onFoldDragEnd, { once: true });
+}
+
+function _onFoldDragMove(e) {
+  if (!_foldDragEl) return;
+  e.preventDefault();
+  var t = e.touches[0];
+  var tx = t.clientX, ty = t.clientY;
+
+  // Find the tile whose visual bounding box contains the touch point.
+  // getBoundingClientRect() returns viewport coords that already account for CSS transforms,
+  // so this works correctly even when #fold-inner has transform:scale applied.
+  var under = null;
+  document.querySelectorAll('#scroller [data-tile-id]').forEach(function(tile) {
+    if (tile === _foldDragEl || tile.dataset.tileNoEditor) return;
+    var r = tile.getBoundingClientRect();
+    if (tx >= r.left && tx <= r.right && ty >= r.top && ty <= r.bottom) under = tile;
+  });
+
+  document.querySelectorAll('.tile-drop-target').forEach(function(s) {
+    s.classList.remove('tile-drop-target');
+  });
+  if (!under) { _foldDragTarget = null; return; }
+  under.classList.add('tile-drop-target');
+  _foldDragTarget = under;
+}
+
+function _onFoldDragEnd(e) {
+  if (!_foldDragEl) return;
+  var el = _foldDragEl;
+  el.classList.remove('tile-drag-active');
+  document.removeEventListener('touchmove', _onFoldDragMove);
+  document.removeEventListener('touchcancel', _onFoldDragEnd);
+  document.querySelectorAll('.tile-drop-target').forEach(function(s) {
+    s.classList.remove('tile-drop-target');
+  });
+  var cancelled = e && e.type === 'touchcancel';
+  if (_foldDragTarget && !cancelled) {
+    if (_foldDragTarget.parentElement === el.parentElement) {
+      var parent = el.parentElement;
+      var nodes = Array.from(parent.querySelectorAll(':scope > [data-tile-id]'));
+      var iDrag = nodes.indexOf(el), iTarget = nodes.indexOf(_foldDragTarget);
+      if (iDrag > iTarget) {
+        parent.insertBefore(el, _foldDragTarget);
+      } else {
+        var nxt = _foldDragTarget.nextSibling;
+        nxt ? parent.insertBefore(el, nxt) : parent.appendChild(el);
+      }
+    } else {
+      // Cross-parent swap: placeholders prevent any duplication
+      var phA = document.createElement('span');
+      var phB = document.createElement('span');
+      el.parentElement.replaceChild(phA, el);
+      _foldDragTarget.parentElement.replaceChild(phB, _foldDragTarget);
+      phA.parentElement.replaceChild(_foldDragTarget, phA);
+      phB.parentElement.replaceChild(el, phB);
+    }
+    _saveTileOrder();
+    var eTheme = (_themeActive && _themeActive !== 'Default') ? _themeActive : 'Default';
+    renderTileEditor(eTheme);
+    try { scheduleFitFold(); } catch(e2) {}
+  }
+  _foldDragEl = null; _foldDragTarget = null;
+}
+
+function _saveTileOrder() {
+  var name = _themeActive || 'Default';
+  var cfg = {};
+  try { if (typeof LB !== 'undefined' && LB.getTileConfig) cfg = JSON.parse(LB.getTileConfig(name) || '{}'); } catch(e) {}
+  var allTiles = Array.from(document.querySelectorAll('#scroller [data-tile-id]'));
+  cfg.order = allTiles.map(function(t) { return t.dataset.tileId; });
+  // Record each tile's current parent container id so cross-parent moves survive restarts
+  var placements = {};
+  allTiles.forEach(function(t) {
+    var p = t.parentElement;
+    if (p && p.id) placements[t.dataset.tileId] = p.id;
+  });
+  cfg.placements = placements;
+  if (typeof LB !== 'undefined' && LB.saveTileConfig) LB.saveTileConfig(name, JSON.stringify(cfg));
+}
+
+/* Button-row config applied at startup - see applyButtonRowConfig() / renderButtonRowEditor() above. */
+
+/* ── Individual card drag (hero-cell / motor-cell via data-cell-id) ────────── */
+var _cellDragEl = null, _cellDropTarget = null, _cellLongTimer = null;
+var _CELL_ROWS = ['hero-row', 'motor-row', 'motor-row-2'];
+
+function applyQuickCellOrder() {
+  var stored;
+  try { stored = JSON.parse((typeof storage !== 'undefined' ? storage.get('lb_cell_order') : null) || 'null'); } catch(e) {}
+  if (!stored) return;
+  var allCells = {};
+  document.querySelectorAll('[data-cell-id]').forEach(function(c) { allCells[c.dataset.cellId] = c; });
+  _CELL_ROWS.forEach(function(rowId) {
+    var row = document.getElementById(rowId);
+    if (!row || !stored[rowId]) return;
+    stored[rowId].forEach(function(id) { if (allCells[id]) row.appendChild(allCells[id]); });
+  });
+}
+
+function initCellDrag() {
+  document.querySelectorAll('[data-cell-id]').forEach(function(el) {
+    el.removeEventListener('touchstart', _onCellTouchStart);
+    el.addEventListener('touchstart', _onCellTouchStart, { passive: true });
+  });
+}
+
+function _onCellTouchStart(e) {
+  e.stopPropagation(); // prevent tile drag from also firing on parent [data-tile-id]
+  if (_isDashLocked() || _cellDragEl) return;
+  if (_cellLongTimer) { clearTimeout(_cellLongTimer); _cellLongTimer = null; }
+  var el = this;
+  var t0 = e.touches[0];
+  var ox = t0.clientX, oy = t0.clientY;
+  function _cancelCellLong(e2) {
+    if (e2.type === 'touchmove' && e2.touches && e2.touches[0]) {
+      var t2 = e2.touches[0];
+      if (Math.abs(t2.clientX - ox) < 12 && Math.abs(t2.clientY - oy) < 12) return;
+    }
+    if (_cellLongTimer) { clearTimeout(_cellLongTimer); _cellLongTimer = null; }
+    document.removeEventListener('touchmove', _cancelCellLong);
+    document.removeEventListener('touchend', _cancelCellLong);
+    document.removeEventListener('touchcancel', _cancelCellLong);
+  }
+  _cellLongTimer = setTimeout(function() {
+    _cellLongTimer = null;
+    document.removeEventListener('touchmove', _cancelCellLong);
+    document.removeEventListener('touchend', _cancelCellLong);
+    document.removeEventListener('touchcancel', _cancelCellLong);
+    _beginCellDrag(el);
+  }, 500);
+  document.addEventListener('touchmove', _cancelCellLong, { passive: true });
+  document.addEventListener('touchend', _cancelCellLong, { once: true });
+  document.addEventListener('touchcancel', _cancelCellLong, { once: true });
+}
+
+function _beginCellDrag(el) {
+  _cellDragEl = el;
+  el.classList.add('cell-drag-active');
+  document.addEventListener('touchmove', _onCellDragMove, { passive: false });
+  document.addEventListener('touchend', _onCellDragEnd, { once: true });
+  document.addEventListener('touchcancel', _onCellDragEnd, { once: true });
+}
+
+function _onCellDragMove(e) {
+  if (!_cellDragEl) return;
+  e.preventDefault();
+  var t = e.touches[0];
+  _cellDragEl.style.pointerEvents = 'none';
+  var under = document.elementFromPoint(t.clientX, t.clientY);
+  _cellDragEl.style.pointerEvents = '';
+  while (under && !under.dataset.cellId) under = under.parentElement;
+  document.querySelectorAll('.cell-drop-target').forEach(function(c) { c.classList.remove('cell-drop-target'); });
+  _cellDropTarget = (under && under !== _cellDragEl) ? under : null;
+  if (_cellDropTarget) _cellDropTarget.classList.add('cell-drop-target');
+}
+
+function _onCellDragEnd(e) {
+  if (!_cellDragEl) return;
+  var el = _cellDragEl;
+  el.classList.remove('cell-drag-active');
+  document.removeEventListener('touchmove', _onCellDragMove);
+  document.removeEventListener('touchcancel', _onCellDragEnd);
+  document.querySelectorAll('.cell-drop-target').forEach(function(c) { c.classList.remove('cell-drop-target'); });
+  var cancelled = e && e.type === 'touchcancel';
+  if (_cellDropTarget && !cancelled) {
+    _reorderCellNode(el, _cellDropTarget);
+    _saveCellOrder();
+  }
+  _cellDragEl = null; _cellDropTarget = null;
+}
+
+function _reorderCellNode(moving, target) {
+  var aParent = moving.parentNode, bParent = target.parentNode;
+  if (aParent === bParent) {
+    var nodes = Array.from(aParent.children);
+    var iM = nodes.indexOf(moving), iT = nodes.indexOf(target);
+    if (iM < iT) {
+      var nxt = target.nextSibling;
+      nxt ? aParent.insertBefore(moving, nxt) : aParent.appendChild(moving);
+    } else {
+      aParent.insertBefore(moving, target);
+    }
+  } else {
+    var aNext = moving.nextSibling, bNext = target.nextSibling;
+    if (moving.nextSibling === target) { aParent.insertBefore(target, moving); }
+    else if (target.nextSibling === moving) { bParent.insertBefore(moving, target); }
+    else {
+      bParent.insertBefore(moving, bNext);
+      aParent.insertBefore(target, aNext);
+    }
+  }
+}
+
+function _saveCellOrder() {
+  var order = {};
+  _CELL_ROWS.forEach(function(rowId) {
+    var row = document.getElementById(rowId);
+    if (!row) return;
+    order[rowId] = Array.from(row.querySelectorAll('[data-cell-id]')).map(function(c) { return c.dataset.cellId; });
+  });
+  if (typeof storage !== 'undefined') storage.set('lb_cell_order', JSON.stringify(order));
+}
+
+/* ── Button-row drag (reorder buttons in #quick-grid) ──────── */
+var _btnDragEl = null, _btnDragTarget = null, _btnLongTimer = null;
+
+function applyQuickBtnOrder() {
+  var stored;
+  try { stored = JSON.parse((typeof storage !== 'undefined' ? storage.get('lb_btn_order') : null) || 'null'); } catch(e) {}
+  if (!Array.isArray(stored)) return;
+  var grid = document.getElementById('quick-grid');
+  if (!grid) return;
+  var btns = {};
+  grid.querySelectorAll('[data-btn-id]').forEach(function(b) { btns[b.dataset.btnId] = b; });
+  stored.forEach(function(id) { if (btns[id]) grid.appendChild(btns[id]); });
+}
+
+function initBtnDrag() {
+  var grid = document.getElementById('quick-grid');
+  if (!grid) return;
+  grid.querySelectorAll('[data-btn-id]').forEach(function(el) {
+    el.removeEventListener('touchstart', _onBtnTouchStart);
+    el.addEventListener('touchstart', _onBtnTouchStart, { passive: true });
+  });
+}
+
+function _onBtnTouchStart(e) {
+  e.stopPropagation(); // prevent tile drag on parent #quick-grid[data-tile-id]
+  if (_isDashLocked() || _btnDragEl) return;
+  if (_btnLongTimer) { clearTimeout(_btnLongTimer); _btnLongTimer = null; }
+  var el = this;
+  var t0 = e.touches[0];
+  var ox = t0.clientX, oy = t0.clientY;
+  function _cancelBtnLong(e2) {
+    if (e2.type === 'touchmove' && e2.touches && e2.touches[0]) {
+      var t2 = e2.touches[0];
+      if (Math.abs(t2.clientX - ox) < 12 && Math.abs(t2.clientY - oy) < 12) return;
+    }
+    if (_btnLongTimer) { clearTimeout(_btnLongTimer); _btnLongTimer = null; }
+    document.removeEventListener('touchmove', _cancelBtnLong);
+    document.removeEventListener('touchend', _cancelBtnLong);
+    document.removeEventListener('touchcancel', _cancelBtnLong);
+  }
+  _btnLongTimer = setTimeout(function() {
+    _btnLongTimer = null;
+    document.removeEventListener('touchmove', _cancelBtnLong);
+    document.removeEventListener('touchend', _cancelBtnLong);
+    document.removeEventListener('touchcancel', _cancelBtnLong);
+    _beginBtnDrag(el);
+  }, 500);
+  document.addEventListener('touchmove', _cancelBtnLong, { passive: true });
+  document.addEventListener('touchend', _cancelBtnLong, { once: true });
+  document.addEventListener('touchcancel', _cancelBtnLong, { once: true });
+}
+
+function _beginBtnDrag(el) {
+  _btnDragEl = el;
+  el.classList.add('btn-drag-active');
+  document.addEventListener('touchmove', _onBtnDragMove, { passive: false });
+  document.addEventListener('touchend', _onBtnDragEnd, { once: true });
+  document.addEventListener('touchcancel', _onBtnDragEnd, { once: true });
+}
+
+function _onBtnDragMove(e) {
+  if (!_btnDragEl) return;
+  e.preventDefault();
+  var t = e.touches[0];
+  var tx = t.clientX, ty = t.clientY;
+  var under = null;
+  var grid = document.getElementById('quick-grid');
+  if (!grid) return;
+  grid.querySelectorAll('[data-btn-id]').forEach(function(btn) {
+    if (btn === _btnDragEl) return;
+    var r = btn.getBoundingClientRect();
+    if (tx >= r.left && tx <= r.right && ty >= r.top && ty <= r.bottom) under = btn;
+  });
+  grid.querySelectorAll('.btn-drop-target').forEach(function(s) { s.classList.remove('btn-drop-target'); });
+  if (!under) { _btnDragTarget = null; return; }
+  under.classList.add('btn-drop-target');
+  _btnDragTarget = under;
+}
+
+function _onBtnDragEnd(e) {
+  if (!_btnDragEl) return;
+  var el = _btnDragEl;
+  el.classList.remove('btn-drag-active');
+  document.removeEventListener('touchmove', _onBtnDragMove);
+  document.removeEventListener('touchcancel', _onBtnDragEnd);
+  var grid = document.getElementById('quick-grid');
+  if (grid) grid.querySelectorAll('.btn-drop-target').forEach(function(s) { s.classList.remove('btn-drop-target'); });
+  var cancelled = e && e.type === 'touchcancel';
+  if (_btnDragTarget && !cancelled) {
+    var parent = el.parentElement;
+    var nodes = Array.from(parent.querySelectorAll(':scope > [data-btn-id]'));
+    var iDrag = nodes.indexOf(el), iTarget = nodes.indexOf(_btnDragTarget);
+    if (iDrag > iTarget) {
+      parent.insertBefore(el, _btnDragTarget);
+    } else {
+      var nxt = _btnDragTarget.nextSibling;
+      nxt ? parent.insertBefore(el, nxt) : parent.appendChild(el);
+    }
+    _saveBtnOrder();
+  }
+  applyButtonRowConfig();
+  _btnDragEl = null; _btnDragTarget = null;
+}
+
+function _saveBtnOrder() {
+  var grid = document.getElementById('quick-grid');
+  if (!grid || typeof storage === 'undefined') return;
+  var order = Array.from(grid.querySelectorAll('[data-btn-id]')).map(function(b) { return b.dataset.btnId; });
+  storage.set('lb_btn_order', JSON.stringify(order));
+}
+
+/* ── Editor row drag (≡ handle) ─────────────────────────────── */
+function _initEditorRowDrag(handle, row, listEl, order, themeName) {
+  var _edTarget = null;
+  handle.addEventListener('touchstart', function(e) {
+    e.stopPropagation();
+    row.classList.add('tile-drag-active');
+    document.addEventListener('touchmove', onEdMove, { passive: false });
+    document.addEventListener('touchend', onEdEnd, { once: true });
+  }, { passive: true });
+
+  function onEdMove(e) {
+    e.preventDefault();
+    var y = e.touches[0].clientY;
+    var rows = Array.from(listEl.querySelectorAll('.tile-editor-row')).filter(function(r) { return r !== row; });
+    rows.forEach(function(r) { r.classList.remove('tile-drop-above', 'tile-drop-below'); });
+    var best = null, bestDist = Infinity;
+    rows.forEach(function(r) {
+      var rect = r.getBoundingClientRect();
+      var mid = rect.top + rect.height / 2;
+      var d = Math.abs(y - mid);
+      if (d < bestDist) { bestDist = d; best = { el: r, above: y < mid }; }
+    });
+    if (best) best.el.classList.add(best.above ? 'tile-drop-above' : 'tile-drop-below');
+    _edTarget = best;
+  }
+
+  function onEdEnd() {
+    row.classList.remove('tile-drag-active');
+    document.removeEventListener('touchmove', onEdMove);
+    listEl.querySelectorAll('.tile-drop-above, .tile-drop-below').forEach(function(r) {
+      r.classList.remove('tile-drop-above', 'tile-drop-below');
+    });
+    if (_edTarget) {
+      var id = row.dataset.id;
+      var targetId = _edTarget.el.dataset.id;
+      var i = order.indexOf(id);
+      var ti = order.indexOf(targetId);
+      if (i >= 0 && ti >= 0 && i !== ti) {
+        order.splice(i, 1);
+        var ni = order.indexOf(targetId);
+        _edTarget.above ? order.splice(ni, 0, id) : order.splice(ni + 1, 0, id);
+        _saveTileEditorState(themeName, listEl, order);
+        renderTileEditor(themeName);
+      }
+    }
+    _edTarget = null;
+  }
+}
+
+/* Apply CSS-variable overrides for the active theme via CSSOM setProperty - CSP-safe.
+   style.textContent injection is blocked by style-src file:; setProperty is not.
+   Default theme: all mode vars always computed and set (includes DEFAULT_CSS_VARS fallback).
+   Custom theme: only user overrides and theme-declared defaults are set; everything else
+   is removeProperty'd so the theme's own CSS retains control of its palette. */
+function injectThemeVars() {
+  var name = _themeActive || 'Default';
+  var root = document.documentElement;
+
+  // Remove any legacy style-injection element from earlier code paths.
+  var old = document.getElementById('_theme-var-overrides');
+  if (old) old.parentNode.removeChild(old);
+
+  var vars = {};
+  try {
+    if (typeof LB !== 'undefined' && LB.getThemeVars)
+      vars = JSON.parse(LB.getThemeVars(name) || '{}');
+  } catch(e) {}
+  var themeCssVars = {};
+  try {
+    if (name !== 'Default' && typeof LB !== 'undefined' && LB.getThemeMeta) {
+      var _tm = JSON.parse(LB.getThemeMeta(name) || '{}');
+      themeCssVars = _tm.cssVars || {};
+    }
+  } catch(e) {}
+
+  // Return theme's own declared default for key k, or undefined if not declared.
+  // Handles flat-string format ("--value":"#F4B223") and object format ({"default":"#F4B223"}).
+  function tdef(k) {
+    var tc = themeCssVars[k];
+    if (tc === undefined) return undefined;
+    if (typeof tc === 'string' || typeof tc === 'number') return String(tc);
+    if (typeof tc === 'object' && tc !== null && tc.default !== undefined) return String(tc.default);
+    return undefined;
+  }
+  // Resolve: saved override > theme's own declared default > DEFAULT_CSS_VARS default.
+  function dv(k) {
+    if (vars[k] !== undefined) return vars[k];
+    var td = tdef(k); if (td !== undefined) return td;
+    var d = DEFAULT_CSS_VARS[k];
+    return d ? String(d.default) : '';
+  }
+  // setProperty or removeProperty depending on whether val is defined.
+  function sp(v, val) {
+    if (val !== undefined && val !== '') root.style.setProperty(v, val);
+    else root.style.removeProperty(v);
+  }
+
+  var isDark = root.getAttribute('data-theme') !== 'light';
+  var mode = isDark ? 'dark' : 'light';
+  var lum = Number(dv('--' + mode + '-lum'));
+  var a = Math.max(0, Math.min(100, lum));
+  var k = 0.35 + 0.65 * (a / 100);
+  var base = DISPLAY_ACCENTS[mode];
+  var t = displayTextColors(mode, lum);
+
+  if (name === 'Default') {
+    root.style.setProperty('--card', dv('--' + mode + '-card'));
+    root.style.setProperty('--bg',   dv('--' + mode + '-bg'));
+    root.style.setProperty('--text',
+      vars['--' + mode + '-text']  !== undefined ? vars['--' + mode + '-text']  : (tdef('--' + mode + '-text')  || t.text));
+    root.style.setProperty('--label',
+      vars['--' + mode + '-label'] !== undefined ? vars['--' + mode + '-label'] : (tdef('--' + mode + '-label') || t.label));
+    var bd = vars['--' + mode + '-border'] !== undefined ? vars['--' + mode + '-border'] : tdef('--' + mode + '-border');
+    sp('--border', bd);
+    // Accent colors with luminance-based dimming for Default theme.
+    Object.keys(base).forEach(function(n) {
+      var saved = vars['--' + n];
+      if (saved !== undefined) {
+        root.style.setProperty('--' + n, saved);
+      } else {
+        var td = tdef('--' + n);
+        if (td !== undefined) {
+          root.style.setProperty('--' + n, td);
+        } else {
+          var hsl = hexToHsl(base[n]);
+          if (hsl) {
+            var l = mode === 'dark' ? hsl.l * k : 100 - (100 - hsl.l) * k;
+            root.style.setProperty('--' + n, 'hsl(' + hsl.h.toFixed(0) + ' ' + hsl.s.toFixed(0) + '% ' + l.toFixed(1) + '%)');
+          }
+        }
+      }
+    });
+  } else {
+    // Custom theme: apply only user overrides and theme-declared defaults; remove everything
+    // else so the theme's own CSS retains control of its palette (no neon-green fallback).
+    sp('--card',  vars['--' + mode + '-card']  !== undefined ? vars['--' + mode + '-card']  : tdef('--' + mode + '-card'));
+    sp('--bg',    vars['--' + mode + '-bg']    !== undefined ? vars['--' + mode + '-bg']    : tdef('--' + mode + '-bg'));
+    sp('--text',  vars['--' + mode + '-text']  !== undefined ? vars['--' + mode + '-text']  : tdef('--' + mode + '-text'));
+    sp('--label', vars['--' + mode + '-label'] !== undefined ? vars['--' + mode + '-label'] : tdef('--' + mode + '-label'));
+    sp('--border',vars['--' + mode + '-border']!== undefined ? vars['--' + mode + '-border']: tdef('--' + mode + '-border'));
+    Object.keys(base).forEach(function(n) {
+      var saved = vars['--' + n];
+      if (saved !== undefined) {
+        root.style.setProperty('--' + n, saved);
+      } else {
+        var td = tdef('--' + n);
+        if (td !== undefined) root.style.setProperty('--' + n, td);
+        else root.style.removeProperty('--' + n);
+      }
+    });
+  }
+
+  // Font sizes, tile heights, and --unlock: apply saved override or theme-declared default.
+  FONT_META.forEach(function(m) {
+    var effective = vars[m.varName] !== undefined ? vars[m.varName] : tdef(m.varName);
+    if (effective !== undefined) {
+      var px = Math.max(m.min, Math.min(m.max, parseInt(effective, 10) || m.def));
+      root.style.setProperty(m.varName, px + 'px');
+    } else {
+      root.style.removeProperty(m.varName);
+    }
+  });
+  ['--tile-h-speed', '--tile-h-hero', '--tile-h-motors', '--unlock'].forEach(function(v) {
+    var effective = vars[v] !== undefined ? vars[v] : tdef(v);
+    if (effective !== undefined) root.style.setProperty(v, effective);
+    else root.style.removeProperty(v);
+  });
+
+  // Alpha transparency: slider stores TRANSPARENCY t (0=solid, 100=fully see-through).
+  // CSS var = OPACITY = 1 - t/100. Strip '%' suffix before parsing.
+  ['--tile-alpha', '--btn-alpha', '--gauge-alpha'].forEach(function(v) {
+    var effective = vars[v] !== undefined ? vars[v] : tdef(v);
+    var t = effective !== undefined
+      ? parseFloat(String(effective).replace('%', ''))
+      : DEFAULT_CSS_VARS[v].default;
+    var opacity = 1 - Math.max(0, Math.min(100, isNaN(t) ? 0 : t)) / 100;
+    root.style.setProperty(v, String(opacity));
+  });
+
+  try { scheduleFitFold(); } catch(e) {}
+}
+
+/* ── Tile Catalog ────────────────────────────────────────────────────────────
+   All 19 standard model tile concepts. Speed = ONE concept with two selectable
+   sources (VCU / GPS) instead of two separate tiles. Used by the "Available to add"
+   section in renderTileEditor for themes that don't natively include standard tiles. */
+var TILE_CATALOG = [
+  { id: 'tile-speed', label: 'tile.label.speed',
+    sources: [
+      { val: 'ble', label: 'tile.label.speed.ble', domId: 'tile-speed-ble' },
+      { val: 'gps', label: 'tile.label.speed.gps', domId: 'tile-speed-gps' }
+    ]
+  },
+  { id: 'tile-hero-soc',     label: 'tile.label.battery'      },
+  { id: 'tile-hero-gear',    label: 'tile.label.gear'         },
+  { id: 'tile-hero-cur',     label: 'tile.label.current'      },
+  { id: 'tile-motor-r1',     label: 'tile.label.motor.r1'     },
+  { id: 'tile-motor-r2',     label: 'tile.label.motor.r2'     },
+  { id: 'tile-dg-speed',     label: 'tile.label.dg.speed'     },
+  { id: 'tile-dg-volt',      label: 'tile.label.dg.volt'      },
+  { id: 'tile-dg-soh',       label: 'tile.label.dg.soh'       },
+  { id: 'tile-dg-odo',       label: 'tile.label.dg.odo'       },
+  { id: 'tile-dg-rssi',      label: 'tile.label.dg.rssi'      },
+  { id: 'tile-gear-start',   label: 'tile.label.gear.start'   },
+  { id: 'tile-gear-curlim',  label: 'tile.label.gear.curlim'  },
+  { id: 'tile-gear-eabs',    label: 'tile.label.gear.eabs'    },
+  { id: 'tile-ride-disttime',label: 'tile.label.ride.disttime'},
+  { id: 'tile-ride-avg',     label: 'tile.label.ride.avg'     },
+  { id: 'tile-ride-alt',     label: 'tile.label.ride.alt'     },
+  { id: 'tile-ride-gps',     label: 'tile.label.ride.gps'     },
+  { id: 'tile-allvals',      label: 'tile.label.allvals'      }
+];
+
+/* Returns true if the given data-tile-id DOM element is currently in the pool (not yet activated). */
+function _tileIsInPool(domId) {
+  var pool = document.getElementById('std-tile-pool');
+  return !!(pool && pool.querySelector('[data-tile-id="' + domId + '"]'));
+}
+
+/* Ensure #std-tile-extras exists inside #scroller (created lazily when first pool tile is activated). */
+function _getOrCreateExtras() {
+  var el = document.getElementById('std-tile-extras');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'std-tile-extras';
+    var scroller = document.getElementById('scroller');
+    if (scroller) scroller.appendChild(el);
+  }
+  return el;
+}
+
+/* Move an activated pool tile to #std-tile-extras (visible in scroll area).
+   conceptId is the TILE_CATALOG.id; source is 'ble'/'gps' for speed, null for others.
+   For multi-source concepts only the chosen source's tile is moved; the other stays in pool. */
+function _activatePoolTile(conceptId, source, themeName) {
+  var pool = document.getElementById('std-tile-pool');
+  if (!pool) return;
+  var concept = null;
+  for (var ci = 0; ci < TILE_CATALOG.length; ci++) { if (TILE_CATALOG[ci].id === conceptId) { concept = TILE_CATALOG[ci]; break; } }
+  if (!concept) return;
+  var domIds = concept.sources
+    ? concept.sources.filter(function(s) { return !source || s.val === source; }).map(function(s) { return s.domId; })
+    : [concept.id];
+  var extras = _getOrCreateExtras();
+  domIds.forEach(function(domId) {
+    var el = pool.querySelector('[data-tile-id="' + domId + '"]');
+    if (!el) return;
+    el.dataset.tilePooled = '1';
+    extras.appendChild(el);
+    if (domId === 'tile-speed-ble' || domId === 'tile-speed-gps') {
+      el.removeEventListener('click', onVcuTileTap);
+      el.addEventListener('click', onVcuTileTap);
+    }
+  });
+  var cfg = {};
+  try { if (typeof LB !== 'undefined' && LB.getTileConfig) cfg = JSON.parse(LB.getTileConfig(themeName) || '{}'); } catch(e) {}
+  var poolEnabled = cfg.poolEnabled || [];
+  domIds.forEach(function(id) { if (poolEnabled.indexOf(id) < 0) poolEnabled.push(id); });
+  if (concept.sources && source) { cfg.poolSources = cfg.poolSources || {}; cfg.poolSources[conceptId] = source; }
+  cfg.poolEnabled = poolEnabled;
+  try { if (typeof LB !== 'undefined' && LB.saveTileConfig) LB.saveTileConfig(themeName, JSON.stringify(cfg)); } catch(e) {}
+  applyTileConfig();
+  renderTileEditor(themeName);
+}
+
+/* Move a pool tile back from extras to #std-tile-pool (deactivate / return to "Available"). */
+function _deactivatePoolTile(domId, themeName) {
+  var pool = document.getElementById('std-tile-pool');
+  if (!pool) return;
+  var el = document.querySelector('#std-tile-extras [data-tile-id="' + domId + '"]');
+  if (el) { delete el.dataset.tilePooled; pool.appendChild(el); }
+  var cfg = {};
+  try { if (typeof LB !== 'undefined' && LB.getTileConfig) cfg = JSON.parse(LB.getTileConfig(themeName) || '{}'); } catch(e) {}
+  cfg.poolEnabled = (cfg.poolEnabled || []).filter(function(id) { return id !== domId; });
+  try { if (typeof LB !== 'undefined' && LB.saveTileConfig) LB.saveTileConfig(themeName, JSON.stringify(cfg)); } catch(e) {}
+  applyTileConfig();
+  renderTileEditor(themeName);
+}
+
+/* On page load: restore any pool tiles the user previously activated for this theme. */
+function _restorePoolEnabled() {
+  if (!document.getElementById('std-tile-pool')) return;
+  var name = _themeActive || 'Default';
+  var cfg = {};
+  try { if (typeof LB !== 'undefined' && LB.getTileConfig) cfg = JSON.parse(LB.getTileConfig(name) || '{}'); } catch(e) {}
+  var poolEnabled = cfg.poolEnabled || [];
+  if (poolEnabled.length === 0) return;
+  var extras = _getOrCreateExtras();
+  var pool = document.getElementById('std-tile-pool');
+  poolEnabled.forEach(function(domId) {
+    var el = pool.querySelector('[data-tile-id="' + domId + '"]');
+    if (!el) return;
+    el.dataset.tilePooled = '1';
+    extras.appendChild(el);
+    if (domId === 'tile-speed-ble' || domId === 'tile-speed-gps') {
+      el.removeEventListener('click', onVcuTileTap);
+      el.addEventListener('click', onVcuTileTap);
+    }
+  });
+}
+
+/* Before theme HTML injection: move all editable Standard tiles into #std-tile-pool so
+   innerHTML doesn't destroy them. isFullScope=true parks from #scroller, false from #fold-inner. */
+function _parkTilesBeforeInjection(isFullScope) {
+  var pool = document.getElementById('std-tile-pool');
+  if (!pool) return;
+  var root = isFullScope
+    ? document.getElementById('scroller')
+    : document.getElementById('fold-inner');
+  if (!root) return;
+  Array.from(root.querySelectorAll('[data-tile-id]')).forEach(function(el) {
+    if (!el.dataset.tileNoEditor) pool.appendChild(el);
+  });
+}
+
+/* After theme HTML injection: remove any Standard tile from the pool whose data-tile-id
+   the theme already provides natively, avoiding duplicate IDs for getElementById calls.
+   Pool tiles that remain (theme didn't cover them) stay invisible in the pool; the
+   tile editor surfaces them via TILE_CATALOG so users can explicitly enable them. */
+function _cleanPoolAfterInjection() {
+  var pool = document.getElementById('std-tile-pool');
+  if (!pool) return;
+  var existing = {};
+  document.querySelectorAll('#scroller [data-tile-id]').forEach(function(el) {
+    existing[el.dataset.tileId] = true;
+  });
+  Array.from(pool.querySelectorAll('[data-tile-id]')).forEach(function(el) {
+    if (existing[el.dataset.tileId]) pool.removeChild(el);
+  });
+}
+
+/* Inject custom theme HTML (non-Default), then apply tile config and CSS var overrides for ALL themes. */
+function initActiveTheme() {
+  if (typeof LB === 'undefined' || !LB.listThemes) {
+    // No LB bridge (browser/emulator): still apply tile config for Default
+    applyTileConfig();
+    return;
+  }
+  try {
+    var themes = JSON.parse(LB.listThemes() || '[]');
+    var active = null;
+    for (var i = 0; i < themes.length; i++) {
+      if (themes[i].active) { active = themes[i]; break; }
+    }
+    if (!active) {
+      // Fallback: no active theme found (shouldn't happen), still apply Default tile config
+      applyTileConfig();
+      return;
+    }
+    _themeActive = active.name;
+    if (active.name !== 'Default' && LB.getThemeHtml) {
+      var html = LB.getThemeHtml(active.name);
+      if (html) {
+        var themeMeta = {};
+        try {
+          if (LB.getThemeMeta) themeMeta = JSON.parse(LB.getThemeMeta(active.name) || '{}');
+        } catch (eMeta) {}
+        // Merge any custom i18n strings the theme declared in theme.json `strings` into
+        // the global I18N table before applyLang() translates the freshly-injected HTML.
+        // location.reload() on every theme-switch resets window.I18N from the file, so
+        // merged strings from one theme never leak into another.
+        try {
+          if (themeMeta.strings && window.I18N) {
+            if (themeMeta.strings.en && window.I18N.en) Object.assign(window.I18N.en, themeMeta.strings.en);
+            if (themeMeta.strings.de && window.I18N.de) Object.assign(window.I18N.de, themeMeta.strings.de);
+          }
+        } catch (eStr) {}
+        var isFullScope = themeMeta.scope === 'full';
+        _themeScope = isFullScope ? 'full' : 'fold';
+        var container = isFullScope
+          ? document.getElementById('scroller')
+          : document.getElementById('fold-inner');
+        if (container) {
+          _parkTilesBeforeInjection(isFullScope);
+          container.innerHTML = html;
+          _cleanPoolAfterInjection();
+          reattachSpeedUnlock();
+          reattachQuickGridHandlers();
+          // Re-run the i18n pass so data-i18n attributes in the injected HTML are translated.
+          // applyLang() runs before initActiveTheme() at startup so the theme HTML would
+          // otherwise miss the translation pass entirely.
+          try { applyLang(); } catch (eLang) {}
+        }
+      }
+    }
+    injectThemeVars();
+    _restorePoolEnabled();
+    applyTileConfig();
+    scheduleFitFold();
+  } catch (e) {
+    try { applyTileConfig(); } catch(e2) {}
+  } finally {
+    // Always reveal content - even if injection threw - so the page doesn't stay hidden.
+    document.documentElement.removeAttribute('data-theme-loading');
+  }
 }
 
 window.__onThemeEvent = function(ev) {
@@ -4353,6 +6064,10 @@ function initNavBanner() {
    above the "Motors" heading and can be dragged anywhere; the dragged spot is remembered. */
 
 const RIDE_BANNER_KEY = 'lb_ride_banner_pos';
+const RIDE_BANNER_DOCK_KEY = 'lb_ride_banner_docked';
+function _isRideBannerDocked() {
+  try { return localStorage.getItem(RIDE_BANNER_DOCK_KEY) === 'true'; } catch(e) { return false; }
+}
 
 /* Park it above the "Motors" heading. Only used until the rider drags it somewhere else. */
 function placeRideBannerDefault(b) {
@@ -4373,15 +6088,18 @@ function showRideBanner(on) {
   const was = b.classList.contains('open');
   b.classList.toggle('open', !!on);
   if (on && !was) {
-    let saved = null;
-    try { saved = JSON.parse(localStorage.getItem(RIDE_BANNER_KEY) || 'null'); } catch (e) {}
-    if (saved && typeof saved.left === 'number' && typeof saved.top === 'number') {
-      b.style.left = saved.left + 'px'; b.style.top = saved.top + 'px';
-      b.style.right = 'auto'; b.style.bottom = 'auto';
-      if (typeof saved.width === 'number') b.style.width = saved.width + 'px';
-    } else {
-      // offsetHeight is only real once the element is displayed, so measure after the class flip.
+    if (_isRideBannerDocked()) {
       placeRideBannerDefault(b);
+    } else {
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(RIDE_BANNER_KEY) || 'null'); } catch (e) {}
+      if (saved && typeof saved.left === 'number' && typeof saved.top === 'number') {
+        b.style.left = saved.left + 'px'; b.style.top = saved.top + 'px';
+        b.style.right = 'auto'; b.style.bottom = 'auto';
+        if (typeof saved.width === 'number') b.style.width = saved.width + 'px';
+      } else {
+        placeRideBannerDefault(b);
+      }
     }
   }
 }
@@ -4392,9 +6110,11 @@ function initRideBanner() {
   const stop = document.getElementById('rb-stop');
   if (stop) stop.addEventListener('click', (e) => { e.stopPropagation(); stopLiveRide(); });
 
+  const SNAP = 8;
   let drag = null;
   b.addEventListener('pointerdown', (e) => {
     if (e.target && e.target.id === 'rb-stop') return;
+    if (_isRideBannerDocked()) return;
     const r = b.getBoundingClientRect();
     b.style.width = r.width + 'px';
     b.style.left = r.left + 'px'; b.style.top = r.top + 'px';
@@ -4405,8 +6125,9 @@ function initRideBanner() {
   b.addEventListener('pointermove', (e) => {
     if (!drag) return;
     const w = b.offsetWidth, h = b.offsetHeight;
-    const left = Math.max(4, Math.min(e.clientX - drag.dx, window.innerWidth - w - 4));
-    const top = Math.max(4, Math.min(e.clientY - drag.dy, window.innerHeight - h - 4));
+    const rawL = e.clientX - drag.dx, rawT = e.clientY - drag.dy;
+    const left = Math.round(Math.max(4, Math.min(rawL, window.innerWidth - w - 4)) / SNAP) * SNAP;
+    const top  = Math.round(Math.max(4, Math.min(rawT, window.innerHeight - h - 4)) / SNAP) * SNAP;
     b.style.left = left + 'px'; b.style.top = top + 'px';
   });
   const drop = () => {
@@ -4757,10 +6478,10 @@ function toggleSmartMain() {
 // Reflect the scooter's motor mode + traction-control state onto the main-screen quick toggle.
 // Also enables/disables the whole control based on the BLE connection (called every tickBLE).
 function reflectMotorModeMain() {
-  const wrap = document.getElementById('motor-quick');
-  if (!wrap) return;
+  const grid = document.getElementById('quick-grid');
+  if (!grid) return;
   const connected = !!state.bleConnected;
-  wrap.classList.toggle('mq-disabled', !connected);
+  grid.classList.toggle('qg-disabled', !connected);
 
   const d = liveRaw();
   const dm = pick(d, ['dualMotor']);
@@ -4772,10 +6493,10 @@ function reflectMotorModeMain() {
     else if (b(rm) && !b(dm)) mode = 1;   // rear only
     else if (!b(rm) && b(dm)) mode = 2;   // front only
   }
-  wrap.querySelectorAll('.mq-btn[data-mm]').forEach(btn => {
+  document.querySelectorAll('.mq-btn[data-mm]').forEach(btn => {
     btn.classList.toggle('active', parseInt(btn.dataset.mm, 10) === mode);
   });
-  const smartBtn = wrap.querySelector('.mq-smart');
+  const smartBtn = document.querySelector('.mq-smart');
   if (smartBtn) smartBtn.classList.toggle('active', connected && liveSmartOn());
 }
 
@@ -4821,13 +6542,10 @@ function toggleDriveQuick(key) {
 
 /* Mirror the scooter state onto the four buttons (called every tickBLE). */
 function reflectDriveQuick() {
-  const wrap = document.getElementById('drive-quick');
-  if (!wrap) return;
   const connected = !!state.bleConnected;
-  wrap.classList.toggle('dq-disabled', !connected);
   const f = liveDriveFlags();
   const on = { startMode: f.startMode, abs: f.abs, ecoMode: f.ecoMode, cruise: f.cruise !== 0 };
-  wrap.querySelectorAll('.dq-btn[data-dq]').forEach(btn => {
+  document.querySelectorAll('.dq-btn[data-dq]').forEach(btn => {
     const k = btn.dataset.dq;
     btn.classList.toggle('active', connected && !!on[k]);
     if (k === 'cruise') {
@@ -4862,8 +6580,10 @@ function fitFold() {
 
   const cs = getComputedStyle(scroller);
   // clientHeight includes the padding box; the fold starts below the top padding and its bottom
-  // edge is meant to sit on the screen edge, so only the top padding comes off.
-  const avail = scroller.clientHeight - parseFloat(cs.paddingTop || '0') - FOLD_BOTTOM_GAP;
+  // edge must sit at the top edge of the bottom bar (or the screen edge when the bar is hidden).
+  const bbEl = document.getElementById('bottombar');
+  const bbH = (bbEl && getComputedStyle(bbEl).display !== 'none') ? (bbEl.offsetHeight || 0) : 0;
+  const avail = scroller.clientHeight - parseFloat(cs.paddingTop || '0') - FOLD_BOTTOM_GAP - bbH;
   if (!(avail > 0)) return;
 
   // offsetHeight is the LAYOUT height and ignores the transform, so the factor can be recomputed
@@ -4929,7 +6649,6 @@ function wireEvents() {
 
   // Routes sub-page open/close
   document.getElementById('btn-open-routes').addEventListener('click', () => {
-    closeSettings();
     renderRoutes();
     document.getElementById('routes-page').classList.add('open');
   });
@@ -4956,18 +6675,15 @@ function wireEvents() {
   // Settings open/close
   document.getElementById('btn-settings').addEventListener('click', openSettings);
   document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
-  document.getElementById('settings-overlay').addEventListener('click', closeSettings);
 
   // Connect scooter (settings sheet): open the Connect page.
   document.getElementById('btn-connect-scooter').addEventListener('click', () => {
-    closeSettings();
     openConnectPage();
   });
 
   // Scooter settings: open the in-app scooter settings page (requires a connected scooter).
   document.getElementById('btn-scooter-settings').addEventListener('click', () => {
     if (!state.bleConnected) { showToast(t('msg2.toast.no_scooter_connected'), 3000, 'err'); return; }
-    closeSettings();
     openScooterPage();
   });
   document.getElementById('btn-scooter-back').addEventListener('click', closeScooterPage);
@@ -4977,36 +6693,29 @@ function wireEvents() {
   // Read error reports: show current active faults/errors from live BLE data (requires connection).
   document.getElementById('btn-error-reports').addEventListener('click', () => {
     if (!state.bleConnected) { showToast(t('msg2.toast.no_scooter_connected'), 3000, 'err'); return; }
-    closeSettings();
     openErrorReports();
   });
   document.getElementById('btn-error-reports-back').addEventListener('click', closeErrorReports);
 
   // Scooter info: identity + firmware/app versions read from live BLE data.
   document.getElementById('btn-info').addEventListener('click', () => {
-    closeSettings();
     openInfoPage();
   });
   document.getElementById('btn-info-back').addEventListener('click', closeInfoPage);
 
   // Battery info: pack, health and per-cell voltages read from live BLE data.
   document.getElementById('btn-battery').addEventListener('click', () => {
-    closeSettings();
     openBatteryPage();
   });
   document.getElementById('btn-battery-back').addEventListener('click', closeBatteryPage);
 
-  document.getElementById('btn-open-display').addEventListener('click', () => {
-    closeSettings();
-    openDisplayPage();
-  });
-  document.getElementById('btn-display-back').addEventListener('click', closeDisplayPage);
 
   document.getElementById('btn-open-theme').addEventListener('click', () => {
-    closeSettings();
     openThemePage();
   });
   document.getElementById('btn-theme-back').addEventListener('click', closeThemePage);
+  document.getElementById('btn-open-guide').addEventListener('click', openGuidePage);
+  document.getElementById('btn-guide-back').addEventListener('click', closeGuidePage);
   document.getElementById('btn-theme-import').addEventListener('click', () => {
     if (typeof LB !== 'undefined' && LB.pickThemeFiles) LB.pickThemeFiles();
     else showToast(t('msg.app.only.in.app'));
@@ -5020,7 +6729,6 @@ function wireEvents() {
   // Firmware update: pick a .hex and flash the IVCU over BLE (native OtaEngine). Opening is
   // allowed offline so a file can be inspected; Start is gated on a connected scooter + valid CRC.
   document.getElementById('btn-firmware').addEventListener('click', () => {
-    closeSettings();
     openFirmwarePage();
   });
   document.getElementById('btn-firmware-back').addEventListener('click', closeFirmwarePage);
@@ -5058,20 +6766,25 @@ function wireEvents() {
 
   // Main-screen motor-mode quick toggle: Front/Rear/Both reuse setMotorMode(); Smart toggles TCS.
   // (When disconnected the control has pointer-events:none, so these never fire.)
-  document.querySelectorAll('#motor-quick .mq-btn[data-mm]').forEach(btn => {
+  document.querySelectorAll('.mq-btn[data-mm]').forEach(btn => {
     btn.addEventListener('click', () => setMotorMode(parseInt(btn.dataset.mm, 10)));
   });
-  const mqSmart = document.querySelector('#motor-quick .mq-smart');
+  const mqSmart = document.querySelector('.mq-smart');
   if (mqSmart) mqSmart.addEventListener('click', toggleSmartMain);
 
   // Main-screen drive-mode quick toggles: kick start / ABS / eco / cruise.
-  document.querySelectorAll('#drive-quick .dq-btn[data-dq]').forEach(btn => {
+  document.querySelectorAll('.dq-btn[data-dq]').forEach(btn => {
     btn.addEventListener('click', () => toggleDriveQuick(btn.dataset.dq));
   });
 
   // Hidden gesture: triple-tap the VCU speed tile to toggle the FIN speed lock (add/remove "DE").
-  const vcuTile = document.querySelector('#speed-row .ble-drum');
+  // Wire speed-unlock (triple-tap) to speed drums - check DOM first, then pool (for custom themes)
+  const vcuTile = document.querySelector('#speed-row .ble-drum') ||
+                  document.querySelector('#std-tile-pool [data-tile-id="tile-speed-ble"]');
   if (vcuTile) vcuTile.addEventListener('click', onVcuTileTap);
+  const gpsTile = document.querySelector('#speed-row .gps-drum') ||
+                  document.querySelector('#std-tile-pool [data-tile-id="tile-speed-gps"]');
+  if (gpsTile) gpsTile.addEventListener('click', onVcuTileTap);
 
   // Version Info & Disclaimer (side-menu footer): open the modal (Close / backdrop / Escape).
   document.getElementById('btn-version-info').addEventListener('click', () => {
@@ -5137,6 +6850,7 @@ function wireEvents() {
   document.getElementById('toggle-mph').addEventListener('change', e => {
     state.useMph = e.target.checked;
     storage.set('lb_units', state.useMph ? 'mph' : 'kmh');
+    document.documentElement.classList.toggle('lb-mph', state.useMph);
     try { renderRoutes(); } catch (err) {}   // flip the saved-route distances now; live tiles flip on the next tick
   });
 
@@ -5167,6 +6881,94 @@ function wireEvents() {
       else showToast(t('msg.app.only.in.app'));
     } catch (err) {}
   });
+
+  // Bottom-bar button wiring
+  const bbSettings = document.getElementById('bb-btn-settings');
+  if (bbSettings) bbSettings.addEventListener('click', () => openSettings());
+  // Streaming icon toggle
+  const srtToggle = document.getElementById('toggle-streaming-btn');
+  const srtShow = storage.get('lb_show_streaming') !== 'false';
+  if (srtToggle) srtToggle.checked = srtShow;
+  applySrtVisibility(srtShow);
+  if (srtToggle) srtToggle.addEventListener('change', e => {
+    storage.set('lb_show_streaming', e.target.checked ? 'true' : 'false');
+    applySrtVisibility(e.target.checked);
+  });
+
+  // Bottom navigation toggle + shortcut selects
+  const bnToggle = document.getElementById('toggle-bottom-nav');
+  const bnEnabled = storage.get('lb_bottom_nav') === 'true';
+  if (bnToggle) bnToggle.checked = bnEnabled;
+  applyBottomNav(bnEnabled);
+  if (bnToggle) bnToggle.addEventListener('change', e => {
+    storage.set('lb_bottom_nav', e.target.checked ? 'true' : 'false');
+    applyBottomNav(e.target.checked);
+  });
+
+  // Dashboard lock toggle
+  const dlToggle = document.getElementById('toggle-dash-lock');
+  if (dlToggle) {
+    dlToggle.checked = storage.get('lb_dash_locked') === 'true';
+    dlToggle.addEventListener('change', e => {
+      storage.set('lb_dash_locked', e.target.checked ? 'true' : 'false');
+    });
+  }
+
+  // Ride banner dock toggle
+  const rbDockToggle = document.getElementById('toggle-ride-banner-dock');
+  if (rbDockToggle) {
+    try { rbDockToggle.checked = localStorage.getItem(RIDE_BANNER_DOCK_KEY) === 'true'; } catch(e) {}
+    rbDockToggle.addEventListener('change', e => {
+      try { localStorage.setItem(RIDE_BANNER_DOCK_KEY, e.target.checked ? 'true' : 'false'); } catch(err) {}
+      // If banner is currently open and we just docked it, snap it back to default position
+      const b = document.getElementById('ride-banner');
+      if (b && b.classList.contains('open') && e.target.checked) placeRideBannerDefault(b);
+    });
+  }
+
+  // Populate shortcut selects - called on init AND each time settings page opens
+  function populateBbSelect(selId, storageKey) {
+    var sel = document.getElementById(selId);
+    if (!sel) return;
+    var prev = sel.value || storage.get(storageKey) || 'none';
+    sel.innerHTML = '';
+    // Fixed app shortcuts
+    Object.keys(BB_SHORTCUTS).forEach(function(k) {
+      var opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = t(BB_SHORTCUTS[k].labelKey) || k;
+      sel.appendChild(opt);
+    });
+    // Dynamic scooter buttons (only if visible in DOM)
+    var dashBtns = _bbDashShortcuts();
+    if (dashBtns.length > 0) {
+      var sep = document.createElement('option');
+      sep.disabled = true; sep.textContent = '── ' + t('settings.bottomnav.sc.scooter.group') + ' ──';
+      sel.appendChild(sep);
+      dashBtns.forEach(function(d) {
+        var opt = document.createElement('option');
+        opt.value = d.key;
+        opt.textContent = d.label;
+        sel.appendChild(opt);
+      });
+    }
+    sel.value = prev;
+    if (!sel.value) sel.value = 'none';
+    if (!sel._bbWired) {
+      sel._bbWired = true;
+      sel.addEventListener('change', function() {
+        storage.set(storageKey, sel.value);
+        applyBottomShortcuts();
+      });
+    }
+  }
+  window._repopulateBbSelects = function() {
+    populateBbSelect('bb-left-sel', 'lb_bb_left');
+    populateBbSelect('bb-right-sel', 'lb_bb_right');
+    applyBottomShortcuts();
+  };
+  populateBbSelect('bb-left-sel', 'lb_bb_left');
+  populateBbSelect('bb-right-sel', 'lb_bb_right');
 
   // Debug mode toggle: persist via native (survives restarts) then reflect the banner state.
   const dbgToggle = document.getElementById('toggle-debug');
@@ -5245,7 +7047,14 @@ function init() {
   initNavBanner();
   initRideBanner();
   initDisplayPage();
+  initActiveTheme(); // inject custom theme HTML BEFORE initFold so fold sees the right HTML first
+  applyButtonRowConfig(); // show only configured buttons before fold measurement
+  applyQuickBtnOrder();   // restore saved button order (drag-to-reorder)
+  applyQuickCellOrder(); // restore saved card positions (hero/motor cells)
   initFold();      // after initLang, so the first measurement sees the rider's own label lengths
+  initTileDrag();    // always wire long-press drag, regardless of theme/LB
+  initCellDrag();    // long-press drag for hero-cell / motor-cell cards
+  initBtnDrag();     // long-press drag for quick-grid buttons
 
   // Start BLE polling
   tickBLE();
@@ -5285,6 +7094,16 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
+
+// MutationObserver that keeps the native back-button state in sync with open/closed pages.
+// Watching class changes on the whole document catches every open() / close() transition
+// without requiring per-function hooks. Only calls the bridge when the state actually changes.
+(function() {
+  try {
+    new MutationObserver(function() { _updateNavState(); })
+      .observe(document.documentElement, { subtree: true, attributeFilter: ['class'] });
+  } catch(e) {}
+})();
 </script>
 </body>
 </html>

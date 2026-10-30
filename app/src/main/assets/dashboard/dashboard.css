@@ -72,6 +72,21 @@ html, body {
   position: relative;
 }
 
+/* ── Bottom navigation bar ──────────────────────────────────── */
+#bottombar {
+  display: none; /* shown by applyBottomNav() */
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+  height: 32px;
+  background: var(--card); border-top: 1px solid var(--border);
+  align-items: stretch;
+}
+.bb-btn { flex: 1; height: 32px; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+#bb-btn-left, #bb-btn-right { font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+/* When bottom nav is active: push scroller up so content isn't hidden behind the bar */
+body.bottom-nav-active #scroller { padding-bottom: 32px; }
+/* Hide Settings + Streaming from topbar in bottom-nav mode; keep BLE + theme toggle */
+body.bottom-nav-active #btn-settings { display: none !important; }
+
 /* ── Topbar ────────────────────────────────────────────────── */
 #topbar {
   display: flex; align-items: center; justify-content: space-between;
@@ -123,6 +138,11 @@ html, body {
 /* children must NOT shrink - otherwise the flex column squashes instead of scrolling */
 #scroller > * { flex-shrink: 0; }
 #scroller::-webkit-scrollbar { display: none; }
+/* Hide content during theme init so the default HTML never flashes before the custom
+   theme HTML is injected. visibility:hidden (not display:none) preserves layout so
+   fitFold() still measures the correct dimensions. The attribute is removed by
+   initActiveTheme() once injection and var-injection are done. */
+html[data-theme-loading] #scroller { visibility: hidden; }
 
 /* ── First-screen fold ─────────────────────────────────────── */
 /* The fold holds the live values a rider reads while moving, and fitFold() scales it so it
@@ -137,6 +157,10 @@ html, body {
   transform-origin: top left; width: 100%;
 }
 #fold-inner > * { flex-shrink: 0; }
+/* Per-tile minimum heights - set via --tile-h-* CSS vars in the style editor (0 = natural) */
+#speed-row      { min-height: var(--tile-h-speed, 0px); }
+#hero-row       { min-height: var(--tile-h-hero, 0px); }
+#motors-section { min-height: var(--tile-h-motors, 0px); }
 
 /* ── Speed Drums ───────────────────────────────────────────── */
 #speed-row {
@@ -179,7 +203,7 @@ html, body {
   font-variant-numeric: tabular-nums;
 }
 .hero-cell .hc-unit {
-  font-size: var(--sz-hero-lbl, var(--fs-md)); color: var(--label); margin-top: 3px; white-space: nowrap;
+  font-size: var(--sz-hero-lbl, var(--fs-md)); color: var(--label); margin-top: 3px; white-space: nowrap; text-align: center;
 }
 .hero-cell .hc-tag {
   margin-top: 5px; padding: 2px 7px;
@@ -287,23 +311,7 @@ html, body {
 .del-btn:last-child { border-right: none; }
 .del-btn:active { background: #FF505015; }
 
-/* ── Settings Sheet ────────────────────────────────────────── */
-#settings-overlay {
-  position: fixed; inset: 0; z-index: 100;
-  background: rgba(0,0,0,.45);
-  opacity: 0; pointer-events: none;
-  transition: opacity .25s;
-}
-#settings-overlay.open { opacity: 1; pointer-events: all; }
-#settings-sheet {
-  position: fixed; top: 0; right: 0; bottom: 0;
-  width: min(320px, 85vw); z-index: 101;
-  background: var(--card); border-left: 1px solid var(--border);
-  transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
-  overflow-y: auto; padding-top: var(--sat);
-}
-#settings-sheet.open { transform: translateX(0); }
-
+/* ── Settings Sheet → full-screen sub-page (styled via sub-pages rule above) ── */
 .settings-topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px; border-bottom: 1px solid var(--border);
@@ -436,46 +444,36 @@ html, body {
 
 /* Two stacked tile rows: temperatures and power above, currents below. */
 #motor-area { display: flex; flex-direction: column; gap: var(--gap); }
-/* Motor-mode quick toggle: its own full-width row under the motor tiles, four equal buttons,
-   same shape as the drive-mode row below it. */
-#motor-quick { display: flex; gap: var(--gap); container-type: inline-size; }
-#motor-quick .mq-btn {
-  flex: 1 1 0; min-width: 0; padding: 8px 1px;
-  border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--card); color: var(--label);
-  font-size: var(--fs-xs); font-weight: var(--fw-bold); line-height: 1.1; cursor: pointer;
-  white-space: nowrap;
-  font-size: clamp(7px, 3.4cqi, 12px);   /* same reasoning as .dq-btn below */
-  -webkit-tap-highlight-color: transparent;
+/* Unified quick-action grid: motor-mode + drive-mode buttons, max 4 visible, configurable in Settings. */
+#quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: auto;
+  gap: var(--gap);
+  container-type: inline-size;
 }
-#motor-quick .mq-btn:active { opacity: .7; }
-/* The active fills are the shared action-button variants (primary fill / good fill). */
-/* Not connected: whole control greyed and non-interactive */
-/* Greyed out while disconnected, but still clickable so a tap shows the "Connect the scooter
-   first" toast instead of doing nothing. The click handlers guard on the connection state. */
-#motor-quick.mq-disabled { opacity: .4; filter: grayscale(1); }
-
-/* Drive-mode quick toggles under the motor tiles: four equal-width buttons on one row. */
-/* No margin-top: #fold-inner already spaces its children by --gap, so an extra margin would
-   double the distance to the motor-mode row above. */
-#drive-quick { display: flex; gap: var(--gap); container-type: inline-size; }
-#drive-quick .dq-btn {
-  flex: 1 1 0; min-width: 0; padding: 8px 1px;
+/* Themed select used in the theme-editor panels. */
+select.theme-sel {
+  appearance: none; -webkit-appearance: none;
+  background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E") no-repeat right 8px center / 10px 6px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); font-size: var(--fs-sm); font-family: inherit;
+  padding: 6px 28px 6px 10px; cursor: pointer; min-width: 100px;
+}
+#quick-grid .mq-btn,
+#quick-grid .dq-btn {
+  min-width: 0; padding: 8px 1px;
   border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--card); color: var(--label);
-  font-size: var(--fs-xs); font-weight: var(--fw-bold); line-height: 1.1; cursor: pointer;
+  font-weight: var(--fw-bold); line-height: 1.1; cursor: pointer;
   white-space: nowrap;
-  /* Sized from the row's own width, not in fixed px: fitFold() lays the fold out at
-     100/scale percent width, so a fixed size would grow relative to the buttons whenever the
-     fold scales up and would cut "Kickstart" off. cqi keeps the ratio constant at any scale.
-     The plain px line above stays as the fallback if container units are unavailable. */
   font-size: clamp(7px, 3.4cqi, 12px);
   -webkit-tap-highlight-color: transparent;
 }
-#drive-quick .dq-btn:active { opacity: .7; }
-/* Cruise while the scooter is locked: the firmware refuses the write, so mark it as unavailable. */
-#drive-quick .dq-btn.dq-locked { opacity: .45; }
-#drive-quick.dq-disabled { opacity: .4; filter: grayscale(1); }
+#quick-grid .mq-btn:active,
+#quick-grid .dq-btn:active { opacity: .7; }
+#quick-grid .dq-btn.dq-locked { opacity: .45; }
+#quick-grid.qg-disabled { opacity: .4; filter: grayscale(1); }
 
 /* ── All values ──────────────────────────────────────────────── */
 /* #all-values takes the shared card surface defined with #data-grid. */
@@ -595,6 +593,7 @@ html, body {
 }
 .settings-btn:active,
 #btn-scooter-settings:active, #btn-connect-scooter:active, #btn-export-logs:active, #btn-error-reports:active, #btn-navigation:active, #btn-info:active, #btn-battery:active, #btn-firmware:active, #btn-whatsnew:active, #btn-version-info:active { background: var(--border); }
+.settings-btn-secondary { color: var(--label); font-weight: normal; font-size: var(--fs-sm); margin-top: 4px; }
 /* #btn-stream-start (good fill) + #btn-stream-stop (neutral) are styled by the shared action-button base. */
 #stream-url { color: var(--text); background: var(--bg); border: 1px solid var(--border);
   border-radius: 8px; padding: 8px; font-family: monospace; }
@@ -603,19 +602,20 @@ html, body {
    Every sub-page is the same full-screen sheet that slides in from the right, so one shell
    carries all of them. #routes-scroller keeps its own block: it clips instead of scrolling. */
 #routes-page, #streaming-page,
-#connect-page, #scooter-page, #error-reports-page, #info-page, #battery-page, #firmware-page, #display-page, #theme-page {
+#connect-page, #scooter-page, #error-reports-page, #info-page, #battery-page, #firmware-page, #display-page, #theme-page, #guide-page, #settings-sheet {
   position: fixed; inset: 0; z-index: 120; background: var(--bg);
   display: flex; flex-direction: column;
   transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
 }
 #routes-page.open, #streaming-page.open,
-#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #battery-page.open, #firmware-page.open, #display-page.open, #theme-page.open { transform: translateX(0); }
+#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #battery-page.open, #firmware-page.open, #display-page.open, #theme-page.open, #guide-page.open, #settings-sheet.open { transform: translateX(0); }
 #streaming-scroller,
-#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #battery-scroller, #firmware-scroller, #display-scroller, #theme-scroller {
+#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #battery-scroller, #firmware-scroller, #display-scroller, #theme-scroller, #guide-scroller, #settings-scroller {
   flex: 1; min-height: 0; overflow-y: auto; padding: var(--gap);
   display: flex; flex-direction: column; gap: 4px;
   padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px) + 12px);
 }
+#theme-scroller { padding-left: calc(var(--gap) + 5px); padding-right: calc(var(--gap) + 5px); }
 /* children must NOT shrink, otherwise the flex column squashes instead of scrolling */
 #routes-scroller > *, #streaming-scroller > *,
 #connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > *, #battery-scroller > *, #firmware-scroller > *, #display-scroller > *, #theme-scroller > * { flex-shrink: 0; }
@@ -688,13 +688,13 @@ html, body {
 /* Variant: primary fill (also the selected motor-mode button and the accept button of the
    disclaimer, the one modal button that grants something rather than dismissing). */
 #btn-fw-start, #btn-scan, .gs-save-btn, #disclaimer-accept,
-#motor-quick .mq-btn.active, #drive-quick .dq-btn.active {
+#quick-grid .mq-btn.active, #quick-grid .dq-btn.active {
   background: var(--btnfill); color: #0A0C10; border-color: var(--btnfill);
 }
 /* Variant: good fill (start streaming, Smart on). Must stay after the primary fill: the Smart
    button carries .mq-btn and .mq-smart at equal specificity, so the later rule decides. */
 #btn-stream-start,
-#motor-quick .mq-smart.active { background: var(--good); color: #06251a; border-color: var(--good); }
+#quick-grid .mq-smart.active { background: var(--good); color: #06251a; border-color: var(--good); }
 /* Variant: neutral card (firmware pick) */
 #btn-fw-pick { background: var(--card); color: var(--text); }
 /* Variant: danger outline (cancel / disconnect) */
@@ -973,11 +973,18 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 .range-ctrl { width: 100%; accent-color: var(--btnfill); height: 28px; cursor: pointer; }
 
 /* ── Theme manager page ── */
-.theme-row {
+.theme-list-toggle {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
-  background: var(--card);
+  background: var(--card); cursor: pointer;
+  user-select: none; -webkit-user-select: none;
 }
+.theme-list-toggle-label { flex: 1; font-size: var(--fs-md); font-weight: 500; color: var(--text); }
+.theme-list-chevron { font-size: 10px; color: var(--label); transition: transform .15s; flex-shrink: 0; }
+.theme-list-toggle.open .theme-list-chevron { transform: rotate(90deg); }
+.theme-list-body { display: none; padding: 6px 0 0; }
+.theme-list-body.open { display: block; }
+.theme-row { display: flex; align-items: center; gap: 8px; padding: 10px 6px; }
 .theme-row-left { flex: 1; min-width: 0; }
 .theme-name { font-size: var(--fs-md); color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .theme-active-badge {
@@ -986,5 +993,245 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
   color: var(--good); border: 1px solid var(--good);
   border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: middle;
 }
+.theme-version { font-size: 10px; color: var(--label); margin-left: 6px; vertical-align: middle; opacity: .8; }
+#std-tile-pool { display: none !important; }
+#std-tile-extras { padding: 0; }
+.tile-editor-add-row { opacity: .85; }
+.tile-add-btn { padding: 2px 10px; font-size: var(--fs-sm); border-radius: var(--radius); background: var(--btnfill); color: var(--btntext); border: none; cursor: pointer; flex-shrink: 0; }
+.tile-remove-btn { padding: 2px 7px; font-size: var(--fs-sm); border-radius: var(--radius); background: transparent; color: var(--label); border: 1px solid var(--border); cursor: pointer; flex-shrink: 0; }
+.tile-source-sel { font-size: var(--fs-sm); background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 4px; flex-shrink: 0; }
 .theme-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
-.theme-row-actions button { padding: 5px 10px; font-size: var(--fs-sm); }
+.theme-row-actions button {
+  padding: 5px 10px; font-size: var(--fs-sm);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--card); color: var(--text);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.theme-row-actions button:active { opacity: .7; }
+.theme-row-actions .tm-btn-primary { background: var(--btnfill); color: #0A0C10; border-color: var(--btnfill); }
+.theme-row-actions .tm-btn-danger { color: var(--danger); border-color: var(--danger); }
+
+/* ── Theme customise panels (tile editor + style editor) ── */
+.theme-section-title {
+  font-size: var(--fs-sm); font-weight: 600; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .08em;
+  padding: 14px 0 6px;
+}
+/* Initially hidden: JS shows them when content is ready (CSSOM, not blocked by style-src CSP). */
+#bb-shortcut-rows, #tile-editor, #btn-row-editor, #style-editor { display: none; }
+#tile-editor, #style-editor {
+  padding: 0 0 4px;
+}
+.tile-editor-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+/* Custom-styled checkbox: hardcoded contrast-safe colours, not dependent on theme vars. */
+.tile-toggle {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; flex-shrink: 0; cursor: pointer;
+  border: 2px solid #888; border-radius: 3px;
+  background: transparent; position: relative; vertical-align: middle;
+}
+.tile-toggle:checked { background: #4A90E2; border-color: #4A90E2; }
+.tile-toggle:checked::after {
+  content: ''; position: absolute;
+  left: 3px; top: -1px; width: 5px; height: 10px;
+  border: 2px solid #fff; border-top: none; border-left: none;
+  transform: rotate(45deg);
+}
+.tile-edit-lbl { flex: 1; font-size: var(--fs-sm); color: var(--text); }
+/* ── Drag: dashboard long-press + editor handle ─────────────── */
+[data-cell-id].cell-drag-active { outline: 2px solid var(--value); opacity: .6; transform: scale(.94); z-index: 1; }
+[data-cell-id].cell-drop-target { outline: 2px dashed var(--value); }
+[data-tile-id].tile-drag-active {
+  opacity: .45;
+  outline: 2px dashed var(--value);
+  outline-offset: -2px;
+  filter: brightness(.7);
+}
+[data-tile-id].tile-drop-target {
+  outline: 3px solid var(--value);
+  outline-offset: -2px;
+  opacity: .8;
+}
+.tile-editor-row.tile-drag-active { opacity: .5; }
+.tile-editor-row.tile-drop-above { border-top: 2px solid var(--value); }
+.tile-editor-row.tile-drop-below { border-bottom: 2px solid var(--value); }
+[data-btn-id].btn-drag-active { opacity: .55; outline: 2px dashed var(--value); outline-offset: -2px; }
+[data-btn-id].btn-drop-target { box-shadow: 0 0 0 2px var(--value); }
+[data-btn-id].btn-ghost-slot { opacity: .2; border: 2px dashed var(--clr-accent, #448aff); background: transparent; }
+[data-btn-id].btn-ghost-slot.btn-drop-target { opacity: .55; }
+.tile-drag-handle {
+  font-size: 20px; color: var(--label); padding: 0 6px;
+  touch-action: none; user-select: none; cursor: grab; flex-shrink: 0;
+}
+.theme-hint { font-size: 10px; color: var(--label); font-weight: normal; }
+/* Button-slot editor: the × delete button and the slot select fill available space. */
+.btn-slot-sel { flex: 1; }
+.btn-slot-del {
+  flex-shrink: 0; background: none; border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--label); font-size: 14px;
+  padding: 2px 8px; cursor: pointer; line-height: 1;
+}
+.btn-slot-del:active { background: var(--border); }
+/* Number input for font sizes */
+.style-var-num {
+  width: 58px; background: var(--card); border: 1px solid var(--border);
+  color: var(--text); border-radius: 4px; padding: 4px 6px;
+  font-size: var(--fs-sm); text-align: right; flex-shrink: 0;
+}
+.style-var-unit { font-size: 11px; color: var(--label); margin-left: 2px; flex-shrink: 0; }
+.tile-mv {
+  padding: 2px 8px; font-size: 14px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); border-radius: 5px;
+  cursor: pointer; flex-shrink: 0;
+}
+.tile-mv:disabled { opacity: .3; cursor: default; }
+.style-editor-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid var(--border); gap: 10px;
+}
+.style-var-lbl { font-size: var(--fs-sm); color: var(--text); flex: 1; }
+.style-var-color { width: 44px; height: 34px; padding: 2px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: var(--card); flex-shrink: 0; }
+.style-var-range-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.style-var-range { width: 120px; accent-color: var(--btnfill); cursor: pointer; }
+.style-var-val { font-size: var(--fs-sm); color: var(--text-dim); min-width: 36px; text-align: right; }
+.style-reset-btn {
+  margin-top: 10px; padding: 7px 16px; font-size: var(--fs-sm);
+  border: 1px solid var(--border); background: var(--card); color: var(--text-dim);
+  border-radius: 7px; cursor: pointer;
+}
+
+/* ── Theme guide page ── */
+.guide-totop {
+  position: absolute; bottom: 24px; right: 16px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--card); border: 1px solid var(--border); color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s ease;
+  z-index: 10; cursor: pointer;
+}
+.guide-totop--visible { opacity: 1; pointer-events: auto; }
+#guide-body {
+  padding: 4px 2px 24px;
+  font-size: var(--fs-base);
+  color: var(--text);
+  line-height: 1.55;
+}
+#guide-body h2 {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  color: var(--value);
+  margin: 20px 0 8px;
+  padding-top: 4px;
+}
+#guide-body h3 {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  margin: 14px 0 6px;
+}
+#guide-body p { margin: 6px 0; }
+#guide-body ul, #guide-body ol { margin: 6px 0 6px 18px; padding: 0; }
+#guide-body li { margin: 3px 0; }
+#guide-body ul ul { margin-top: 2px; margin-bottom: 2px; }
+#guide-body code {
+  font-family: monospace;
+  font-size: var(--fs-sm);
+  background: var(--card);
+  border-radius: 4px;
+  padding: 1px 4px;
+  color: var(--value);
+}
+#guide-body pre {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  overflow-x: auto;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  border: 1px solid var(--border);
+}
+#guide-body pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  color: var(--text);
+  font-size: inherit;
+}
+#guide-body .tg-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: var(--fs-sm);
+}
+#guide-body .tg-table th {
+  text-align: left;
+  font-weight: var(--fw-semibold);
+  color: var(--label);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 8px 5px 0;
+}
+#guide-body .tg-table td {
+  padding: 4px 8px 4px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text);
+}
+#guide-body .tg-table td:first-child { color: var(--value); }
+#guide-body .tg-table-keys td:first-child { white-space: nowrap; }
+#guide-body .tg-rule {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 18px 0;
+}
+#guide-body .tg-note {
+  font-size: var(--fs-sm);
+  color: var(--label);
+  background: var(--card);
+  border-left: 3px solid var(--value);
+  border-radius: 0 6px 6px 0;
+  padding: 6px 10px;
+  margin: 6px 0;
+}
+#guide-body .tg-toc {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: var(--fs-sm);
+}
+#guide-body .tg-toc-title {
+  font-weight: var(--fw-semibold);
+  color: var(--label);
+  margin: 0 0 6px;
+  font-size: var(--fs-sm);
+}
+#guide-body .tg-toc ul { margin: 0; list-style: none; padding-left: 0; }
+#guide-body .tg-toc ul ul { padding-left: 14px; margin-top: 2px; }
+#guide-body .tg-toc a { color: var(--value); text-decoration: none; }
+#guide-body strong { font-weight: var(--fw-semibold); }
+html[lang="de"] #guide-body .tg-en { display: none; }
+html:not([lang="de"]) #guide-body .tg-de { display: none; }
+#guide-body .tg-ai-box {
+  background: var(--card);
+  border: 1px solid var(--value);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+#guide-body .tg-ai-box p { margin: 0 0 8px; font-size: var(--fs-sm); color: var(--text); }
+#guide-body .tg-ai-box code {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--value);
+  word-break: break-all;
+  user-select: all;
+  -webkit-user-select: all;
+  padding: 6px 8px;
+  background: var(--bg);
+  border-radius: 6px;
+}

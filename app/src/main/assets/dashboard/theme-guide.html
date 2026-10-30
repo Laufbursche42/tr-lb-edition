@@ -1,0 +1,1297 @@
+<!-- EN -->
+<div class="tg-lang tg-en">
+
+<div class="tg-ai-box">
+  <p>📋 <strong>Building a theme with AI?</strong> Give your AI assistant the raw link to this document - it has everything needed to produce a valid, importable theme:</p>
+  <code>https://raw.githubusercontent.com/Laufbursche42/tr-lb-edition/main/THEME-GUIDE.md</code>
+</div>
+
+<div class="tg-toc">
+  <p class="tg-toc-title" data-i18n="theme.guide.toc">Contents</p>
+  <ul>
+    <li><a href="#tg-en-what">What a theme is and is not</a></li>
+    <li><a href="#tg-en-bundle">Bundle format</a></li>
+    <li><a href="#tg-en-html">theme.html - structure and hooks</a>
+      <ul>
+        <li><a href="#tg-en-data-lb">data-lb (live values)</a></li>
+        <li><a href="#tg-en-data-lb-state">data-lb-state (state classes)</a></li>
+        <li><a href="#tg-en-data-lb-action">data-lb-action (actions)</a></li>
+        <li><a href="#tg-en-tile-id">data-tile-id (tile manager)</a></li>
+        <li><a href="#tg-en-keys">Available data keys</a></li>
+      </ul>
+    </li>
+    <li><a href="#tg-en-signals">Live-state signals on &lt;html&gt;</a>
+      <ul>
+        <li><a href="#tg-en-sig-unlock">Throttle-lock state</a></li>
+        <li><a href="#tg-en-sig-unit">Display unit</a></li>
+        <li><a href="#tg-en-sig-speed">Live speed for gauges</a></li>
+      </ul>
+    </li>
+    <li><a href="#tg-en-gauge">Circular speed gauge - complete technique</a>
+      <ul>
+        <li><a href="#tg-en-gauge-geo">Geometry</a></li>
+        <li><a href="#tg-en-gauge-anim">Animating with --cur-speed</a></li>
+        <li><a href="#tg-en-gauge-unit">Unit label toggle</a></li>
+        <li><a href="#tg-en-gauge-icon">Inline SVG icons</a></li>
+        <li><a href="#tg-en-gauge-full">Complete minimal gauge</a></li>
+      </ul>
+    </li>
+    <li><a href="#tg-en-css">theme.css - layout and variables</a></li>
+    <li><a href="#tg-en-json">theme.json - metadata</a></li>
+    <li><a href="#tg-en-label-loc">Label localization</a></li>
+    <li><a href="#tg-en-scope">Theme scope</a></li>
+    <li><a href="#tg-en-security">Security model - no JavaScript</a></li>
+    <li><a href="#tg-en-import">How to import</a></li>
+    <li><a href="#tg-en-portable">Portability between apps</a></li>
+    <li><a href="#tg-en-i18n">Translations and language</a></li>
+    <li><a href="#tg-en-example">Complete example - Orbit</a></li>
+    <li><a href="#tg-en-tips">Tips and limitations</a></li>
+  </ul>
+</div>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-what">What a theme is and is not</h2>
+<p>A custom theme <strong>replaces the HTML inside <code>#fold-inner</code></strong> - the part of the main screen that sits above the scroll area. You control layout, typography and colours with your own HTML and CSS. The app keeps driving everything else: the scroll tiles below, the quick-action button row, the recording banner and all the sub-pages.</p>
+<p><strong>A theme is not a web app.</strong> It cannot run JavaScript, load external resources or change the app's logic. It is structure and style only, with data fed in by the app.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-bundle">The bundle format</h2>
+<p>A theme is a <strong>ZIP file</strong> containing three files at the root level of the archive:</p>
+<table class="tg-table">
+  <thead><tr><th>File</th><th>Required</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>theme.html</code></td><td><strong>Yes</strong></td><td>HTML fragment injected into <code>#fold-inner</code></td></tr>
+    <tr><td><code>theme.css</code></td><td><strong>Yes</strong></td><td>CSS loaded for this theme</td></tr>
+    <tr><td><code>theme.json</code></td><td>No</td><td>Metadata: display name, version, optional CSS-variable declarations</td></tr>
+  </tbody>
+</table>
+<p>The ZIP filename becomes the import fallback name if <code>theme.json</code> has no <code>name</code> field. <strong>Size limit: 2 MB per file.</strong></p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-html">theme.html - structure and hooks</h2>
+<p><code>theme.html</code> is a plain HTML fragment - <strong>no <code>&lt;html&gt;</code>, <code>&lt;head&gt;</code> or <code>&lt;body&gt;</code> tags</strong>, just the content you want inside <code>#fold-inner</code> (fold scope, the default) or <code>#scroller</code> (full scope - see <a href="#tg-en-scope">Theme scope</a>). The app sanitizes it before storing.</p>
+
+<h3 id="tg-en-data-lb">Live value hooks - data-lb</h3>
+<p>Add <code>data-lb="key"</code> to any element. The app sets that element's <code>textContent</code> to the current scooter value every 500 ms:</p>
+<pre><code>&lt;div class="my-speed" data-lb="speed"&gt;&lt;/div&gt;
+&lt;div class="my-soc"   data-lb="soc"&gt;&lt;/div&gt;</code></pre>
+<p>Values are numbers (or <code>true</code>/<code>false</code> for booleans). If the scooter is disconnected, the last known value stays.</p>
+
+<h3 id="tg-en-data-lb-state">State hooks - data-lb-state</h3>
+<p>Add <code>data-lb-state="key:classname"</code> to toggle a CSS class based on whether a data value is truthy:</p>
+<pre><code>&lt;div class="speed-box" data-lb-state="park:is-parked"&gt;</code></pre>
+<p>When <code>data.park</code> is <code>true</code>, the class <code>is-parked</code> is added; when <code>false</code>, it is removed.</p>
+
+<h3 id="tg-en-data-lb-action">Action hooks - data-lb-action</h3>
+<table class="tg-table">
+  <thead><tr><th>Value</th><th>Behaviour</th></tr></thead>
+  <tbody>
+    <tr><td><code>speed-unlock</code></td><td>Triple-tap to trigger the eKFV speed-unlock sequence</td></tr>
+  </tbody>
+</table>
+<pre><code>&lt;div data-lb="speed" data-lb-action="speed-unlock"&gt;&lt;/div&gt;</code></pre>
+
+<h3 id="tg-en-tile-id">Tile registration - data-tile-id</h3>
+<p>Wrap sections with <code>data-tile-id</code> and <code>data-tile-label</code> to register them with the tile manager. Registered tiles can be shown, hidden and drag-reordered by the user:</p>
+<pre><code>&lt;div data-tile-id="my-speed-block" data-tile-label="Tacho"&gt;
+  &lt;!-- speed content --&gt;
+&lt;/div&gt;</code></pre>
+<p>Without <code>data-tile-id</code>, a section is always shown and cannot be managed.</p>
+
+<h3 id="tg-en-keys">Available data keys</h3>
+<p>All keys are parsed from the scooter's BLE telemetry every 500 ms. Raw numbers are <code>0</code> when disconnected; <code>park</code> is <code>false</code>.</p>
+<table class="tg-table tg-table-keys">
+  <thead><tr><th>Key</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>speed</code></td><td>number</td><td>km/h or mph</td><td>Current speed</td></tr>
+    <tr><td><code>avgSpeed</code></td><td>number</td><td>km/h or mph</td><td>Average speed (this ride)</td></tr>
+    <tr><td><code>maxSpeed</code></td><td>number</td><td>km/h or mph</td><td>Maximum speed (this ride)</td></tr>
+    <tr><td><code>soc</code></td><td>number</td><td>%</td><td>State of charge</td></tr>
+    <tr><td><code>soh</code></td><td>number</td><td>%</td><td>State of health</td></tr>
+    <tr><td><code>volt</code></td><td>number</td><td>V</td><td>Pack voltage</td></tr>
+    <tr><td><code>poleVolt</code></td><td>number</td><td>V</td><td>Pole voltage</td></tr>
+    <tr><td><code>current</code></td><td>number</td><td>A</td><td>Pack current (null when not reported)</td></tr>
+    <tr><td><code>gear</code></td><td>number</td><td>-</td><td>Active gear (1-3)</td></tr>
+    <tr><td><code>rearCurrent</code></td><td>number</td><td>A</td><td>Rear motor current</td></tr>
+    <tr><td><code>frontCurrent</code></td><td>number</td><td>A</td><td>Front motor current</td></tr>
+    <tr><td><code>rTemp</code></td><td>number</td><td>°C</td><td>Rear motor temperature</td></tr>
+    <tr><td><code>fTemp</code></td><td>number</td><td>°C</td><td>Front motor temperature</td></tr>
+    <tr><td><code>power</code></td><td>number</td><td>kW</td><td>Total power</td></tr>
+    <tr><td><code>singleMile</code></td><td>number</td><td>km or mi</td><td>Trip distance</td></tr>
+    <tr><td><code>totalMile</code></td><td>number</td><td>km or mi</td><td>Odometer</td></tr>
+    <tr><td><code>fb</code></td><td>number</td><td>-</td><td>Feedback / regen value</td></tr>
+    <tr><td><code>rssi</code></td><td>number</td><td>dBm</td><td>Bluetooth signal strength</td></tr>
+    <tr><td><code>park</code></td><td>boolean</td><td>-</td><td><code>true</code> when scooter is in park</td></tr>
+    <tr><td><code>vcuUnlock</code></td><td>number</td><td>-</td><td><code>0</code> = locked, <code>1</code> = unlocked, <code>-1</code> = unknown</td></tr>
+  </tbody>
+</table>
+<p class="tg-note"><strong>Unit note:</strong> <code>speed</code>, <code>avgSpeed</code>, <code>maxSpeed</code>, <code>singleMile</code> and <code>totalMile</code> follow the app's km/mph setting automatically.</p>
+<p class="tg-note"><strong>Value format:</strong> all numbers are raw JavaScript floats, e.g. <code>speed = 25.3</code>. There is no formatting control without JavaScript. Design your layout so a one-decimal value fits.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-signals">Live-state signals on &lt;html&gt;</h2>
+<p>The app sets classes and CSS variables directly on the <code>&lt;html&gt;</code> element so theme CSS can react to live state without needing a <code>data-lb-state</code> attribute on a specific element.</p>
+
+<h3 id="tg-en-sig-unlock">Throttle-lock state</h3>
+<table class="tg-table">
+  <thead><tr><th>Signal</th><th>Type</th><th>Values</th><th>When set</th></tr></thead>
+  <tbody>
+    <tr><td><code>lb-unlocked</code></td><td>class on <code>&lt;html&gt;</code></td><td>present / absent</td><td>Present when the scooter is unlocked (after triple-tap or FIN rename); absent when locked</td></tr>
+    <tr><td><code>--throttle-unlocked</code></td><td>CSS var on <code>:root</code></td><td><code>1</code> / <code>0</code></td><td><code>1</code> = unlocked, <code>0</code> = locked; useful in <code>calc()</code></td></tr>
+  </tbody>
+</table>
+<p>Updated every BLE tick (500 ms). Defaults to absent / <code>0</code> at page load.</p>
+<pre><code>/* Gauge scale widens when unlocked */
+.gauge-scale { --scale-max: 40; }
+:root.lb-unlocked .gauge-scale { --scale-max: 110; }
+
+/* Numeric version in calc() */
+.gauge-arc { stroke-dasharray: calc(var(--throttle-unlocked) * 220 + 80); }</code></pre>
+
+<h3 id="tg-en-sig-unit">Display unit</h3>
+<table class="tg-table">
+  <thead><tr><th>Signal</th><th>Type</th><th>Values</th><th>When set</th></tr></thead>
+  <tbody>
+    <tr><td><code>lb-mph</code></td><td>class on <code>&lt;html&gt;</code></td><td>present / absent</td><td>Present when the user has selected mph; absent for km/h</td></tr>
+  </tbody>
+</table>
+<p>Set at startup and whenever the user toggles the unit in settings.</p>
+<pre><code>.speed-unit::after { content: 'km/h'; }
+:root.lb-mph .speed-unit::after { content: 'mph'; }</code></pre>
+
+<h3 id="tg-en-sig-speed">Live speed for gauge animation</h3>
+<table class="tg-table">
+  <thead><tr><th>Signal</th><th>Type</th><th>Unit</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>--cur-speed</code></td><td>CSS var on <code>:root</code></td><td>km/h (always)</td><td>Raw km/h regardless of the display-unit setting. Updated every BLE tick. Use for gauge arc fill and animation. To convert: <code>calc(var(--cur-speed) * 0.621371)</code>.</td></tr>
+  </tbody>
+</table>
+<pre><code>/* Arc fill: 0 km/h = 0 %, 60 km/h = full arc */
+.gauge-arc {
+  stroke-dashoffset: calc(220 - var(--cur-speed) * 220 / 60);
+}</code></pre>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-gauge">Circular speed gauge - complete technique</h2>
+<p>A circular speed gauge is the most common full-scope theme element. This section gives you the exact SVG markup and CSS math to build one from scratch.</p>
+
+<h3 id="tg-en-gauge-geo">Geometry</h3>
+<p>The gauge uses two stacked <code>&lt;circle&gt;</code> SVG elements: a <strong>track ring</strong> (static 270° background arc) and a <strong>fill arc</strong> (shorter arc that grows with <code>--cur-speed</code>). The technique is <code>stroke-dasharray</code> / <code>stroke-dashoffset</code>:</p>
+<pre><code>stroke-dasharray="DRAW GAP"</code></pre>
+<p><code>DRAW</code> = length of the visible segment (SVG user units). <code>GAP</code> = gap filling the rest of the circle.</p>
+<p>For radius 58 in a 160×160 viewBox: circumference = 2 × π × 58 ≈ 364 px. 270° = 75% = <strong>273 px</strong>; gap = 364 - 273 = <strong>91 px</strong>. So <code>stroke-dasharray="273 91"</code> draws a 270° arc.</p>
+<p>By default the arc starts at 3 o'clock. Rotate 135° around the centre to start at 7 o'clock: <code>transform="rotate(135 80 80)"</code></p>
+
+<h3 id="tg-en-gauge-anim">Animating the fill arc with --cur-speed</h3>
+<p><code>dashoffset = 0</code> → full 273 px visible (maximum speed). <code>dashoffset = 273</code> → arc fully hidden (zero speed).</p>
+<pre><code>.gauge-arc {
+  --speed-max: 25;   /* eKFV locked: 25 km/h */
+  stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
+  transition: stroke-dashoffset 0.4s ease-out;
+}
+/* Extend scale when unlocked (lb-unlocked on &lt;html&gt;). */
+:root.lb-unlocked .gauge-arc { --speed-max: 110; }</code></pre>
+<p>No JavaScript needed - <code>--cur-speed</code> is updated every 500 ms and CSS recalculates automatically.</p>
+
+<h3 id="tg-en-gauge-unit">Unit label toggle</h3>
+<p>Use two overlapping <code>&lt;text&gt;</code> elements toggled by <code>opacity</code>. <code>display:none</code> is unreliable on SVG text in Android WebView.</p>
+<pre><code>&lt;text class="g-unit g-unit-kmh" x="80" y="100" text-anchor="middle"&gt;km/h&lt;/text&gt;
+&lt;text class="g-unit g-unit-mph" x="80" y="100" text-anchor="middle"&gt;mph&lt;/text&gt;</code></pre>
+<pre><code>.g-unit-kmh { opacity: 1; }
+.g-unit-mph { opacity: 0; }
+:root.lb-mph .g-unit-kmh { opacity: 0; }
+:root.lb-mph .g-unit-mph { opacity: 1; }</code></pre>
+
+<h3 id="tg-en-gauge-icon">Inline SVG icons</h3>
+<p>No <code>url()</code> or <code>http://</code> sources are allowed. Embed SVG directly. <code>fill="currentColor"</code> inherits the CSS <code>color</code> property.</p>
+<pre><code>&lt;svg class="my-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"&gt;
+  &lt;path d="M7 2v11h3v9l7-12h-4l4-8z"/&gt;
+&lt;/svg&gt;</code></pre>
+
+<h3 id="tg-en-gauge-full">Complete minimal gauge</h3>
+<pre><code>&lt;svg class="g-gauge" viewBox="0 0 160 160" aria-hidden="true"&gt;
+  &lt;!-- Track ring: 270° static background arc. rotate(135 80 80) = 7 o'clock start. --&gt;
+  &lt;circle class="g-track" cx="80" cy="80" r="58" fill="none"
+    stroke-dasharray="273 91" transform="rotate(135 80 80)" /&gt;
+  &lt;!-- Fill arc: stroke-dashoffset driven by --cur-speed in CSS. --&gt;
+  &lt;circle class="g-arc" cx="80" cy="80" r="58" fill="none"
+    stroke-dasharray="273 91" transform="rotate(135 80 80)" /&gt;
+  &lt;text class="g-val" x="80" y="80" text-anchor="middle" dominant-baseline="middle"
+        data-lb="speed"&gt;0&lt;/text&gt;
+  &lt;text class="g-unit g-unit-kmh" x="80" y="100" text-anchor="middle"&gt;km/h&lt;/text&gt;
+  &lt;text class="g-unit g-unit-mph" x="80" y="100" text-anchor="middle"&gt;mph&lt;/text&gt;
+&lt;/svg&gt;</code></pre>
+<pre><code>.g-gauge { width: 100%; max-width: 200px; overflow: visible; }
+.g-track { stroke: var(--border); stroke-width: 10; stroke-linecap: round; }
+.g-arc {
+  --speed-max: 25;
+  stroke: var(--value); stroke-width: 10; stroke-linecap: round;
+  stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
+  transition: stroke-dashoffset 0.4s ease-out;
+}
+:root.lb-unlocked .g-arc { --speed-max: 110; }
+.g-val      { font-size: 38px; font-weight: 700; fill: var(--text); font-family: inherit; }
+.g-unit     { font-size: 12px; fill: var(--label); font-family: inherit; }
+.g-unit-kmh { opacity: 1; }
+.g-unit-mph { opacity: 0; }
+:root.lb-mph .g-unit-kmh { opacity: 0; }
+:root.lb-mph .g-unit-mph { opacity: 1; }</code></pre>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-css">theme.css - layout and variables</h2>
+<p><code>theme.css</code> is loaded after the app's own CSS. Write selectors targeting your own class names or IDs from <code>theme.html</code>. Use the app's CSS variables so your theme adapts to dark mode, light mode and user colour settings automatically.</p>
+
+<h3>Colour variables</h3>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>--card</code></td><td>Tile / card background</td></tr>
+    <tr><td><code>--bg</code></td><td>Page background</td></tr>
+    <tr><td><code>--text</code></td><td>Primary text</td></tr>
+    <tr><td><code>--label</code></td><td>Secondary / muted text</td></tr>
+    <tr><td><code>--value</code></td><td>Accent / highlight colour (user-configurable)</td></tr>
+    <tr><td><code>--ble</code></td><td>BLE speed indicator colour</td></tr>
+    <tr><td><code>--gps</code></td><td>GPS speed indicator colour</td></tr>
+    <tr><td><code>--good</code></td><td>Positive / OK state colour</td></tr>
+    <tr><td><code>--warn</code></td><td>Warning colour</td></tr>
+    <tr><td><code>--danger</code></td><td>Error / critical colour</td></tr>
+    <tr><td><code>--unlock</code></td><td>Unlocked / entdrosselt indicator colour</td></tr>
+    <tr><td><code>--btnfill</code></td><td>Button fill colour</td></tr>
+    <tr><td><code>--border</code></td><td>Border / divider colour</td></tr>
+  </tbody>
+</table>
+<p class="tg-note">These runtime tokens resolve automatically to the correct dark or light value. Always use them in <code>theme.css</code>. To customise the palette, declare the per-mode source tokens below in <code>cssVars</code> in <code>theme.json</code>.</p>
+
+<h3>Per-mode source tokens (declare in cssVars to customise the palette)</h3>
+<p>These are the per-mode values that feed the runtime tokens above. Declare them in <code>cssVars</code> in <code>theme.json</code> to set your theme's own colour palette. The Style Editor exposes them grouped by mode.</p>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>Dark default</th><th>Light default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>--dark-card</code></td><td><code>#111420</code></td><td></td><td>Tile background, dark mode</td></tr>
+    <tr><td><code>--dark-bg</code></td><td><code>#0A0C10</code></td><td></td><td>Page background, dark mode</td></tr>
+    <tr><td><code>--dark-border</code></td><td><code>#1C2035</code></td><td></td><td>Border colour, dark mode</td></tr>
+    <tr><td><code>--dark-text</code></td><td><code>#E4EDF6</code></td><td></td><td>Primary text, dark mode</td></tr>
+    <tr><td><code>--dark-label</code></td><td><code>#C6D2E2</code></td><td></td><td>Secondary text, dark mode</td></tr>
+    <tr><td><code>--light-card</code></td><td></td><td><code>#ffffff</code></td><td>Tile background, light mode</td></tr>
+    <tr><td><code>--light-bg</code></td><td></td><td><code>#e8edf5</code></td><td>Page background, light mode</td></tr>
+    <tr><td><code>--light-border</code></td><td></td><td><code>#CDD5E4</code></td><td>Border colour, light mode</td></tr>
+    <tr><td><code>--light-text</code></td><td></td><td><code>#0A0D18</code></td><td>Primary text, light mode</td></tr>
+    <tr><td><code>--light-label</code></td><td></td><td><code>#0A0D18</code></td><td>Secondary text, light mode</td></tr>
+  </tbody>
+</table>
+
+<h3>Typography variables</h3>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>--fs-2xs</code></td><td>10 px</td><td>Smallest text</td></tr>
+    <tr><td><code>--fs-xs</code></td><td>11 px</td><td>Extra-small</td></tr>
+    <tr><td><code>--fs-sm</code></td><td>12 px</td><td>Small</td></tr>
+    <tr><td><code>--fs-md</code></td><td>13 px</td><td>Medium</td></tr>
+    <tr><td><code>--fs-base</code></td><td>14 px</td><td>Base body text</td></tr>
+    <tr><td><code>--fs-xl</code></td><td>16 px</td><td>Large</td></tr>
+    <tr><td><code>--fw-semibold</code></td><td>600</td><td>Semibold weight</td></tr>
+    <tr><td><code>--fw-bold</code></td><td>700</td><td>Bold weight</td></tr>
+    <tr><td><code>--radius</code></td><td>12 px</td><td>Standard border radius</td></tr>
+  </tbody>
+</table>
+
+<h3>User-configurable size variables</h3>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>--sz-speed-val</code></td><td>64 px</td><td>Speed number font size</td></tr>
+    <tr><td><code>--sz-speed-lbl</code></td><td>14 px</td><td>Speed label font size</td></tr>
+    <tr><td><code>--sz-hero-val</code></td><td>38 px</td><td>Hero tile value font size</td></tr>
+    <tr><td><code>--sz-hero-lbl</code></td><td>13 px</td><td>Hero tile label font size</td></tr>
+    <tr><td><code>--sz-m1-top</code></td><td>12 px</td><td>Motor tile 1 title font size</td></tr>
+    <tr><td><code>--sz-m1-mid</code></td><td>32 px</td><td>Motor tile 1 value font size</td></tr>
+    <tr><td><code>--sz-m1-bot</code></td><td>12 px</td><td>Motor tile 1 unit font size</td></tr>
+    <tr><td><code>--sz-m2-top</code></td><td>12 px</td><td>Motor tile 2 title font size</td></tr>
+    <tr><td><code>--sz-m2-mid</code></td><td>32 px</td><td>Motor tile 2 value font size</td></tr>
+    <tr><td><code>--sz-m2-bot</code></td><td>12 px</td><td>Motor tile 2 unit font size</td></tr>
+  </tbody>
+</table>
+
+<h3>Tile minimum heights</h3>
+<p>User-configurable; <code>0</code> = natural content height (default).</p>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>--tile-h-speed</code></td><td>0 px</td><td>Speed tile minimum height</td></tr>
+    <tr><td><code>--tile-h-hero</code></td><td>0 px</td><td>Hero tile minimum height</td></tr>
+    <tr><td><code>--tile-h-motors</code></td><td>0 px</td><td>Motor tile minimum height</td></tr>
+  </tbody>
+</table>
+
+<h3>Transparency</h3>
+<p>These are always set for every theme. The Style Editor exposes them as "Transparenz" sliders: <strong>0 % = fully solid (default), 100 % = fully transparent.</strong> The injected CSS variable is always <strong>opacity</strong> (1.0 = solid, 0.0 = invisible); the app converts with <code>opacity = 1 - slider / 100</code>.</p>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>CSS value</th><th>Default</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>--tile-alpha</code></td><td>0.0-1.0</td><td><code>1.0</code></td><td>Tile / card opacity</td></tr>
+    <tr><td><code>--btn-alpha</code></td><td>0.0-1.0</td><td><code>1.0</code></td><td>Button opacity</td></tr>
+    <tr><td><code>--gauge-alpha</code></td><td>0.0-1.0</td><td><code>1.0</code></td><td>Gauge speed-fill arc opacity</td></tr>
+  </tbody>
+</table>
+<pre><code>/* Simple opacity (whole element including text) */
+[data-tile-id] { opacity: var(--tile-alpha);  }
+.lb-btn        { opacity: var(--btn-alpha);   }
+.gauge-arc     { opacity: var(--gauge-alpha); }
+
+/* Background / fill transparency only (Chromium 111+ / Android WebView 111+): */
+[data-tile-id] { background-color: rgb(from var(--card)    r g b / var(--tile-alpha));  }
+.lb-btn        { background-color: rgb(from var(--btnfill)  r g b / var(--btn-alpha));   }
+.gauge-arc     { fill:             rgb(from var(--value)    r g b / var(--gauge-alpha)); }</code></pre>
+<p class="tg-note"><strong>Gotcha:</strong> <code>rgb(from color-mix(...) r g b / alpha)</code> does <strong>not</strong> work on Android WebView - a <code>color-mix()</code> origin silently drops the alpha channel. Always use a <strong>flat CSS variable</strong> as the origin (e.g. <code>var(--card)</code>, <code>var(--value)</code>), never a <code>color-mix()</code> result.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-json">theme.json - metadata</h2>
+<pre><code>{
+  "name": "My Theme",
+  "version": "1.0"
+}</code></pre>
+<table class="tg-table">
+  <thead><tr><th>Field</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>name</code></td><td>Display name in the theme list. Falls back to ZIP filename.</td></tr>
+    <tr><td><code>version</code></td><td>Free-form version string, informational only.</td></tr>
+    <tr><td><code>scope</code></td><td><code>"fold"</code> (default) or <code>"full"</code>. See below.</td></tr>
+    <tr><td><code>cssVars</code></td><td>Object of CSS variable overrides. Becomes the theme's default palette, shown in the Style Editor. Flat-string format or object format with <code>label</code> and <code>group</code>. See <strong>Label localization</strong> below.</td></tr>
+    <tr><td><code>strings</code></td><td>Translation table for custom i18n keys. Object with <code>"de"</code> and <code>"en"</code> sub-objects, each mapping key strings to translated labels.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="tg-en-label-loc">Label localization</h3>
+<p>The <code>label</code> field in a <code>cssVars</code> entry accepts three formats so every label is shown correctly in both EN and DE:</p>
+<p><strong>1. i18n key string</strong> &mdash; resolved via the app's built-in translation catalog. Use this for standard tokens (e.g. <code>--warn</code>, <code>--dark-lum</code>) whose EN and DE wording the app already supplies:</p>
+<pre><code>"--warn": { "default": "#FFB020", "label": "style.var.warn", "group": "accents" }</code></pre>
+<p><strong>2. Bilingual object</strong> &mdash; supply your own EN and DE wording. Use this for theme-specific names not in the app catalog:</p>
+<pre><code>"--value": { "default": "#22CCFF", "label": { "en": "Accent (arc)", "de": "Akzent (Bogen)" }, "group": "accents" }</code></pre>
+<p><strong>3. Plain string</strong> &mdash; shown as-is in both languages. Fine for brand names or labels that need no translation:</p>
+<pre><code>"--value": { "default": "#22CCFF", "label": "Arc accent", "group": "accents" }</code></pre>
+<p class="tg-note">Fallback chain: bilingual object &rarr; key lookup &rarr; plain string. If <code>de</code> is missing from the object, the <code>en</code> value is used as fallback.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-scope">Theme scope</h2>
+<p>By default a theme injects its HTML into <code>#fold-inner</code> - the fixed area above the scroll tiles. Set <code>"scope":"full"</code> in theme.json to replace the entire scrollable dashboard area (<code>#scroller</code>) instead.</p>
+<pre><code>{
+  "name": "Full Dashboard",
+  "version": "1.0",
+  "scope": "full"
+}</code></pre>
+<p><strong>Scope "fold" (default)</strong> - replaces <code>#fold-inner</code> only. The scroll tiles, button row, recording banner and all sub-pages stay as-is. The tile manager continues to work on the scroll tiles.</p>
+<p><strong>Scope "full"</strong> - injects into <code>#scroller</code> and replaces the entire dashboard content. The scroll tiles are gone; only the elements your theme HTML provides are visible. All <code>data-lb</code>, <code>data-lb-state</code> and <code>data-lb-action</code> hooks still work as normal.</p>
+<p class="tg-note"><strong>Note:</strong> with <code>scope:"full"</code> the tile manager is disabled for the duration of the theme. Switch back to Default to restore the built-in scroll tiles.</p>
+
+<h3>Full-scope DOM skeleton</h3>
+<p>No outer wrapper is needed. Sections flow in document order. Each section registers with <code>data-tile-id</code> so the tile manager can show, hide and reorder it.</p>
+<pre><code>&lt;!-- Section 1: hero / gauge area --&gt;
+&lt;div data-tile-id="my-hero" data-tile-label="Tacho"&gt;
+  &lt;!-- SVG gauge, SOC row, etc. --&gt;
+&lt;/div&gt;
+
+&lt;!-- Section 2: data tile grid --&gt;
+&lt;div data-tile-id="my-grid" data-tile-label="Daten"&gt;
+  &lt;!-- data cells with data-lb keys --&gt;
+&lt;/div&gt;
+
+&lt;!-- Section 3: button row --&gt;
+&lt;div data-tile-id="my-buttons" data-tile-label="Buttons"&gt;
+  &lt;!-- action buttons with data-lb-action --&gt;
+&lt;/div&gt;</code></pre>
+<ul>
+  <li>Sections without <code>data-tile-id</code> are always visible and cannot be managed.</li>
+  <li>The built-in scroll tiles are gone; your sections provide all data display.</li>
+</ul>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-security">Security model - no JavaScript</h2>
+<p><strong>JavaScript does not run in themes.</strong> Enforced in two layers:</p>
+<p><strong>Layer 1 - import-time sanitizer</strong> (runs when the ZIP is imported and before HTML is stored). Stripped unconditionally:</p>
+<ul>
+  <li><code>&lt;script&gt;</code> tags and their content</li>
+  <li><code>&lt;iframe&gt;</code> tags and their content</li>
+  <li><code>&lt;base&gt;</code> tags</li>
+  <li>All inline event handlers (<code>onclick=</code>, <code>onerror=</code>, etc.)</li>
+  <li><code>javascript:</code> URIs in <code>href</code>, <code>src</code>, <code>action</code></li>
+  <li><code>data:</code> URIs in <code>src</code> and <code>href</code></li>
+  <li>External <code>http://</code> and <code>https://</code> URLs in <code>src</code> and <code>href</code></li>
+</ul>
+<p><strong>Layer 2 - load-time sanitizer</strong> runs again on every theme load.</p>
+<p><strong>Instead of JavaScript, use:</strong></p>
+<ul>
+  <li><code>data-lb-state</code> for conditional CSS classes</li>
+  <li>CSS <code>@keyframes</code>, transitions and custom properties for animation</li>
+  <li><code>data-lb-action</code> for the built-in speed-unlock tap</li>
+</ul>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-import">How to import</h2>
+<h3>Step 1 - Create the ZIP</h3>
+<p>All three files must be <strong>at the root of the archive</strong> (not inside a subfolder).</p>
+<ul>
+  <li><strong>Windows:</strong> select all three files in Explorer, right-click - "Compress to ZIP file" (Windows 11) or "Send to - Compressed (zipped) folder"</li>
+  <li><strong>macOS / Linux:</strong> <code>zip my-theme.zip theme.html theme.css theme.json</code></li>
+  <li><strong>Android:</strong> use a file manager that supports ZIP creation (e.g. MT Manager, ZArchiver)</li>
+</ul>
+<h3>Step 2 - Import in the app</h3>
+<ol>
+  <li>Transfer the ZIP to your phone.</li>
+  <li>In the app: <strong>Settings - Display - Theme manager - Import theme</strong>.</li>
+  <li>Pick the ZIP from your file browser.</li>
+  <li>The theme appears in the list; tap <strong>Activate</strong> to apply it.</li>
+  <li>The <strong>Style</strong> button opens the Style Editor for colour, brightness and font-size overrides.</li>
+</ol>
+<p>To export a theme for sharing or backup: <strong>Theme manager - (tap the theme) - Export</strong>.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-portable">Portability between Laufbursche apps</h2>
+<p>The ZIP bundle format and the <code>data-lb</code> attribute names are a <strong>shared API across all Laufbursche apps</strong>. A theme built for one app can be imported into any other Laufbursche app that supports custom themes.</p>
+<p>For cross-app themes: use only the data keys and CSS variables listed in this guide. Do not rely on fixed IDs or classes that belong to one app's own HTML.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-i18n">Translations and language</h2>
+<p>The app runs in German or English. When the language is switched, the app re-runs the full i18n pass over your injected HTML too.</p>
+<h3>Using existing app strings</h3>
+<p>Add <code>data-i18n="key"</code> to any element. Fallback text between tags shows during browser testing:</p>
+<pre><code>&lt;span data-i18n="dash.hero.gear.label"&gt;Gear&lt;/span&gt;</code></pre>
+<table class="tg-table">
+  <thead><tr><th>Key</th><th>DE</th><th>EN</th></tr></thead>
+  <tbody>
+    <tr><td><code>dash.hero.gear.label</code></td><td>Gang</td><td>Gear</td></tr>
+    <tr><td><code>dash.hero.battery.unit</code></td><td>Batterie %</td><td>Battery %</td></tr>
+    <tr><td><code>dash.motors.section</code></td><td>Motoren</td><td>Motors</td></tr>
+    <tr><td><code>dash.motor.rear.title</code></td><td>HINTEN</td><td>REAR</td></tr>
+    <tr><td><code>dash.motor.front.title</code></td><td>VORNE</td><td>FRONT</td></tr>
+    <tr><td><code>dash.speed.vcu.unit</code></td><td>km/h - VCU</td><td>km/h - VCU</td></tr>
+  </tbody>
+</table>
+<h3>Adding your own translated strings</h3>
+<p>Declare a <code>strings</code> block in <code>theme.json</code>:</p>
+<pre><code>{
+  "name": "My Theme",
+  "version": "1.0",
+  "strings": {
+    "de": { "mtheme.speed.label": "Tempo" },
+    "en": { "mtheme.speed.label": "Speed" }
+  }
+}</code></pre>
+<p>Prefix your keys with the theme name to avoid collisions. A missing key falls back to the text between the tags.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-example">Complete example - Orbit (full-scope teaching theme)</h2>
+<p>Orbit is a complete, importable theme that demonstrates every technique in this guide: a circular SVG speed gauge, <code>lb-unlocked</code> scale extension, <code>lb-mph</code> unit toggle, all three transparency vars wired, a data grid, a button with an inline SVG icon, and a park indicator. Save the three files, zip to <code>Orbit.zip</code>, and import directly.</p>
+
+<h3>theme.json</h3>
+<pre><code>{
+  "name": "Orbit",
+  "version": "1.0",
+  "scope": "full",
+  "cssVars": {
+    "--value":     "#BCEB39",
+    "--btnfill":   "#BCEB39",
+    "--dark-card": "#111420",
+    "--dark-bg":   "#0A0C10"
+  }
+}</code></pre>
+
+<h3>theme.html</h3>
+<pre><code>&lt;!-- ORBIT - scope:"full" replaces #scroller (entire dashboard).
+     ot- prefix avoids collisions with app class names. --&gt;
+
+&lt;!-- HERO: speed gauge + SOC row.
+     opacity: var(--tile-alpha) in theme.css wires Kachel-Transparenz slider. --&gt;
+&lt;div class="ot-hero" data-tile-id="ot-hero" data-tile-label="Tacho"&gt;
+
+  &lt;!-- Inline SVG gauge.
+       r=58 in 160x160 viewBox: circumference ~364 px; 270 deg arc = 273 px; gap = 91 px.
+       rotate(135 80 80): start at 7 o'clock. --&gt;
+  &lt;svg class="ot-gauge" viewBox="0 0 160 160" aria-hidden="true"&gt;
+    &lt;!-- Track ring: static background arc. --&gt;
+    &lt;circle class="ot-track" cx="80" cy="80" r="58" fill="none"
+      stroke-dasharray="273 91" transform="rotate(135 80 80)" /&gt;
+    &lt;!-- Fill arc: stroke-dashoffset from CSS; --gauge-alpha wires Tacho-Transparenz. --&gt;
+    &lt;circle class="ot-arc" cx="80" cy="80" r="58" fill="none"
+      stroke-dasharray="273 91" transform="rotate(135 80 80)" /&gt;
+    &lt;!-- data-lb="speed" wires the live km/h value; app sets textContent every 500 ms. --&gt;
+    &lt;text class="ot-speed-val" x="80" y="76" text-anchor="middle"
+          data-lb="speed"&gt;-&lt;/text&gt;
+    &lt;!-- Unit labels: opacity toggle - display:none unreliable on SVG text in WebView. --&gt;
+    &lt;text class="ot-unit ot-unit-kmh" x="80" y="97" text-anchor="middle"&gt;km/h&lt;/text&gt;
+    &lt;text class="ot-unit ot-unit-mph" x="80" y="97" text-anchor="middle"&gt;mph&lt;/text&gt;
+    &lt;!-- Lock badge: same opacity technique. --&gt;
+    &lt;text class="ot-badge ot-badge-locked"   x="80" y="126" text-anchor="middle"&gt;LOCKED&lt;/text&gt;
+    &lt;text class="ot-badge ot-badge-unlocked" x="80" y="126" text-anchor="middle"&gt;UNLOCKED&lt;/text&gt;
+  &lt;/svg&gt;
+
+  &lt;!-- SOC row. data-lb-state adds ot-park-on when parked. --&gt;
+  &lt;div class="ot-soc-row"&gt;
+    &lt;span class="ot-soc-val" data-lb="soc"&gt;-&lt;/span&gt;&lt;span class="ot-soc-unit"&gt;%&lt;/span&gt;
+    &lt;span class="ot-park" data-lb-state="park:ot-park-on"&gt;P&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;!-- DATA GRID --&gt;
+&lt;div class="ot-grid" data-tile-id="ot-grid" data-tile-label="Daten"&gt;
+  &lt;div class="ot-cell"&gt;&lt;span class="ot-lbl"&gt;Volt&lt;/span&gt;&lt;span class="ot-val" data-lb="volt"&gt;-&lt;/span&gt;&lt;span class="ot-usm"&gt;V&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="ot-cell"&gt;&lt;span class="ot-lbl"&gt;Strom&lt;/span&gt;&lt;span class="ot-val" data-lb="current"&gt;-&lt;/span&gt;&lt;span class="ot-usm"&gt;A&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="ot-cell"&gt;&lt;span class="ot-lbl"&gt;Gang&lt;/span&gt;&lt;span class="ot-val" data-lb="gear"&gt;-&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="ot-cell"&gt;&lt;span class="ot-lbl"&gt;Trip&lt;/span&gt;&lt;span class="ot-val" data-lb="singleMile"&gt;-&lt;/span&gt;&lt;span class="ot-usm"&gt;km&lt;/span&gt;&lt;/div&gt;
+&lt;/div&gt;
+
+&lt;!-- BUTTON ROW: fill="currentColor" on the SVG icon inherits CSS color. --&gt;
+&lt;div class="ot-buttons" data-tile-id="ot-buttons" data-tile-label="Buttons"&gt;
+  &lt;div class="ot-btn" data-lb-action="speed-unlock"&gt;
+    &lt;svg class="ot-btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"&gt;
+      &lt;path d="M7 2v11h3v9l7-12h-4l4-8z"/&gt;
+    &lt;/svg&gt;
+    &lt;span class="ot-btn-lbl"&gt;Unlock&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+
+<h3>theme.css</h3>
+<pre><code>/* === ORBIT - ot- prefix avoids collisions === */
+
+/* HERO: opacity: var(--tile-alpha) wires Kachel-Transparenz slider (0-1 float). */
+.ot-hero {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 12px 8px; background: var(--card);
+  border-radius: var(--radius); margin-bottom: 8px;
+  opacity: var(--tile-alpha);
+}
+/* overflow:visible: lets the stroke paint outside the viewBox edge. */
+.ot-gauge { width: 100%; max-width: 200px; overflow: visible; }
+.ot-track { stroke: var(--border); stroke-width: 10; stroke-linecap: round; }
+
+/* Fill arc: --speed-max 25 locked / 110 unlocked; --gauge-alpha = Tacho-Transparenz. */
+.ot-arc {
+  --speed-max: 25;
+  stroke: rgb(from var(--value) r g b / var(--gauge-alpha));
+  stroke-width: 10; stroke-linecap: round;
+  stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
+  transition: stroke-dashoffset 0.4s ease-out;
+}
+:root.lb-unlocked .ot-arc { --speed-max: 110; }
+
+.ot-speed-val { font-size: 38px; font-weight: var(--fw-bold); fill: var(--text); font-family: inherit; }
+.ot-unit      { font-size: 12px; fill: var(--label); font-family: inherit; }
+/* opacity toggle - display:none unreliable on SVG text in Android WebView. */
+.ot-unit-kmh   { opacity: 1; }
+.ot-unit-mph   { opacity: 0; }
+:root.lb-mph .ot-unit-kmh { opacity: 0; }
+:root.lb-mph .ot-unit-mph { opacity: 1; }
+
+.ot-badge          { font-size: 9px; letter-spacing: 0.08em; font-family: inherit; }
+.ot-badge-locked   { fill: var(--warn);  opacity: 1; }
+.ot-badge-unlocked { fill: var(--value); opacity: 0; }
+:root.lb-unlocked .ot-badge-locked   { opacity: 0; }
+:root.lb-unlocked .ot-badge-unlocked { opacity: 1; }
+
+.ot-soc-row  { display: flex; align-items: baseline; gap: 4px; margin-top: 6px; }
+.ot-soc-val  { font-size: 22px; font-weight: var(--fw-bold); color: var(--value); }
+.ot-soc-unit { font-size: var(--fs-sm); color: var(--label); }
+/* Park badge: hidden until ot-park-on set by data-lb-state. */
+.ot-park          { display: none; font-size: var(--fs-xs); color: var(--warn); font-weight: var(--fw-bold); }
+.ot-park.ot-park-on { display: inline; }
+
+/* DATA GRID: shares Kachel-Transparenz via --tile-alpha. */
+.ot-grid { display: flex; gap: 6px; margin-bottom: 8px; opacity: var(--tile-alpha); }
+.ot-cell {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 8px 4px; background: var(--card); border-radius: var(--radius);
+}
+.ot-lbl { font-size: var(--fs-xs); color: var(--label); }
+.ot-val { font-size: 20px; font-weight: var(--fw-bold); color: var(--text); }
+.ot-usm { font-size: var(--fs-xs); color: var(--label); }
+
+/* BUTTON ROW: opacity: var(--btn-alpha) wires Button-Transparenz slider. */
+.ot-buttons { display: flex; gap: 8px; padding-bottom: 4px; }
+.ot-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; padding: 12px 8px;
+  background: var(--btnfill); border-radius: var(--radius);
+  cursor: pointer; opacity: var(--btn-alpha);
+}
+/* fill="currentColor" picks up this color property. */
+.ot-btn-icon { width: 24px; height: 24px; color: var(--bg); }
+.ot-btn-lbl  { font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--bg); }</code></pre>
+
+<hr class="tg-rule">
+
+<h2 id="tg-en-tips">Tips and limitations</h2>
+<ul>
+  <li><strong>No external images.</strong> <code>http://</code> and <code>https://</code> URLs are stripped. Use CSS background-color and SVG shapes.</li>
+  <li><strong>No custom web fonts.</strong> Stick to the system font stack or inline a base64 font-face (2 MB limit).</li>
+  <li><strong>Default scope covers only the fold.</strong> Your theme replaces <code>#fold-inner</code>. Use <code>"scope":"full"</code> to also replace the scroll area.</li>
+  <li><strong>CSS load order.</strong> <code>theme.css</code> loads right after <code>dashboard.css</code>. Prefix your class names to avoid changing app UI outside <code>#fold-inner</code>.</li>
+  <li><strong>Content Security Policy.</strong> <code>style-src file:</code> - external CSS, Google Fonts and CDNs are blocked. Base64 font-face works.</li>
+  <li><strong>Dark / light mode.</strong> Use <code>var(--card)</code>, <code>var(--text)</code>, etc. - never hardcode colours.</li>
+  <li><strong>Testing.</strong> Open <code>telemetry.html</code> in a desktop browser. Paste your HTML into <code>#fold-inner</code> via DevTools, inject a <code>&lt;link&gt;</code> for your local CSS, and add a temporary <code>&lt;script&gt;</code> with dummy values - remove it before zipping.</li>
+  <li><strong>Tile manager sync.</strong> Keep <code>data-tile-label</code> values short (under 20 characters).</li>
+  <li><strong><code>rgb()</code> relative colour syntax: flat origins only.</strong> <code>rgb(from var(--card) r g b / var(--tile-alpha))</code> works on Android WebView 111+. <code>rgb(from color-mix(...) r g b / alpha)</code> does <strong>not</strong> - a <code>color-mix()</code> origin silently drops the alpha channel. Always use a flat CSS variable as the origin (e.g. <code>var(--card)</code>, <code>var(--value)</code>), never a <code>color-mix()</code> result.</li>
+</ul>
+
+</div><!-- /tg-en -->
+
+<!-- DE -->
+<div class="tg-lang tg-de">
+
+<div class="tg-ai-box">
+  <p>📋 <strong>Theme mit KI bauen?</strong> Gib deinem KI-Assistenten den Raw-Link zu diesem Dokument - es enthält alles, was für ein gültiges, importierbares Theme nötig ist:</p>
+  <code>https://raw.githubusercontent.com/Laufbursche42/tr-lb-edition/main/THEME-GUIDE.md</code>
+</div>
+
+<div class="tg-toc">
+  <p class="tg-toc-title" data-i18n="theme.guide.toc">Inhalt</p>
+  <ul>
+    <li><a href="#tg-de-what">Was ein Theme ist und was nicht</a></li>
+    <li><a href="#tg-de-bundle">Bundle-Format</a></li>
+    <li><a href="#tg-de-html">theme.html - Struktur und Hooks</a>
+      <ul>
+        <li><a href="#tg-de-data-lb">data-lb (Live-Werte)</a></li>
+        <li><a href="#tg-de-data-lb-state">data-lb-state (Zustandsklassen)</a></li>
+        <li><a href="#tg-de-data-lb-action">data-lb-action (Aktionen)</a></li>
+        <li><a href="#tg-de-tile-id">data-tile-id (Kachel-Manager)</a></li>
+        <li><a href="#tg-de-keys">Verfügbare Datenschlüssel</a></li>
+      </ul>
+    </li>
+    <li><a href="#tg-de-signals">Live-Zustandssignale auf &lt;html&gt;</a>
+      <ul>
+        <li><a href="#tg-de-sig-unlock">Drossel-/Entsperrzustand</a></li>
+        <li><a href="#tg-de-sig-unit">Anzeigeeinheit</a></li>
+        <li><a href="#tg-de-sig-speed">Live-Geschwindigkeit für Gauge-Animationen</a></li>
+      </ul>
+    </li>
+    <li><a href="#tg-de-gauge">Kreisförmiger Tachometer - vollständige Technik</a>
+      <ul>
+        <li><a href="#tg-de-gauge-geo">Geometrie</a></li>
+        <li><a href="#tg-de-gauge-anim">Animation mit --cur-speed</a></li>
+        <li><a href="#tg-de-gauge-unit">Einheiten-Umschalter</a></li>
+        <li><a href="#tg-de-gauge-icon">Inline-SVG-Icons</a></li>
+        <li><a href="#tg-de-gauge-full">Vollständiger Minimal-Gauge</a></li>
+      </ul>
+    </li>
+    <li><a href="#tg-de-css">theme.css - Layout und Variablen</a></li>
+    <li><a href="#tg-de-json">theme.json - Metadaten</a></li>
+    <li><a href="#tg-de-label-loc">Label-Lokalisierung</a></li>
+    <li><a href="#tg-de-scope">Theme-Scope</a></li>
+    <li><a href="#tg-de-security">Sicherheitsmodell - kein JavaScript</a></li>
+    <li><a href="#tg-de-import">Import-Anleitung</a></li>
+    <li><a href="#tg-de-portable">Portabilität zwischen Apps</a></li>
+    <li><a href="#tg-de-i18n">Übersetzungen und Sprache</a></li>
+    <li><a href="#tg-de-example">Vollständiges Beispiel - Orbit</a></li>
+    <li><a href="#tg-de-tips">Tipps und Einschränkungen</a></li>
+  </ul>
+</div>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-what">Was ein Theme ist und was nicht</h2>
+<p>Ein Custom-Theme <strong>ersetzt den HTML-Inhalt von <code>#fold-inner</code></strong> - den Teil des Hauptbildschirms, der oberhalb des Scroll-Bereichs liegt. Layout, Typografie und Farben steuerst du mit eigenem HTML und CSS. Die App treibt den Rest weiter: die Scroll-Kacheln darunter, die Schnellaktions-Buttons, das Aufnahme-Banner und alle Sub-Pages.</p>
+<p><strong>Ein Theme ist keine Web-App.</strong> Es kann kein JavaScript ausführen, keine externen Ressourcen laden und die App-Logik nicht ändern. Es ist nur Struktur und Style - die Daten kommen von der App.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-bundle">Das Bundle-Format</h2>
+<p>Ein Theme ist eine <strong>ZIP-Datei</strong> mit drei Dateien im Wurzelverzeichnis des Archivs:</p>
+<table class="tg-table">
+  <thead><tr><th>Datei</th><th>Pflicht</th><th>Zweck</th></tr></thead>
+  <tbody>
+    <tr><td><code>theme.html</code></td><td><strong>Ja</strong></td><td>HTML-Fragment, das in <code>#fold-inner</code> eingefügt wird</td></tr>
+    <tr><td><code>theme.css</code></td><td><strong>Ja</strong></td><td>CSS, das für dieses Theme geladen wird</td></tr>
+    <tr><td><code>theme.json</code></td><td>Nein</td><td>Metadaten: Anzeigename, Version, optionale CSS-Variablen</td></tr>
+  </tbody>
+</table>
+<p>Der ZIP-Dateiname wird als Fallback-Name verwendet, wenn <code>theme.json</code> kein <code>name</code>-Feld hat. <strong>Größenlimit: 2 MB pro Datei.</strong></p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-html">theme.html - Struktur und Hooks</h2>
+<p><code>theme.html</code> ist ein reines HTML-Fragment - <strong>keine <code>&lt;html&gt;</code>-, <code>&lt;head&gt;</code>- oder <code>&lt;body&gt;</code>-Tags</strong>, nur der Inhalt, den du in <code>#fold-inner</code> (Fold-Scope, Standard) oder <code>#scroller</code> (Full-Scope - siehe <a href="#tg-de-scope">Theme-Scope</a>) haben möchtest. Die App bereinigt es vor dem Speichern.</p>
+
+<h3 id="tg-de-data-lb">Live-Wert-Hooks - data-lb</h3>
+<p>Füge <code>data-lb="key"</code> zu einem beliebigen Element hinzu. Die App setzt den <code>textContent</code> dieses Elements alle 500 ms auf den aktuellen Rollerwert:</p>
+<pre><code>&lt;div class="my-speed" data-lb="speed"&gt;&lt;/div&gt;
+&lt;div class="my-soc"   data-lb="soc"&gt;&lt;/div&gt;</code></pre>
+<p>Werte sind Zahlen (oder <code>true</code>/<code>false</code> für Booleans). Wenn der Roller getrennt ist, bleibt der letzte bekannte Wert erhalten.</p>
+
+<h3 id="tg-de-data-lb-state">Zustands-Hooks - data-lb-state</h3>
+<p>Füge <code>data-lb-state="key:klassenname"</code> hinzu, um eine CSS-Klasse je nach Wahrheitswert eines Datenwerts zu schalten:</p>
+<pre><code>&lt;div class="speed-box" data-lb-state="park:is-parked"&gt;</code></pre>
+<p>Wenn <code>data.park</code> <code>true</code> ist, wird die Klasse <code>is-parked</code> hinzugefügt; bei <code>false</code> wieder entfernt.</p>
+
+<h3 id="tg-de-data-lb-action">Aktions-Hooks - data-lb-action</h3>
+<table class="tg-table">
+  <thead><tr><th>Wert</th><th>Verhalten</th></tr></thead>
+  <tbody>
+    <tr><td><code>speed-unlock</code></td><td>Dreifach-Tipp löst die eKFV-Entsperrsequenz aus</td></tr>
+  </tbody>
+</table>
+<pre><code>&lt;div data-lb="speed" data-lb-action="speed-unlock"&gt;&lt;/div&gt;</code></pre>
+
+<h3 id="tg-de-tile-id">Kachel-Registrierung - data-tile-id</h3>
+<p>Umschliesse Abschnitte mit <code>data-tile-id</code> und <code>data-tile-label</code>, um sie beim Kachel-Manager zu registrieren. Registrierte Kacheln können vom Nutzer ein-/ausgeblendet und per Drag &amp; Drop neu angeordnet werden:</p>
+<pre><code>&lt;div data-tile-id="my-speed-block" data-tile-label="Tacho"&gt;
+  &lt;!-- Tacho-Inhalt --&gt;
+&lt;/div&gt;</code></pre>
+<p>Ohne <code>data-tile-id</code> ist ein Abschnitt immer sichtbar und nicht verwaltbar.</p>
+
+<h3 id="tg-de-keys">Verfügbare Datenschlüssel</h3>
+<p>Alle Schlüssel kommen aus der BLE-Telemetrie des Rollers, alle 500 ms geparst. Rohe Zahlen sind <code>0</code> bei Trennung; <code>park</code> ist <code>false</code>.</p>
+<table class="tg-table tg-table-keys">
+  <thead><tr><th>Schlüssel</th><th>Typ</th><th>Einheit</th><th>Beschreibung</th></tr></thead>
+  <tbody>
+    <tr><td><code>speed</code></td><td>number</td><td>km/h oder mph</td><td>Aktuelle Geschwindigkeit</td></tr>
+    <tr><td><code>avgSpeed</code></td><td>number</td><td>km/h oder mph</td><td>Durchschnittsgeschwindigkeit (Fahrt)</td></tr>
+    <tr><td><code>maxSpeed</code></td><td>number</td><td>km/h oder mph</td><td>Höchstgeschwindigkeit (Fahrt)</td></tr>
+    <tr><td><code>soc</code></td><td>number</td><td>%</td><td>Ladezustand</td></tr>
+    <tr><td><code>soh</code></td><td>number</td><td>%</td><td>Gesundheitszustand Akku</td></tr>
+    <tr><td><code>volt</code></td><td>number</td><td>V</td><td>Paketspannung</td></tr>
+    <tr><td><code>poleVolt</code></td><td>number</td><td>V</td><td>Polspannung</td></tr>
+    <tr><td><code>current</code></td><td>number</td><td>A</td><td>Paketstrom (null wenn nicht gemeldet)</td></tr>
+    <tr><td><code>gear</code></td><td>number</td><td>-</td><td>Aktiver Gang (1-3)</td></tr>
+    <tr><td><code>rearCurrent</code></td><td>number</td><td>A</td><td>Hintermotor-Strom</td></tr>
+    <tr><td><code>frontCurrent</code></td><td>number</td><td>A</td><td>Vordermotor-Strom</td></tr>
+    <tr><td><code>rTemp</code></td><td>number</td><td>°C</td><td>Hintermotor-Temperatur</td></tr>
+    <tr><td><code>fTemp</code></td><td>number</td><td>°C</td><td>Vordermotor-Temperatur</td></tr>
+    <tr><td><code>power</code></td><td>number</td><td>kW</td><td>Gesamtleistung</td></tr>
+    <tr><td><code>singleMile</code></td><td>number</td><td>km oder mi</td><td>Tageskilometer</td></tr>
+    <tr><td><code>totalMile</code></td><td>number</td><td>km oder mi</td><td>Gesamtkilometer (Tacho)</td></tr>
+    <tr><td><code>fb</code></td><td>number</td><td>-</td><td>Rückspeisung / Regen-Wert</td></tr>
+    <tr><td><code>rssi</code></td><td>number</td><td>dBm</td><td>Bluetooth-Signalstärke</td></tr>
+    <tr><td><code>park</code></td><td>boolean</td><td>-</td><td><code>true</code> wenn Roller geparkt</td></tr>
+    <tr><td><code>vcuUnlock</code></td><td>number</td><td>-</td><td><code>0</code> = gesperrt, <code>1</code> = entsperrt, <code>-1</code> = unbekannt</td></tr>
+  </tbody>
+</table>
+<p class="tg-note"><strong>Einheitenhinweis:</strong> <code>speed</code>, <code>avgSpeed</code>, <code>maxSpeed</code>, <code>singleMile</code> und <code>totalMile</code> folgen automatisch der km/mph-Einstellung der App.</p>
+<p class="tg-note"><strong>Werteformat:</strong> alle Zahlen sind rohe JavaScript-Floats, z.B. <code>speed = 25.3</code>. Ohne JavaScript gibt es keine Formatierungsmöglichkeit. Gestalte dein Layout so, dass ein Wert mit einer Nachkommastelle passt.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-signals">Live-Zustandssignale auf &lt;html&gt;</h2>
+<p>Die App setzt Klassen und CSS-Variablen direkt auf dem <code>&lt;html&gt;</code>-Element, damit Theme-CSS auf Live-Zustände reagieren kann - ohne <code>data-lb-state</code> auf einem bestimmten Element.</p>
+
+<h3 id="tg-de-sig-unlock">Drossel-/Entsperrzustand</h3>
+<table class="tg-table">
+  <thead><tr><th>Signal</th><th>Typ</th><th>Werte</th><th>Wann gesetzt</th></tr></thead>
+  <tbody>
+    <tr><td><code>lb-unlocked</code></td><td>Klasse auf <code>&lt;html&gt;</code></td><td>vorhanden / abwesend</td><td>Vorhanden wenn entsperrt (nach Dreifach-Tipp oder FIN-Umbenennung); abwesend wenn gesperrt</td></tr>
+    <tr><td><code>--throttle-unlocked</code></td><td>CSS-Variable auf <code>:root</code></td><td><code>1</code> / <code>0</code></td><td><code>1</code> = entsperrt, <code>0</code> = gesperrt; nützlich in <code>calc()</code></td></tr>
+  </tbody>
+</table>
+<p>Wird bei jedem BLE-Tick (500 ms) aktualisiert. Standard beim Seitenstart: abwesend / <code>0</code>.</p>
+<pre><code>/* Gauge-Skala erweitert sich bei Entsperrung */
+.gauge-scale { --scale-max: 40; }
+:root.lb-unlocked .gauge-scale { --scale-max: 110; }
+
+/* Numerische Variante in calc() */
+.gauge-arc { stroke-dasharray: calc(var(--throttle-unlocked) * 220 + 80); }</code></pre>
+
+<h3 id="tg-de-sig-unit">Anzeigeeinheit</h3>
+<table class="tg-table">
+  <thead><tr><th>Signal</th><th>Typ</th><th>Werte</th><th>Wann gesetzt</th></tr></thead>
+  <tbody>
+    <tr><td><code>lb-mph</code></td><td>Klasse auf <code>&lt;html&gt;</code></td><td>vorhanden / abwesend</td><td>Vorhanden wenn mph gewählt; abwesend für km/h</td></tr>
+  </tbody>
+</table>
+<p>Wird beim Start und bei jedem Einheitenwechsel in den Einstellungen gesetzt.</p>
+<pre><code>.speed-unit::after { content: 'km/h'; }
+:root.lb-mph .speed-unit::after { content: 'mph'; }</code></pre>
+
+<h3 id="tg-de-sig-speed">Live-Geschwindigkeit für Gauge-Animationen</h3>
+<table class="tg-table">
+  <thead><tr><th>Signal</th><th>Typ</th><th>Einheit</th><th>Beschreibung</th></tr></thead>
+  <tbody>
+    <tr><td><code>--cur-speed</code></td><td>CSS-Variable auf <code>:root</code></td><td>km/h (immer)</td><td>Rohe km/h unabhängig von der Einheiteneinstellung. Alle 500 ms aktualisiert. Für Gauge-Füllungen und Animationen verwenden. Umrechnung: <code>calc(var(--cur-speed) * 0.621371)</code>.</td></tr>
+  </tbody>
+</table>
+<pre><code>/* Bogenfüllung: 0 km/h = 0 %, 60 km/h = voller Bogen */
+.gauge-arc {
+  stroke-dashoffset: calc(220 - var(--cur-speed) * 220 / 60);
+}</code></pre>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-gauge">Kreisförmiger Tachometer - vollständige Technik</h2>
+<p>Ein kreisförmiger Tachometer ist das häufigste Element in Full-Scope-Themes. Dieser Abschnitt liefert das exakte SVG-Markup und die CSS-Berechnungen für einen eigenen Tacho von Grund auf.</p>
+
+<h3 id="tg-de-gauge-geo">Geometrie</h3>
+<p>Der Tacho besteht aus zwei übereinander liegenden <code>&lt;circle&gt;</code>-SVG-Elementen: einem <strong>Track-Ring</strong> (statischer 270°-Hintergrundbogen) und einem <strong>Füllbogen</strong> (kürzerer Bogen, der mit <code>--cur-speed</code> wächst). Die Technik heißt <code>stroke-dasharray</code> / <code>stroke-dashoffset</code>:</p>
+<pre><code>stroke-dasharray="DRAW GAP"</code></pre>
+<p><code>DRAW</code> = Länge des sichtbaren Segments (SVG-User-Units). <code>GAP</code> = Lücke für den Rest des Kreises.</p>
+<p>Für Radius 58 in einem 160×160 viewBox: Umfang = 2 × π × 58 ≈ 364 px. 270° = 75% = <strong>273 px</strong>; Lücke = 364 - 273 = <strong>91 px</strong>. Also: <code>stroke-dasharray="273 91"</code> zeichnet einen 270°-Bogen.</p>
+<p>Standardmäßig beginnt der Bogen bei 3 Uhr. 135° um den Mittelpunkt drehen, um bei 7 Uhr zu beginnen: <code>transform="rotate(135 80 80)"</code></p>
+
+<h3 id="tg-de-gauge-anim">Animation mit --cur-speed</h3>
+<p><code>dashoffset = 0</code> → volle 273 px sichtbar (Maximalgeschwindigkeit). <code>dashoffset = 273</code> → Bogen vollständig verborgen (0 km/h).</p>
+<pre><code>.gauge-arc {
+  --speed-max: 25;   /* eKFV gesperrt: 25 km/h */
+  stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
+  transition: stroke-dashoffset 0.4s ease-out;
+}
+/* Skala bei Entsperrung (lb-unlocked auf &lt;html&gt;) erweitern. */
+:root.lb-unlocked .gauge-arc { --speed-max: 110; }</code></pre>
+<p>Kein JavaScript nötig - <code>--cur-speed</code> wird alle 500 ms aktualisiert, CSS berechnet automatisch neu.</p>
+
+<h3 id="tg-de-gauge-unit">Einheiten-Umschalter</h3>
+<p>Zwei überlappende <code>&lt;text&gt;</code>-Elemente per <code>opacity</code> umschalten. <code>display:none</code> ist bei SVG-Text in Android WebView unzuverlässig.</p>
+<pre><code>&lt;text class="g-unit g-unit-kmh" x="80" y="100" text-anchor="middle"&gt;km/h&lt;/text&gt;
+&lt;text class="g-unit g-unit-mph" x="80" y="100" text-anchor="middle"&gt;mph&lt;/text&gt;</code></pre>
+<pre><code>.g-unit-kmh { opacity: 1; }
+.g-unit-mph { opacity: 0; }
+:root.lb-mph .g-unit-kmh { opacity: 0; }
+:root.lb-mph .g-unit-mph { opacity: 1; }</code></pre>
+
+<h3 id="tg-de-gauge-icon">Inline-SVG-Icons</h3>
+<p>Keine <code>url()</code>- oder <code>http://</code>-Quellen erlaubt. SVG direkt einbetten. <code>fill="currentColor"</code> erbt die CSS-<code>color</code>-Eigenschaft.</p>
+<pre><code>&lt;svg class="my-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"&gt;
+  &lt;path d="M7 2v11h3v9l7-12h-4l4-8z"/&gt;
+&lt;/svg&gt;</code></pre>
+
+<h3 id="tg-de-gauge-full">Vollständiger Minimal-Gauge</h3>
+<pre><code>&lt;svg class="g-gauge" viewBox="0 0 160 160" aria-hidden="true"&gt;
+  &lt;!-- Track-Ring: statischer 270°-Hintergrundbogen. rotate(135 80 80) = 7-Uhr-Start. --&gt;
+  &lt;circle class="g-track" cx="80" cy="80" r="58" fill="none"
+    stroke-dasharray="273 91" transform="rotate(135 80 80)" /&gt;
+  &lt;!-- Füllbogen: stroke-dashoffset per CSS aus --cur-speed. --&gt;
+  &lt;circle class="g-arc" cx="80" cy="80" r="58" fill="none"
+    stroke-dasharray="273 91" transform="rotate(135 80 80)" /&gt;
+  &lt;text class="g-val" x="80" y="80" text-anchor="middle" dominant-baseline="middle"
+        data-lb="speed"&gt;0&lt;/text&gt;
+  &lt;text class="g-unit g-unit-kmh" x="80" y="100" text-anchor="middle"&gt;km/h&lt;/text&gt;
+  &lt;text class="g-unit g-unit-mph" x="80" y="100" text-anchor="middle"&gt;mph&lt;/text&gt;
+&lt;/svg&gt;</code></pre>
+<pre><code>.g-gauge { width: 100%; max-width: 200px; overflow: visible; }
+.g-track { stroke: var(--border); stroke-width: 10; stroke-linecap: round; }
+.g-arc {
+  --speed-max: 25;
+  stroke: var(--value); stroke-width: 10; stroke-linecap: round;
+  stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
+  transition: stroke-dashoffset 0.4s ease-out;
+}
+:root.lb-unlocked .g-arc { --speed-max: 110; }
+.g-val      { font-size: 38px; font-weight: 700; fill: var(--text); font-family: inherit; }
+.g-unit     { font-size: 12px; fill: var(--label); font-family: inherit; }
+.g-unit-kmh { opacity: 1; }
+.g-unit-mph { opacity: 0; }
+:root.lb-mph .g-unit-kmh { opacity: 0; }
+:root.lb-mph .g-unit-mph { opacity: 1; }</code></pre>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-css">theme.css - Layout und Variablen</h2>
+<p><code>theme.css</code> wird nach dem App-eigenen CSS geladen. Schreibe Selektoren, die deine eigenen Klassen oder IDs aus <code>theme.html</code> ansprechen. Nutze die CSS-Variablen der App, damit dein Theme sich automatisch an Dunkel-/Hellmodus und Nutzerfarben anpasst.</p>
+
+<h3>Farbvariablen</h3>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>Beschreibung</th></tr></thead>
+  <tbody>
+    <tr><td><code>--card</code></td><td>Kachel-/Card-Hintergrund</td></tr>
+    <tr><td><code>--bg</code></td><td>Seitenhintergrund</td></tr>
+    <tr><td><code>--text</code></td><td>Primärtext</td></tr>
+    <tr><td><code>--label</code></td><td>Sekundär-/gedämpfter Text</td></tr>
+    <tr><td><code>--value</code></td><td>Akzent-/Highlight-Farbe (vom Nutzer einstellbar)</td></tr>
+    <tr><td><code>--ble</code></td><td>BLE-Geschwindigkeitsanzeige-Farbe</td></tr>
+    <tr><td><code>--gps</code></td><td>GPS-Geschwindigkeitsanzeige-Farbe</td></tr>
+    <tr><td><code>--good</code></td><td>Positiv-/OK-Zustandsfarbe</td></tr>
+    <tr><td><code>--warn</code></td><td>Warnfarbe</td></tr>
+    <tr><td><code>--danger</code></td><td>Fehler-/Kritischfarbe</td></tr>
+    <tr><td><code>--unlock</code></td><td>Entsperrt-/Entdrosselt-Anzeigefarbe</td></tr>
+    <tr><td><code>--btnfill</code></td><td>Button-Füllfarbe</td></tr>
+    <tr><td><code>--border</code></td><td>Rahmen-/Trennlinienfarbe</td></tr>
+  </tbody>
+</table>
+<p class="tg-note">Diese Runtime-Tokens lösen sich automatisch zum richtigen Dunkel- oder Hellwert auf. Immer diese in <code>theme.css</code> verwenden. Zur Anpassung der Palette die per-Modus-Quellvariablen unten in <code>cssVars</code> in <code>theme.json</code> deklarieren.</p>
+
+<h3>Per-Modus-Quellvariablen (in cssVars deklarieren, um die Palette anzupassen)</h3>
+<p>Diese per-Modus-Werte speisen die Runtime-Tokens oben. In <code>cssVars</code> in <code>theme.json</code> deklarieren, um die Farbpalette des Themes festzulegen. Der Style-Editor zeigt sie nach Modus gruppiert.</p>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>Dunkel-Standard</th><th>Hell-Standard</th><th>Beschreibung</th></tr></thead>
+  <tbody>
+    <tr><td><code>--dark-card</code></td><td><code>#111420</code></td><td></td><td>Kachel-HG, Dunkelmodus</td></tr>
+    <tr><td><code>--dark-bg</code></td><td><code>#0A0C10</code></td><td></td><td>Seitenhintergrund, Dunkelmodus</td></tr>
+    <tr><td><code>--dark-border</code></td><td><code>#1C2035</code></td><td></td><td>Rahmenfarbe, Dunkelmodus</td></tr>
+    <tr><td><code>--dark-text</code></td><td><code>#E4EDF6</code></td><td></td><td>Primärtext, Dunkelmodus</td></tr>
+    <tr><td><code>--dark-label</code></td><td><code>#C6D2E2</code></td><td></td><td>Sekundärtext, Dunkelmodus</td></tr>
+    <tr><td><code>--light-card</code></td><td></td><td><code>#ffffff</code></td><td>Kachel-HG, Hellmodus</td></tr>
+    <tr><td><code>--light-bg</code></td><td></td><td><code>#e8edf5</code></td><td>Seitenhintergrund, Hellmodus</td></tr>
+    <tr><td><code>--light-border</code></td><td></td><td><code>#CDD5E4</code></td><td>Rahmenfarbe, Hellmodus</td></tr>
+    <tr><td><code>--light-text</code></td><td></td><td><code>#0A0D18</code></td><td>Primärtext, Hellmodus</td></tr>
+    <tr><td><code>--light-label</code></td><td></td><td><code>#0A0D18</code></td><td>Sekundärtext, Hellmodus</td></tr>
+  </tbody>
+</table>
+
+<h3>Typografie-Variablen</h3>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>Standard</th><th>Beschreibung</th></tr></thead>
+  <tbody>
+    <tr><td><code>--fs-2xs</code></td><td>10 px</td><td>Kleinster Text</td></tr>
+    <tr><td><code>--fs-xs</code></td><td>11 px</td><td>Sehr klein</td></tr>
+    <tr><td><code>--fs-sm</code></td><td>12 px</td><td>Klein</td></tr>
+    <tr><td><code>--fs-md</code></td><td>13 px</td><td>Mittel</td></tr>
+    <tr><td><code>--fs-base</code></td><td>14 px</td><td>Grundtext</td></tr>
+    <tr><td><code>--fs-xl</code></td><td>16 px</td><td>Groß</td></tr>
+    <tr><td><code>--fw-semibold</code></td><td>600</td><td>Halbfett</td></tr>
+    <tr><td><code>--fw-bold</code></td><td>700</td><td>Fett</td></tr>
+    <tr><td><code>--radius</code></td><td>12 px</td><td>Standard-Eckenradius</td></tr>
+  </tbody>
+</table>
+
+<h3>Vom Nutzer einstellbare Größenvariablen</h3>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>Standard</th><th>Beschreibung</th></tr></thead>
+  <tbody>
+    <tr><td><code>--sz-speed-val</code></td><td>64 px</td><td>Schriftgröße Tacho-Zahl</td></tr>
+    <tr><td><code>--sz-speed-lbl</code></td><td>14 px</td><td>Schriftgröße Tacho-Beschriftung</td></tr>
+    <tr><td><code>--sz-hero-val</code></td><td>38 px</td><td>Schriftgröße Hero-Kachel-Wert</td></tr>
+    <tr><td><code>--sz-hero-lbl</code></td><td>13 px</td><td>Schriftgröße Hero-Kachel-Beschriftung</td></tr>
+    <tr><td><code>--sz-m1-top</code></td><td>12 px</td><td>Schriftgröße Motor-Kachel-1-Titel</td></tr>
+    <tr><td><code>--sz-m1-mid</code></td><td>32 px</td><td>Schriftgröße Motor-Kachel-1-Wert</td></tr>
+    <tr><td><code>--sz-m1-bot</code></td><td>12 px</td><td>Schriftgröße Motor-Kachel-1-Einheit</td></tr>
+    <tr><td><code>--sz-m2-top</code></td><td>12 px</td><td>Schriftgröße Motor-Kachel-2-Titel</td></tr>
+    <tr><td><code>--sz-m2-mid</code></td><td>32 px</td><td>Schriftgröße Motor-Kachel-2-Wert</td></tr>
+    <tr><td><code>--sz-m2-bot</code></td><td>12 px</td><td>Schriftgröße Motor-Kachel-2-Einheit</td></tr>
+  </tbody>
+</table>
+
+<h3>Kachel-Mindesthöhen</h3>
+<p>Vom Nutzer einstellbar; <code>0</code> = natürliche Inhaltshöhe (Standard).</p>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>Standard</th><th>Beschreibung</th></tr></thead>
+  <tbody>
+    <tr><td><code>--tile-h-speed</code></td><td>0 px</td><td>Tacho-Kachel Mindesthöhe</td></tr>
+    <tr><td><code>--tile-h-hero</code></td><td>0 px</td><td>Hero-Kachel Mindesthöhe</td></tr>
+    <tr><td><code>--tile-h-motors</code></td><td>0 px</td><td>Motor-Kachel Mindesthöhe</td></tr>
+  </tbody>
+</table>
+
+<h3>Transparenz</h3>
+<p>Diese Variablen sind für jedes Theme immer gesetzt. Der Style-Editor bietet sie als "Transparenz"-Schieberegler an: <strong>0 % = vollständig opak (Standard), 100 % = vollständig transparent.</strong> Die injizierte CSS-Variable ist immer die <strong>Deckkraft</strong> (1.0 = opak, 0.0 = unsichtbar); die App rechnet mit <code>opacity = 1 - slider / 100</code> um.</p>
+<table class="tg-table">
+  <thead><tr><th>Variable</th><th>CSS-Wert</th><th>Standard</th><th>Beschreibung</th></tr></thead>
+  <tbody>
+    <tr><td><code>--tile-alpha</code></td><td>0.0-1.0</td><td><code>1.0</code></td><td>Deckkraft der Kacheln / Cards</td></tr>
+    <tr><td><code>--btn-alpha</code></td><td>0.0-1.0</td><td><code>1.0</code></td><td>Deckkraft der Buttons</td></tr>
+    <tr><td><code>--gauge-alpha</code></td><td>0.0-1.0</td><td><code>1.0</code></td><td>Deckkraft des Gauge-Füllbogens</td></tr>
+  </tbody>
+</table>
+<pre><code>/* Einfache Deckkraft (gesamtes Element inkl. Text) */
+[data-tile-id] { opacity: var(--tile-alpha);  }
+.lb-btn        { opacity: var(--btn-alpha);   }
+.gauge-arc     { opacity: var(--gauge-alpha); }
+
+/* Nur Hintergrund / Fill transparent (Chromium 111+ / Android WebView 111+): */
+[data-tile-id] { background-color: rgb(from var(--card)    r g b / var(--tile-alpha));  }
+.lb-btn        { background-color: rgb(from var(--btnfill)  r g b / var(--btn-alpha));   }
+.gauge-arc     { fill:             rgb(from var(--value)    r g b / var(--gauge-alpha)); }</code></pre>
+<p class="tg-note"><strong>Achtung:</strong> <code>rgb(from color-mix(...) r g b / alpha)</code> funktioniert auf Android WebView <strong>nicht</strong> - ein <code>color-mix()</code>-Ursprung verwirft den Alpha-Kanal lautlos. Als Ursprung immer eine <strong>flache CSS-Variable</strong> verwenden (z.B. <code>var(--card)</code>, <code>var(--value)</code>), niemals ein <code>color-mix()</code>-Ergebnis.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-json">theme.json - Metadaten</h2>
+<pre><code>{
+  "name": "Mein Theme",
+  "version": "1.0"
+}</code></pre>
+<table class="tg-table">
+  <thead><tr><th>Feld</th><th>Beschreibung</th></tr></thead>
+  <tbody>
+    <tr><td><code>name</code></td><td>Anzeigename in der Theme-Liste. Fallback: ZIP-Dateiname.</td></tr>
+    <tr><td><code>version</code></td><td>Freier Versionsstring, nur informativ.</td></tr>
+    <tr><td><code>scope</code></td><td><code>"fold"</code> (Standard) oder <code>"full"</code>. Siehe unten.</td></tr>
+    <tr><td><code>cssVars</code></td><td>Objekt mit CSS-Variablen-Overrides. Wird als Standard-Palette des Themes im Style-Editor angezeigt. Flat-String-Format oder Objekt-Format mit <code>label</code> und <code>group</code>. Siehe <strong>Label-Lokalisierung</strong> unten.</td></tr>
+    <tr><td><code>strings</code></td><td>Übersetzungstabelle für eigene i18n-Schlüssel. Objekt mit <code>"de"</code>- und <code>"en"</code>-Unterobjekten, die Schlüssel auf übersetzte Labels abbilden.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="tg-de-label-loc">Label-Lokalisierung</h3>
+<p>Das <code>label</code>-Feld in einem <code>cssVars</code>-Eintrag akzeptiert drei Formate, damit jedes Label in EN und DE korrekt angezeigt wird:</p>
+<p><strong>1. i18n-Schlüssel (String)</strong> &mdash; wird über den eingebauten Übersetzungskatalog der App aufgelöst. Für Standard-Tokens (z.&nbsp;B. <code>--warn</code>, <code>--dark-lum</code>), deren EN- und DE-Text die App bereits enthält:</p>
+<pre><code>"--warn": { "default": "#FFB020", "label": "style.var.warn", "group": "accents" }</code></pre>
+<p><strong>2. Zweisprachiges Objekt</strong> &mdash; eigene EN- und DE-Texte angeben. Für theme-spezifische Namen, die nicht im App-Katalog stehen:</p>
+<pre><code>"--value": { "default": "#22CCFF", "label": { "en": "Accent (arc)", "de": "Akzent (Bogen)" }, "group": "accents" }</code></pre>
+<p><strong>3. Einfacher String</strong> &mdash; wird in beiden Sprachen unverändert angezeigt. Geeignet für Markennamen oder Labels, die keine Übersetzung benötigen:</p>
+<pre><code>"--value": { "default": "#22CCFF", "label": "Arc accent", "group": "accents" }</code></pre>
+<p class="tg-note">Fallback-Kette: zweisprachiges Objekt &rarr; Schlüssel-Lookup &rarr; einfacher String. Fehlt <code>de</code> im Objekt, wird <code>en</code> als Fallback verwendet.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-scope">Theme-Scope</h2>
+<p>Standardmäßig injiziert ein Theme seinen HTML-Inhalt in <code>#fold-inner</code> - den festen Bereich oberhalb der Scroll-Kacheln. Mit <code>"scope":"full"</code> in theme.json wird stattdessen der gesamte scrollbare Dashboard-Bereich (<code>#scroller</code>) ersetzt.</p>
+<pre><code>{
+  "name": "Vollbild-Theme",
+  "version": "1.0",
+  "scope": "full"
+}</code></pre>
+<p><strong>Scope "fold" (Standard)</strong> - ersetzt nur <code>#fold-inner</code>. Scroll-Kacheln, Button-Reihe, Aufnahme-Banner und alle Sub-Pages bleiben unverändert. Der Kachel-Manager arbeitet weiterhin auf den Scroll-Kacheln.</p>
+<p><strong>Scope "full"</strong> - injiziert in <code>#scroller</code> und ersetzt den gesamten Dashboard-Inhalt. Die Scroll-Kacheln entfallen; nur die Elemente aus deinem Theme-HTML sind sichtbar. Alle <code>data-lb</code>-, <code>data-lb-state</code>- und <code>data-lb-action</code>-Hooks funktionieren weiterhin normal.</p>
+<p class="tg-note"><strong>Hinweis:</strong> Bei <code>scope:"full"</code> ist der Kachel-Manager für die Dauer des Themes deaktiviert. Zurück zu "Default" wechseln, um die eingebauten Scroll-Kacheln wiederherzustellen.</p>
+
+<h3>Full-Scope-DOM-Gerüst</h3>
+<p>Kein äußerer Wrapper nötig. Abschnitte fließen in Dokumentreihenfolge. Jeder Abschnitt registriert sich mit <code>data-tile-id</code>, damit der Kachel-Manager ihn ein-/ausblenden und verschieben kann.</p>
+<pre><code>&lt;!-- Abschnitt 1: Hero/Gauge-Bereich --&gt;
+&lt;div data-tile-id="my-hero" data-tile-label="Tacho"&gt;
+  &lt;!-- SVG-Gauge, SOC-Zeile usw. --&gt;
+&lt;/div&gt;
+
+&lt;!-- Abschnitt 2: Datenkachel-Raster --&gt;
+&lt;div data-tile-id="my-grid" data-tile-label="Daten"&gt;
+  &lt;!-- Datenzellen mit data-lb-Schlüsseln --&gt;
+&lt;/div&gt;
+
+&lt;!-- Abschnitt 3: Button-Reihe --&gt;
+&lt;div data-tile-id="my-buttons" data-tile-label="Buttons"&gt;
+  &lt;!-- Aktionsbuttons mit data-lb-action --&gt;
+&lt;/div&gt;</code></pre>
+<ul>
+  <li>Abschnitte ohne <code>data-tile-id</code> sind immer sichtbar und nicht verwaltbar.</li>
+  <li>Die eingebauten Scroll-Kacheln entfallen; deine Abschnitte stellen alle Daten dar.</li>
+</ul>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-security">Sicherheitsmodell - kein JavaScript</h2>
+<p><strong>JavaScript läuft in Themes nicht.</strong> Zwei Schutzebenen erzwingen das:</p>
+<p><strong>Ebene 1 - Import-Sanitizer</strong> (läuft beim ZIP-Import, vor dem Speichern). Bedingungslos entfernt:</p>
+<ul>
+  <li><code>&lt;script&gt;</code>-Tags mit Inhalt</li>
+  <li><code>&lt;iframe&gt;</code>-Tags mit Inhalt</li>
+  <li><code>&lt;base&gt;</code>-Tags</li>
+  <li>Alle Inline-Event-Handler (<code>onclick=</code>, <code>onerror=</code>, etc.)</li>
+  <li><code>javascript:</code>-URIs in <code>href</code>, <code>src</code>, <code>action</code></li>
+  <li><code>data:</code>-URIs in <code>src</code> und <code>href</code></li>
+  <li>Externe <code>http://</code>- und <code>https://</code>-URLs in <code>src</code> und <code>href</code></li>
+</ul>
+<p><strong>Ebene 2 - Load-Sanitizer</strong> läuft bei jedem Theme-Laden erneut.</p>
+<p><strong>Alternativen zu JavaScript:</strong></p>
+<ul>
+  <li><code>data-lb-state</code> für bedingte CSS-Klassen</li>
+  <li>CSS <code>@keyframes</code>, Transitions und Custom Properties für Animationen</li>
+  <li><code>data-lb-action</code> für den eingebauten Entsperr-Tipp</li>
+</ul>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-import">Import-Anleitung</h2>
+<h3>Schritt 1 - ZIP erstellen</h3>
+<p>Alle drei Dateien müssen <strong>im Wurzelverzeichnis des Archivs</strong> liegen (nicht in einem Unterordner).</p>
+<ul>
+  <li><strong>Windows:</strong> alle drei Dateien im Explorer markieren, Rechtsklick - "In ZIP-Datei komprimieren" (Windows 11) oder "Senden an - ZIP-komprimierter Ordner"</li>
+  <li><strong>macOS / Linux:</strong> <code>zip mein-theme.zip theme.html theme.css theme.json</code></li>
+  <li><strong>Android:</strong> Datei-Manager mit ZIP-Unterstützung verwenden (z.B. MT Manager, ZArchiver)</li>
+</ul>
+<h3>Schritt 2 - In der App importieren</h3>
+<ol>
+  <li>ZIP auf das Handy übertragen.</li>
+  <li>In der App: <strong>Einstellungen - Display - Theme-Manager - Theme importieren</strong>.</li>
+  <li>ZIP im Datei-Browser auswählen.</li>
+  <li>Theme erscheint in der Liste; auf <strong>Aktivieren</strong> tippen.</li>
+  <li>Der <strong>Style</strong>-Button öffnet den Style-Editor für Farb-, Helligkeits- und Schriftgrößen-Anpassungen.</li>
+</ol>
+<p>Theme exportieren (für Teilen oder Backup): <strong>Theme-Manager - (Theme antippen) - Exportieren</strong>.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-portable">Portabilität zwischen Laufbursche-Apps</h2>
+<p>Das ZIP-Bundle-Format und die <code>data-lb</code>-Attributnamen sind eine <strong>gemeinsame API aller Laufbursche-Apps</strong>. Ein Theme für eine App kann in jede andere Laufbursche-App importiert werden, die Custom Themes unterstützt.</p>
+<p>Für app-übergreifende Themes: nur die hier aufgeführten Datenschlüssel und CSS-Variablen verwenden. Keine fest codierten IDs oder Klassen aus dem App-eigenen HTML verwenden.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-i18n">Übersetzungen und Sprache</h2>
+<p>Die App läuft auf Deutsch und Englisch. Beim Sprachwechsel führt die App den vollständigen i18n-Durchlauf auch über dein injiziertes Theme-HTML durch.</p>
+<h3>Vorhandene App-Strings verwenden</h3>
+<p>Füge <code>data-i18n="key"</code> zu einem Element hinzu. Der Fallback-Text zwischen den Tags wird beim Browser-Test angezeigt:</p>
+<pre><code>&lt;span data-i18n="dash.hero.gear.label"&gt;Gang&lt;/span&gt;</code></pre>
+<table class="tg-table">
+  <thead><tr><th>Schlüssel</th><th>DE</th><th>EN</th></tr></thead>
+  <tbody>
+    <tr><td><code>dash.hero.gear.label</code></td><td>Gang</td><td>Gear</td></tr>
+    <tr><td><code>dash.hero.battery.unit</code></td><td>Batterie %</td><td>Battery %</td></tr>
+    <tr><td><code>dash.motors.section</code></td><td>Motoren</td><td>Motors</td></tr>
+    <tr><td><code>dash.motor.rear.title</code></td><td>HINTEN</td><td>REAR</td></tr>
+    <tr><td><code>dash.motor.front.title</code></td><td>VORNE</td><td>FRONT</td></tr>
+    <tr><td><code>dash.speed.vcu.unit</code></td><td>km/h - VCU</td><td>km/h - VCU</td></tr>
+  </tbody>
+</table>
+<h3>Eigene Übersetzungen hinzufügen</h3>
+<p>Einen <code>strings</code>-Block in <code>theme.json</code> deklarieren:</p>
+<pre><code>{
+  "name": "Mein Theme",
+  "version": "1.0",
+  "strings": {
+    "de": { "mtheme.speed.label": "Tempo" },
+    "en": { "mtheme.speed.label": "Speed" }
+  }
+}</code></pre>
+<p>Schlüssel mit dem Theme-Namen prefixen, um Kollisionen zu vermeiden. Ein fehlender Schlüssel fällt auf den Text zwischen den Tags zurück.</p>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-example">Vollständiges Beispiel - Orbit (Lehr-Theme)</h2>
+<p>Orbit ist ein vollständiges, importierbares Theme, das jede Technik aus diesem Leitfaden demonstriert: kreisförmiger SVG-Tachometer, <code>lb-unlocked</code>-Skalenerweiterung, <code>lb-mph</code>-Einheitenwechsel, alle drei Transparenz-Variablen verdrahtet, ein Datengitter, ein Button mit Inline-SVG-Icon und ein Park-Indikator. Drei Dateien speichern, zu <code>Orbit.zip</code> komprimieren, direkt importieren.</p>
+
+<h3>theme.json</h3>
+<pre><code>{
+  "name": "Orbit",
+  "version": "1.0",
+  "scope": "full",
+  "cssVars": {
+    "--value":     "#BCEB39",
+    "--btnfill":   "#BCEB39",
+    "--dark-card": "#111420",
+    "--dark-bg":   "#0A0C10"
+  }
+}</code></pre>
+
+<h3>theme.html</h3>
+<pre><code>&lt;!-- ORBIT - scope:"full" ersetzt #scroller (gesamter Dashboard-Scroll-Bereich).
+     ot- Präfix verhindert Konflikte mit App-Klassennamen. --&gt;
+
+&lt;!-- HERO: Tachometer + SOC-Zeile.
+     opacity: var(--tile-alpha) in theme.css verdrahtet den Kachel-Transparenz-Schieberegler. --&gt;
+&lt;div class="ot-hero" data-tile-id="ot-hero" data-tile-label="Tacho"&gt;
+
+  &lt;!-- Inline-SVG-Gauge.
+       r=58 in 160x160 viewBox: Umfang ~364 px; 270°-Bogen = 273 px; Lücke = 91 px.
+       rotate(135 80 80): Start bei 7 Uhr. --&gt;
+  &lt;svg class="ot-gauge" viewBox="0 0 160 160" aria-hidden="true"&gt;
+    &lt;!-- Track-Ring: statischer Hintergrundbogen. --&gt;
+    &lt;circle class="ot-track" cx="80" cy="80" r="58" fill="none"
+      stroke-dasharray="273 91" transform="rotate(135 80 80)" /&gt;
+    &lt;!-- Füllbogen: stroke-dashoffset per CSS; --gauge-alpha verdrahtet Tacho-Transparenz. --&gt;
+    &lt;circle class="ot-arc" cx="80" cy="80" r="58" fill="none"
+      stroke-dasharray="273 91" transform="rotate(135 80 80)" /&gt;
+    &lt;!-- data-lb="speed" verdrahtet den Live-km/h-Wert; App setzt textContent alle 500 ms. --&gt;
+    &lt;text class="ot-speed-val" x="80" y="76" text-anchor="middle"
+          data-lb="speed"&gt;-&lt;/text&gt;
+    &lt;!-- Einheiten-Labels: opacity-Umschalter - display:none bei SVG-Text in WebView unzuverlässig. --&gt;
+    &lt;text class="ot-unit ot-unit-kmh" x="80" y="97" text-anchor="middle"&gt;km/h&lt;/text&gt;
+    &lt;text class="ot-unit ot-unit-mph" x="80" y="97" text-anchor="middle"&gt;mph&lt;/text&gt;
+    &lt;!-- Sperr-Badge: gleiche opacity-Technik. --&gt;
+    &lt;text class="ot-badge ot-badge-locked"   x="80" y="126" text-anchor="middle"&gt;GESPERRT&lt;/text&gt;
+    &lt;text class="ot-badge ot-badge-unlocked" x="80" y="126" text-anchor="middle"&gt;ENTSPERRT&lt;/text&gt;
+  &lt;/svg&gt;
+
+  &lt;!-- SOC-Zeile. data-lb-state fügt ot-park-on hinzu wenn geparkt. --&gt;
+  &lt;div class="ot-soc-row"&gt;
+    &lt;span class="ot-soc-val" data-lb="soc"&gt;-&lt;/span&gt;&lt;span class="ot-soc-unit"&gt;%&lt;/span&gt;
+    &lt;span class="ot-park" data-lb-state="park:ot-park-on"&gt;P&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;!-- DATENGITTER --&gt;
+&lt;div class="ot-grid" data-tile-id="ot-grid" data-tile-label="Daten"&gt;
+  &lt;div class="ot-cell"&gt;&lt;span class="ot-lbl"&gt;Volt&lt;/span&gt;&lt;span class="ot-val" data-lb="volt"&gt;-&lt;/span&gt;&lt;span class="ot-usm"&gt;V&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="ot-cell"&gt;&lt;span class="ot-lbl"&gt;Strom&lt;/span&gt;&lt;span class="ot-val" data-lb="current"&gt;-&lt;/span&gt;&lt;span class="ot-usm"&gt;A&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="ot-cell"&gt;&lt;span class="ot-lbl"&gt;Gang&lt;/span&gt;&lt;span class="ot-val" data-lb="gear"&gt;-&lt;/span&gt;&lt;/div&gt;
+  &lt;div class="ot-cell"&gt;&lt;span class="ot-lbl"&gt;Trip&lt;/span&gt;&lt;span class="ot-val" data-lb="singleMile"&gt;-&lt;/span&gt;&lt;span class="ot-usm"&gt;km&lt;/span&gt;&lt;/div&gt;
+&lt;/div&gt;
+
+&lt;!-- BUTTON-REIHE: fill="currentColor" am SVG-Icon erbt die CSS-color-Eigenschaft. --&gt;
+&lt;div class="ot-buttons" data-tile-id="ot-buttons" data-tile-label="Buttons"&gt;
+  &lt;div class="ot-btn" data-lb-action="speed-unlock"&gt;
+    &lt;svg class="ot-btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"&gt;
+      &lt;path d="M7 2v11h3v9l7-12h-4l4-8z"/&gt;
+    &lt;/svg&gt;
+    &lt;span class="ot-btn-lbl"&gt;Entsperren&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+
+<h3>theme.css</h3>
+<pre><code>/* === ORBIT - ot- Präfix verhindert Konflikte === */
+
+/* HERO: opacity: var(--tile-alpha) verdrahtet den Kachel-Transparenz-Schieberegler (0-1-Float). */
+.ot-hero {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 12px 8px; background: var(--card);
+  border-radius: var(--radius); margin-bottom: 8px;
+  opacity: var(--tile-alpha);
+}
+/* overflow:visible: Strich darf außerhalb des viewBox-Rands gezeichnet werden. */
+.ot-gauge { width: 100%; max-width: 200px; overflow: visible; }
+.ot-track { stroke: var(--border); stroke-width: 10; stroke-linecap: round; }
+
+/* Füllbogen: --speed-max 25 gesperrt / 110 entsperrt; --gauge-alpha = Tacho-Transparenz. */
+.ot-arc {
+  --speed-max: 25;
+  stroke: rgb(from var(--value) r g b / var(--gauge-alpha));
+  stroke-width: 10; stroke-linecap: round;
+  stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
+  transition: stroke-dashoffset 0.4s ease-out;
+}
+:root.lb-unlocked .ot-arc { --speed-max: 110; }
+
+.ot-speed-val { font-size: 38px; font-weight: var(--fw-bold); fill: var(--text); font-family: inherit; }
+.ot-unit      { font-size: 12px; fill: var(--label); font-family: inherit; }
+/* opacity-Umschalter - display:none bei SVG-Text in Android WebView unzuverlässig. */
+.ot-unit-kmh   { opacity: 1; }
+.ot-unit-mph   { opacity: 0; }
+:root.lb-mph .ot-unit-kmh { opacity: 0; }
+:root.lb-mph .ot-unit-mph { opacity: 1; }
+
+.ot-badge          { font-size: 9px; letter-spacing: 0.08em; font-family: inherit; }
+.ot-badge-locked   { fill: var(--warn);  opacity: 1; }
+.ot-badge-unlocked { fill: var(--value); opacity: 0; }
+:root.lb-unlocked .ot-badge-locked   { opacity: 0; }
+:root.lb-unlocked .ot-badge-unlocked { opacity: 1; }
+
+.ot-soc-row  { display: flex; align-items: baseline; gap: 4px; margin-top: 6px; }
+.ot-soc-val  { font-size: 22px; font-weight: var(--fw-bold); color: var(--value); }
+.ot-soc-unit { font-size: var(--fs-sm); color: var(--label); }
+/* Park-Badge: versteckt bis ot-park-on per data-lb-state gesetzt wird. */
+.ot-park          { display: none; font-size: var(--fs-xs); color: var(--warn); font-weight: var(--fw-bold); }
+.ot-park.ot-park-on { display: inline; }
+
+/* DATENGITTER: teilt Kachel-Transparenz über --tile-alpha. */
+.ot-grid { display: flex; gap: 6px; margin-bottom: 8px; opacity: var(--tile-alpha); }
+.ot-cell {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 8px 4px; background: var(--card); border-radius: var(--radius);
+}
+.ot-lbl { font-size: var(--fs-xs); color: var(--label); }
+.ot-val { font-size: 20px; font-weight: var(--fw-bold); color: var(--text); }
+.ot-usm { font-size: var(--fs-xs); color: var(--label); }
+
+/* BUTTON-REIHE: opacity: var(--btn-alpha) verdrahtet den Button-Transparenz-Schieberegler. */
+.ot-buttons { display: flex; gap: 8px; padding-bottom: 4px; }
+.ot-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; padding: 12px 8px;
+  background: var(--btnfill); border-radius: var(--radius);
+  cursor: pointer; opacity: var(--btn-alpha);
+}
+/* fill="currentColor" greift auf diese color-Eigenschaft zu. */
+.ot-btn-icon { width: 24px; height: 24px; color: var(--bg); }
+.ot-btn-lbl  { font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--bg); }</code></pre>
+
+<hr class="tg-rule">
+
+<h2 id="tg-de-tips">Tipps und Einschränkungen</h2>
+<ul>
+  <li><strong>Keine externen Bilder.</strong> <code>http://</code>- und <code>https://</code>-URLs werden aus <code>src</code>-Attributen entfernt. CSS-Hintergrundfarben und SVG-Formen verwenden.</li>
+  <li><strong>Keine Web-Schriften.</strong> System-Font-Stack oder eine base64-Font-face-Einbettung verwenden (2-MB-Limit beachten).</li>
+  <li><strong>Standard-Scope deckt nur den Fold-Bereich ab.</strong> Das Theme ersetzt <code>#fold-inner</code>. Mit <code>"scope":"full"</code> wird auch der Scroll-Bereich ersetzt.</li>
+  <li><strong>CSS-Ladereihenfolge.</strong> <code>theme.css</code> lädt direkt nach <code>dashboard.css</code>. Klassen prefixen, um App-UI außerhalb von <code>#fold-inner</code> nicht zu verändern.</li>
+  <li><strong>Content Security Policy.</strong> <code>style-src file:</code> - externes CSS, Google Fonts und CDNs sind blockiert. Base64-Font-Face funktioniert.</li>
+  <li><strong>Dunkel-/Hellmodus.</strong> <code>var(--card)</code>, <code>var(--text)</code> etc. verwenden - niemals Farben fest codieren.</li>
+  <li><strong>Testen.</strong> <code>telemetry.html</code> im Desktop-Browser öffnen. HTML per DevTools in <code>#fold-inner</code> einfügen, <code>&lt;link&gt;</code> für die lokale CSS einfügen und ein temporäres <code>&lt;script&gt;</code> mit Dummy-Werten hinzufügen - vor dem Zippen entfernen.</li>
+  <li><strong>Kachel-Manager.</strong> <code>data-tile-label</code>-Werte kurz halten (unter 20 Zeichen).</li>
+  <li><strong><code>rgb()</code>-Relative-Color-Syntax: nur flache Ursprünge.</strong> <code>rgb(from var(--card) r g b / var(--tile-alpha))</code> funktioniert auf Android WebView 111+. <code>rgb(from color-mix(...) r g b / alpha)</code> funktioniert <strong>nicht</strong> - ein <code>color-mix()</code>-Ursprung verwirft den Alpha-Kanal lautlos. Als Ursprung immer eine flache CSS-Variable verwenden (z.B. <code>var(--card)</code>, <code>var(--value)</code>), niemals ein <code>color-mix()</code>-Ergebnis.</li>
+</ul>
+
+</div><!-- /tg-de -->

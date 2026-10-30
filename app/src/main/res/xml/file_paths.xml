@@ -10,4 +10,6 @@
     <external-path name="downloads" path="Download/"/>
     <!-- Covers getFilesDir()/themes/*.html and *.css for the theme export FileProvider share. -->
     <files-path name="themes" path="themes/"/>
+    <!-- Covers getCacheDir()/theme_export/*.zip for the theme ZIP export. -->
+    <cache-path name="theme_export" path="theme_export/"/>
 </paths>

@@ -58,8 +58,7 @@ public class MainActivity extends Activity {
     private static final String TAG = "lbedition";
     private static final int REQ_PERMS = 4711;
     private static final int REQ_OTA_FILE = 4712;
-    private static final int REQ_THEME_HTML = 4713;
-    private static final int REQ_THEME_CSS = 4714;
+    private static final int REQ_THEME_ZIP = 4713;
 
     // Picked firmware file, held natively until the user starts the flash (never round-trips through
     // JS - only its metadata does). Guarded by the main thread (set in onActivityResult, read in the
@@ -67,16 +66,14 @@ public class MainActivity extends Activity {
     private volatile String otaHexText = null;
     private volatile String otaFileName = null;
 
-    // Theme import: HTML file picked first, CSS file picked second.
-    private volatile String pendingThemeHtmlName = null;
-    private volatile byte[] pendingThemeHtmlBytes = null;
-
     private WebView webView;
     private BleManager ble;
     private DebugLog debugLog;
     private RideLogger rideLogger;
     private SharedPreferences prefs;
     private ThemeManager themeManager;
+    // Set by JS via LB.setCanGoBack(bool); true = a page is open, back should navigate in-app.
+    private volatile boolean jsCanGoBack = false;
     // Auto-reconnect to the remembered scooter is attempted at most once per process.
     private boolean autoConnectTried = false;
     // Tracks the BLE connection state so ride-logging transitions fire exactly once per change.
@@ -98,6 +95,7 @@ public class MainActivity extends Activity {
         // Delegated to UiChrome so every screen (main + native) shares the exact same inset logic.
         prefs = getSharedPreferences("lb", MODE_PRIVATE);
         themeManager = new ThemeManager(this);
+        ThemeSeeder.seed(this, themeManager);
         UiChrome.applyFullscreen(this);
 
         configureWebView();
@@ -148,6 +146,8 @@ public class MainActivity extends Activity {
 
     @SuppressWarnings({"SetJavaScriptEnabled"})
     private void configureWebView() {
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0)
+            WebView.setWebContentsDebuggingEnabled(true);
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -174,6 +174,10 @@ public class MainActivity extends Activity {
         // Any attempt to navigate it elsewhere is cancelled, so no remote or attacker page can ever
         // inherit the JS bridge. External links are handled explicitly by LB.openUrl, not here.
         webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri u = request != null ? request.getUrl() : null;
@@ -352,12 +356,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_THEME_HTML) {
-            handleThemeHtmlPick(resultCode, data);
-            return;
-        }
-        if (requestCode == REQ_THEME_CSS) {
-            handleThemeCssPick(resultCode, data);
+        if (requestCode == REQ_THEME_ZIP) {
+            handleThemeZipPick(resultCode, data);
             return;
         }
         if (requestCode != REQ_OTA_FILE) return;
@@ -385,68 +385,32 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void handleThemeHtmlPick(int resultCode, Intent data) {
+    private void handleThemeZipPick(int resultCode, Intent data) {
         if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
-            pendingThemeHtmlName = null;
-            pendingThemeHtmlBytes = null;
             pushThemeEvent("{\"event\":\"cancelled\"}");
             return;
         }
+        Uri uri = data.getData();
         try {
-            Uri uri = data.getData();
-            String name = queryDisplayName(uri);
-            // Strip extension to get theme name.
-            if (name.toLowerCase(java.util.Locale.US).endsWith(".html"))
-                name = name.substring(0, name.length() - 5);
-            pendingThemeHtmlName = name;
-            pendingThemeHtmlBytes = readAllBytes(uri);
-            // Now ask for the CSS file.
-            runOnUiThread(() -> {
-                try {
-                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-                    i.addCategory(Intent.CATEGORY_OPENABLE);
-                    i.setType("*/*");
-                    startActivityForResult(i, REQ_THEME_CSS);
-                } catch (Throwable t) {
-                    Log.e(TAG, "theme CSS picker failed", t);
-                    pendingThemeHtmlName = null;
-                    pendingThemeHtmlBytes = null;
-                    pushThemeEvent("{\"event\":\"error\",\"message\":\"no file picker\"}");
-                }
-            });
-        } catch (Throwable t) {
-            Log.e(TAG, "theme HTML pick failed", t);
-            pendingThemeHtmlName = null;
-            pendingThemeHtmlBytes = null;
-            pushThemeEvent("{\"event\":\"error\",\"message\":\"read failed\"}");
-        }
-    }
-
-    private void handleThemeCssPick(int resultCode, Intent data) {
-        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
-            pendingThemeHtmlName = null;
-            pendingThemeHtmlBytes = null;
-            pushThemeEvent("{\"event\":\"cancelled\"}");
-            return;
-        }
-        String name = pendingThemeHtmlName;
-        byte[] htmlBytes = pendingThemeHtmlBytes;
-        pendingThemeHtmlName = null;
-        pendingThemeHtmlBytes = null;
-        if (name == null || htmlBytes == null) {
-            pushThemeEvent("{\"event\":\"error\",\"message\":\"session lost\"}");
-            return;
-        }
-        try {
-            byte[] cssBytes = readAllBytes(data.getData());
-            String err = themeManager.importTheme(name, htmlBytes, cssBytes);
-            if (err != null) {
-                pushThemeEvent("{\"event\":\"error\",\"message\":" + jsonStr(err) + "}");
+            String zipName = queryDisplayName(uri);
+            InputStream is = getContentResolver().openInputStream(uri);
+            if (is == null) {
+                pushThemeEvent("{\"event\":\"error\",\"message\":\"cannot open file\"}");
+                return;
+            }
+            String[] result;
+            try {
+                result = themeManager.importThemeZip(zipName, is);
+            } finally {
+                try { is.close(); } catch (Throwable ignored) {}
+            }
+            if (result[1] != null) {
+                pushThemeEvent("{\"event\":\"error\",\"message\":" + jsonStr(result[1]) + "}");
             } else {
-                pushThemeEvent("{\"event\":\"imported\",\"name\":" + jsonStr(name) + "}");
+                pushThemeEvent("{\"event\":\"imported\",\"name\":" + jsonStr(result[0]) + "}");
             }
         } catch (Throwable t) {
-            Log.e(TAG, "theme CSS pick failed", t);
+            Log.e(TAG, "theme zip pick failed", t);
             pushThemeEvent("{\"event\":\"error\",\"message\":\"read failed\"}");
         }
     }
@@ -687,8 +651,9 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
+        if (jsCanGoBack && webView != null) {
+            // A page/overlay is open inside the WebView; let JS close it.
+            webView.evaluateJavascript("if(window.__navBack)window.__navBack();", null);
         } else {
             super.onBackPressed();
         }
@@ -699,6 +664,13 @@ public class MainActivity extends Activity {
      * Every method is null/exception-safe - nothing throws across the bridge.
      */
     private class LbBridge {
+
+        /** Called by JS when the in-app navigation stack changes; controls whether the Android
+         *  back button navigates within the WebView (true) or exits the app (false). */
+        @JavascriptInterface
+        public void setCanGoBack(boolean canGoBack) {
+            jsCanGoBack = canGoBack;
+        }
 
         /** End the active turn-by-turn navigation session (stops the foreground service). */
         @JavascriptInterface
@@ -1455,27 +1427,22 @@ public class MainActivity extends Activity {
             }
         }
 
-        /** Share the HTML and CSS files of a named theme via the system chooser. */
+        /** Package the named theme as a .zip and share it via the system chooser. */
         @JavascriptInterface
         public void exportTheme(final String name) {
             Log.i(TAG, "LB.exportTheme(" + logSafe(name) + ")");
             runOnUiThread(() -> {
                 try {
-                    File html = themeManager.getThemeFile(name, "html");
-                    File css = themeManager.getThemeFile(name, "css");
-                    if (!html.exists() || !css.exists()) {
+                    File zip = themeManager.exportThemeZip(name);
+                    if (zip == null) {
                         Toast.makeText(MainActivity.this, "Theme files not found", Toast.LENGTH_SHORT).show();
                         return;
                     }
                     String pkg = getPackageName() + ".fileprovider";
-                    Uri uHtml = FileProvider.getUriForFile(MainActivity.this, pkg, html);
-                    Uri uCss = FileProvider.getUriForFile(MainActivity.this, pkg, css);
-                    ArrayList<Uri> uris = new ArrayList<>();
-                    uris.add(uHtml);
-                    uris.add(uCss);
-                    Intent send = new Intent(Intent.ACTION_SEND_MULTIPLE);
-                    send.setType("*/*");
-                    send.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                    Uri uri = FileProvider.getUriForFile(MainActivity.this, pkg, zip);
+                    Intent send = new Intent(Intent.ACTION_SEND);
+                    send.setType("application/zip");
+                    send.putExtra(Intent.EXTRA_STREAM, uri);
                     send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     Intent chooser = Intent.createChooser(send, "Export theme");
                     chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -1489,7 +1456,7 @@ public class MainActivity extends Activity {
             });
         }
 
-        /** Open SAF file picker for the HTML file (CSS is picked in the second step). */
+        /** Open SAF file picker for a .zip theme bundle (one file = one theme). */
         @JavascriptInterface
         public void pickThemeFiles() {
             Log.i(TAG, "LB.pickThemeFiles()");
@@ -1498,12 +1465,46 @@ public class MainActivity extends Activity {
                     Intent i = new Intent(Intent.ACTION_GET_CONTENT);
                     i.addCategory(Intent.CATEGORY_OPENABLE);
                     i.setType("*/*");
-                    startActivityForResult(i, REQ_THEME_HTML);
+                    startActivityForResult(i, REQ_THEME_ZIP);
                 } catch (Throwable t) {
                     Log.e(TAG, "pickThemeFiles failed", t);
                     pushThemeEvent("{\"event\":\"error\",\"message\":\"no file picker\"}");
                 }
             });
+        }
+
+        /** Per-theme tile layout: JSON {order:[ids], hidden:[ids]}. */
+        @JavascriptInterface
+        public String getTileConfig(String name) {
+            try { return themeManager.getTileConfig(name); } catch (Throwable t) { return "{}"; }
+        }
+
+        @JavascriptInterface
+        public void saveTileConfig(String name, String json) {
+            try {
+                Log.i(TAG, "LB.saveTileConfig(" + logSafe(name) + ")");
+                themeManager.saveTileConfig(name, json);
+            } catch (Throwable t) { Log.e(TAG, "saveTileConfig failed", t); }
+        }
+
+        /** Per-theme CSS variable overrides: JSON {varName: value}. */
+        @JavascriptInterface
+        public String getThemeVars(String name) {
+            try { return themeManager.getThemeVars(name); } catch (Throwable t) { return "{}"; }
+        }
+
+        @JavascriptInterface
+        public void saveThemeVars(String name, String json) {
+            try {
+                Log.i(TAG, "LB.saveThemeVars(" + logSafe(name) + ")");
+                themeManager.saveThemeVars(name, json);
+            } catch (Throwable t) { Log.e(TAG, "saveThemeVars failed", t); }
+        }
+
+        /** theme.json metadata for a named theme (name, version, cssVars), or "{}" if none. */
+        @JavascriptInterface
+        public String getThemeMeta(String name) {
+            try { return themeManager.getThemeMeta(name); } catch (Throwable t) { return "{}"; }
         }
 
         /**
@@ -1524,6 +1525,25 @@ public class MainActivity extends Activity {
             } catch (Throwable t) {
                 Log.e(TAG, "saveGpxToDownloads failed", t);
                 return gpxResult(false, name, "save");
+            }
+        }
+
+        /** Read a dashboard asset by filename and return its UTF-8 content, or "" on error.
+         *  Only names without path separators are accepted (no directory traversal). */
+        @JavascriptInterface
+        public String getAsset(final String name) {
+            if (name == null || name.contains("/") || name.contains("\\") || name.contains("..")) return "";
+            try {
+                java.io.InputStream is = getAssets().open("dashboard/" + name);
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[4096];
+                int n;
+                while ((n = is.read(buf)) != -1) out.write(buf, 0, n);
+                is.close();
+                return out.toString("UTF-8");
+            } catch (Throwable t) {
+                Log.w(TAG, "LB.getAsset failed for " + name, t);
+                return "";
             }
         }
     }

@@ -1,8 +1,8 @@
-# Changelog
+﻿# Changelog
 
 Notable changes to Laufbursche Edition, newest first.
 
-The version series lives in `version.properties`, which both the gradle build and the release workflow read. `versionName` is `<major>.<minor>.<n>` where `n` counts the commits since the series began, so the number rises by one on every release with no manual editing. `versionCode` counts straight through a series change and never goes backwards.
+The version series lives in `version.properties`. `versionName` is `<major>.<minor>.<n>` where `n` is the release count: it advances by exactly one per push/release (bumped by the CI workflow), never by individual commits. `versionCode` never goes backwards.
 
 Release notes are built automatically for each release: if this file has a section whose heading matches the released version it is used verbatim, otherwise the commit subjects since the previous release are listed. Either way a fixed Disclaimer and a "phoning home" note are appended (see `.github/release-footer.md`).
 
@@ -13,6 +13,50 @@ To hand-write the notes for a release, add a section headed with its version num
     - Corrected the anti-theft help text
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
+
+## 1.1.32
+
+### Bundled themes
+
+- **Carbon and Lambo ship pre-installed.**  Both appear in the Theme Manager on first launch - seeded once at install, never overwriting user modifications.
+
+### Style Editor
+
+- **Live colour and size editing.**  All 24 CSS custom properties - dark-mode and light-mode colours, accent colours, font sizes and tile heights - are directly editable per theme and survive APK updates.
+- **Three transparency controls.**  Tile transparency (`--tile-alpha`), Button transparency (`--btn-alpha`) and Gauge transparency (`--gauge-alpha`) range sliders. 0 % = solid (default), 100 % = invisible.
+- **Full reset.**  One button clears all per-theme overrides (colours, tile order, button row) and restores the theme's built-in defaults.
+
+### Theme system
+
+- **Full-scope themes**  -  set `"scope":"full"` in `theme.json` to replace the entire dashboard (fold AND scroll tiles). Default `"fold"` scope is unchanged.
+- **Theme ZIP bundles**  -  themes are shared as a single `.zip` (theme.html + theme.css + theme.json). Compatible across all Laufbursche apps.
+- **Per-tile and per-field show/hide.**  Every dashboard element is independently shown or hidden: each speed drum (VCU / GPS), each hero cell, each motor row, and every data-grid row.
+- **Quick-button row overhaul.**  Each slot uses a dropdown to select its function (all model functions, no cap). More than 4 visible buttons wrap onto a second row (max 4 per row). Drag to reorder; row alignment (Fill / Center / Edges) configurable.
+- **Tile drag-to-reorder**  -  long-press any tile for 500 ms, drag to a new position. Order saved per theme; cross-parent moves supported.
+- **Custom i18n strings**  -  themes can ship translated strings in `theme.json` under a `strings` block (DE + EN).
+- **Sanitizer hardening**  -  `<iframe>` and `data:` URIs stripped at import and load.
+- **Dashboard lock**  -  a toggle in Settings prevents long-press tile drag while riding.
+
+### Theme creation guide
+
+- **Complete SVG speed gauge technique.**  Arc geometry (r = 58, 273 ° arc), CSS animation with `--cur-speed`, unit-label toggle and inline SVG icons - documented step by step.
+- **Orbit worked example.**  A full-scope example theme with SVG gauge, data grid, icon button row and all three transparency vars, with line-by-line comments.
+- **Back-to-top button.**  A floating scroll-to-top button in the guide appears after scrolling down.
+- **AI-ready raw link.**  Both the in-app guide and THEME-GUIDE.md now show the raw GitHub URL so an AI assistant can read the full spec directly.
+
+### Bug fixes and i18n
+
+- **Theme flash fix.**  Active theme and saved style overrides are applied before the first paint. No flash of the default layout on startup or when switching themes.
+- **i18n: all theme-editor strings are now bilingual.**  Every label in the Style Editor, Tile Manager and Button Row Editor is translated in both English and German. Custom theme `cssVars` labels accept an i18n key, a `{"en": …, "de": …}` object or a plain string.
+- **Import theme: fixed crash after file selection.**  Null-dereference in the speed-unit DOM update fixed with null guards.
+- **CSP compliance: inline styles removed.**  Five `style="display:none"` attributes moved to `dashboard.css`; runtime show/hide via CSSOM is unaffected.
+- **Button row: drag into hidden slots now works.**  Hidden slots appear as ghost placeholders during drag.
+- **Security: WebView debugging**  -  remote debugging enabled only in debug builds.
+- **Security: removed disclaimer auto-accept**  -  development shortcut removed from release builds.
+
+### Documentation
+
+- **[THEME-GUIDE.md](THEME-GUIDE.md)**  -  complete guide: bundle format, live-value hooks, tile registration, CSS variables, SVG gauge technique, Orbit full-scope example, label localization for theme authors.
 
 ## 1.1.31
 - Theme Manager Phase 1: import an HTML + CSS file pair from local storage; the imported theme is stored in app-private storage and applied as a dashboard overlay; live values are bound to `data-lb` hooks in the theme HTML every 500 ms tick. Themes can be activated, exported (Android share intent) and deleted from a new Theme manager screen in Display settings. The built-in default layout is always available and reachable via Activate. Security: script content (script tags, inline event handlers, javascript: URLs, external http/https URLs) is stripped from imported HTML before storage; theme code never runs.
