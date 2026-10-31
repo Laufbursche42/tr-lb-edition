@@ -14,6 +14,13 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.37
+
+### Fixes
+
+- **The "Recorded routes" button opens again.** It was opening the routes list behind the full-screen Settings page, so nothing appeared to happen - it now closes Settings first.
+- **The app installs on every phone again.** Release APKs were signed with the v2 scheme only, which Xiaomi/MIUI (and some other installers) reject as "invalid". Builds now carry v1 (JAR) + v2 signatures, and the release pipeline refuses to publish an APK that is not v1-signed.
+
 ## 1.1.35
 
 ### New

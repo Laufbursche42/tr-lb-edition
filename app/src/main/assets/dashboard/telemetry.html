@@ -6755,6 +6755,8 @@ function wireEvents() {
 
   // Routes sub-page open/close
   document.getElementById('btn-open-routes').addEventListener('click', () => {
+    closeSettings();
+    importNativeRoutes();   // pull in any track recorded natively (incl. with the screen off)
     renderRoutes();
     document.getElementById('routes-page').classList.add('open');
   });

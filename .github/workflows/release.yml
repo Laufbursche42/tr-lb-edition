@@ -105,6 +105,38 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease -PverName="${{ steps.ver.outputs.version }}" -PverCode="${{ steps.ver.outputs.vcode }}"
 
+      - name: Force v1 (JAR) + v2 signing and GATE on it
+        if: steps.exists.outputs.exists == 'false'
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          # AGP with minSdk>=24 drops v1 (JAR) signing even with enableV1Signing=true, producing a
+          # v2-only APK. MIUI/Xiaomi rejects a v2-only APK on install (INSTALL_FAILED_USER_RESTRICTED
+          # "Invalid apk"). Re-sign with apksigner forcing v1+v2 (--min-sdk-version 19 makes apksigner
+          # include v1), then HARD-GATE: abort the release if v1 is not present, so a v2-only APK can
+          # never be published again.
+          APK=app/build/outputs/apk/release/app-release.apk
+          APKSIGNER=$(ls "$ANDROID_SDK_ROOT"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -n1)
+          [ -z "$APKSIGNER" ] && APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n1)
+          echo "apksigner: $APKSIGNER"
+          "$APKSIGNER" sign \
+            --ks "$RUNNER_TEMP/release.keystore" \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled false \
+            --min-sdk-version 19 \
+            "$APK"
+          echo "----- signature schemes -----"
+          "$APKSIGNER" verify --verbose --min-sdk-version 19 "$APK" | grep -i scheme || true
+          if ! "$APKSIGNER" verify --verbose --min-sdk-version 19 "$APK" | grep -qi "v1 scheme (JAR signing): true"; then
+            echo "::error::Release APK is NOT v1 (JAR) signed -> MIUI/Xiaomi would reject it as 'Invalid apk'. Aborting release."
+            exit 1
+          fi
+          echo "OK: APK is v1 (JAR) + v2 signed."
+
       - name: Stage APK under the release name
         if: steps.exists.outputs.exists == 'false'
         run: |

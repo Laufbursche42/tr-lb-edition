@@ -20,9 +20,8 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
-      "<b>GPS route recording keeps going with the screen off.</b> Your ride's track is now logged by a native background service, so the full route is saved even when the screen is locked or the app is in the background. Recording arms once the scooter has moved and stops when it disconnects.",
-      "<b>Finished routes import automatically.</b> A recorded track appears in your routes list when the app is next open - no ride is lost because the screen went dark.",
-      "<b>Settings fields scroll above the keyboard.</b> When the on-screen keyboard opens over a settings field, the field is pulled into view.",
+      "<b>Recorded routes open again.</b> The Recorded-routes button in Settings works again - it had been opening the list behind the full-screen Settings page, so nothing seemed to happen.",
+      "<b>Installs on every phone again.</b> The APK now carries both signature schemes (v1 + v2), so phones that rejected the update as &quot;invalid&quot; - notably Xiaomi/MIUI - install it again.",
     ],
 
     'disclaimer.points': [
@@ -868,9 +867,8 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
-      "<b>GPS-Routenaufzeichnung läuft auch bei ausgeschaltetem Display weiter.</b> Die Strecke deiner Fahrt wird jetzt von einem nativen Hintergrunddienst aufgezeichnet, sodass die komplette Route auch bei gesperrtem Bildschirm oder App im Hintergrund gespeichert wird. Die Aufzeichnung startet, sobald sich der Scooter bewegt, und endet beim Trennen.",
-      "<b>Fertige Routen werden automatisch übernommen.</b> Eine aufgezeichnete Strecke erscheint beim nächsten Öffnen der App in deiner Routenliste - keine Fahrt geht verloren, weil das Display aus war.",
-      "<b>Eingabefelder scrollen über die Tastatur.</b> Wenn die Bildschirmtastatur ein Einstellungsfeld verdeckt, wird das Feld in den sichtbaren Bereich geholt.",
+      "<b>Aufgezeichnete Routen gehen wieder auf.</b> Der Knopf Aufgezeichnete Routen in den Einstellungen funktioniert wieder - er hatte die Liste hinter der Vollbild-Einstellungsseite geöffnet, sodass scheinbar nichts passierte.",
+      "<b>Installiert wieder auf jedem Handy.</b> Die APK hat jetzt beide Signatur-Schemata (v1 + v2), damit Handys, die das Update als &quot;ungültig&quot; abgelehnt haben - vor allem Xiaomi/MIUI - es wieder installieren.",
     ],
 
     'disclaimer.points': [
