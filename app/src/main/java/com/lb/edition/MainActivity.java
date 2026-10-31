@@ -768,6 +768,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void connect(String addr) {
             try {
+                if (debugLog != null) debugLog.addRedactLiteral(addr);
                 Log.i(TAG, "LB.connect(" + logSafe(addr) + ")");
                 if (ble != null) ble.connect(addr);
             } catch (Throwable t) {
@@ -779,6 +780,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void connect(String addr, String name) {
             try {
+                if (debugLog != null) { debugLog.addRedactLiteral(addr); debugLog.addRedactLiteral(name); }
                 Log.i(TAG, "LB.connect(" + logSafe(addr) + ", " + logSafe(name) + ")");
                 if (ble != null) ble.connect(addr, name);
             } catch (Throwable t) {
@@ -862,6 +864,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setBleName(String name) {
             try {
+                if (debugLog != null) debugLog.addRedactLiteral(name);
                 Log.i(TAG, "LB.setBleName(" + logSafe(name) + ")");
                 if (ble != null) ble.setBleName(name);
             } catch (Throwable t) {

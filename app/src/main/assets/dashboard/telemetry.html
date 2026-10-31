@@ -485,6 +485,16 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
         <label class="toggle-label" for="toggle-debug"></label>
       </div>
     </div>
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label" data-i18n="settings.debug.redact.label">Redact personal data</div>
+        <div class="settings-row-sublabel" data-i18n="settings.debug.redact.hint">Always on - MACs, device names, IDs and secrets are removed before a log is shared</div>
+      </div>
+      <div class="toggle-wrap">
+        <input type="checkbox" class="toggle-input" id="toggle-redact" checked disabled>
+        <label class="toggle-label" for="toggle-redact"></label>
+      </div>
+    </div>
     <button class="mt-10" id="btn-export-logs" data-i18n="settings.debug.export.action">&#128228; Export debug logs</button>
     <div class="settings-row-sublabel m-6-0-2" data-i18n="settings.debug.export.hint">Share the recorded log file (email/message)</div>
   </div>
@@ -3741,7 +3751,17 @@ function openGuidePage() {
     if (!body) return;
     var html = '';
     try { if (typeof LB !== 'undefined' && LB.getAsset) html = LB.getAsset('theme-guide.html'); } catch(e) {}
-    if (html) { body.innerHTML = html; _guideLoaded = true; }
+    if (html) {
+      body.innerHTML = html; _guideLoaded = true;
+      // Route external links (AI-box + any link in the guide body) to the system
+      // browser via openExt; the WebView itself cancels non-file:// navigations.
+      body.addEventListener('click', function(e) {
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (!a) return;
+        var href = a.getAttribute('href') || '';
+        if (/^https?:/i.test(href)) { e.preventDefault(); openExt(href); }
+      });
+    }
     else body.textContent = 'Guide not available.';
   }
 }

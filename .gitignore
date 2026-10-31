@@ -23,3 +23,6 @@ keystore/
 rides/
 # Local Go analysis tool - not part of the Android app
 analysis-tool/
+
+# xelatex scratch dir from tools/build-guide.sh
+/tex/

@@ -2,6 +2,8 @@
 
 Custom themes let you replace the fold area (the top section of the main dashboard) with your own HTML layout. You supply HTML for the structure and CSS for the look; the app fills your elements with live scooter data automatically, every 500 ms, without any JavaScript on your side.
 
+> 📄 **Formatted PDF:** a typeset version of this guide lives next to it in the repository - [THEME-GUIDE-EN.pdf](THEME-GUIDE-EN.pdf). This Markdown is the single source of truth; the PDF and the in-app HTML guide are generated from it, so they always match this file.
+
 ---
 
 ## Table of contents

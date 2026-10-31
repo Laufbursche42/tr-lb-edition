@@ -1226,16 +1226,14 @@ html:not([lang="de"]) #guide-body .tg-de { display: none; }
   margin-bottom: 14px;
 }
 #guide-body .tg-ai-box p { margin: 0 0 8px; font-size: var(--fs-sm); color: var(--text); }
-#guide-body .tg-ai-box code {
+#guide-body .tg-ai-box .tg-ai-link {
   display: block;
-  font-size: var(--fs-xs);
-  color: var(--value);
+  font-size: var(--fs-sm);
+  color: var(--ble);
+  text-decoration: underline;
+  cursor: pointer;
   word-break: break-all;
-  user-select: all;
-  -webkit-user-select: all;
-  padding: 6px 8px;
-  background: var(--bg);
-  border-radius: 6px;
+  padding: 4px 0;
 }
 
 /* Tile/button transparency: bind Default surfaces to --tile-alpha/--btn-alpha so the sliders work in

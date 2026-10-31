@@ -76,6 +76,38 @@ if [ -n "$dash_blocked" ]; then
 fi
 
 # =================================================================
+# PHASE G - theme guide: regenerate HTML + PDFs from the markdown source
+# =================================================================
+# THEME-GUIDE.md / THEME-GUIDE.de.md are the single source of truth. When one of
+# them (or the guide version file / a generator script) is staged, rebuild the
+# in-app bilingual theme-guide.html and both paper PDFs from that source and
+# re-stage the results, so the HTML and PDFs never drift from the markdown.
+# Runs BEFORE the syntax/secret phases so the regenerated files are checked too.
+# Skip: SKIP_GUIDE_BUILD=1 git commit ...
+GUIDE_SRC_STAGED=0
+for _gs in THEME-GUIDE.md THEME-GUIDE.de.md THEME-GUIDE.version \
+           tools/build-guide.sh tools/build_guide_html.py tools/build_guide_pdf.py; do
+  if grep -aqzF -- "$_gs" "$STAGED_LIST" 2>/dev/null; then GUIDE_SRC_STAGED=1; fi
+done
+if [ "$GUIDE_SRC_STAGED" = "1" ] && [ -z "${SKIP_GUIDE_BUILD:-}" ]; then
+  echo "..    [guide]  markdown source staged - rebuilding theme-guide.html + PDFs ..."
+  if sh "$REPO_ROOT/tools/build-guide.sh" > "$TMPD/guide.out" 2>&1; then
+    git add -- app/src/main/assets/dashboard/theme-guide.html \
+                THEME-GUIDE-EN.pdf THEME-GUIDE-DE.pdf 2>/dev/null || true
+    # refresh the staged list so the later phases also see the regenerated files
+    git diff --cached --name-only --diff-filter=ACM -z > "$STAGED_LIST" 2>/dev/null || :
+    echo "PASS  [guide]  regenerated and re-staged theme-guide.html + EN/DE PDFs"
+  else
+    echo "FAIL  [guide]  tools/build-guide.sh failed - HTML/PDF would drift from the markdown:"
+    sed 's/^/        /' "$TMPD/guide.out"
+    echo "        -> install pandoc + xelatex, or bypass with: SKIP_GUIDE_BUILD=1 git commit ..."
+    RC=1
+  fi
+elif [ "$GUIDE_SRC_STAGED" = "1" ]; then
+  echo "SKIP  [guide]  SKIP_GUIDE_BUILD set - theme-guide.html/PDFs NOT regenerated"
+fi
+
+# =================================================================
 # PHASE A - syntax checks
 # =================================================================
 JAVA_CHANGED=0

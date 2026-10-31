@@ -14,6 +14,11 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.38
+
+- Added: the in-app theme guide now links to a formatted PDF (EN and DE) and to the raw Markdown source for AI assistants; the in-app guide, the PDF and the Markdown are generated from one source so they always match.
+- Added: debug logs are now scrubbed of personal data (MAC addresses, device names, IDs, tokens and secrets) before they are exported or shared - always on. Useful troubleshooting data is kept.
+
 ## 1.1.37
 
 ### Fixes

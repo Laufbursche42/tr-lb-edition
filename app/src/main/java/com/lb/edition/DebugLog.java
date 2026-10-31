@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * In-app debug logger for the standalone TR-LB Edition app.
@@ -53,6 +54,10 @@ public final class DebugLog {
     private volatile Process proc;
     private Writer writer;      // guarded by lock
     private long bytesWritten;  // guarded by lock
+    // Connection-specific identifiers (device address, custom BLE name) to scrub
+    // literally from every line, so a user's MAC or scooter name never reaches an
+    // exported log even when it is not a pattern the regex scrub recognises.
+    private final java.util.LinkedHashSet<String> redactLiterals = new java.util.LinkedHashSet<>(); // guarded by lock
 
     public DebugLog(Context context) {
         this.ctx = context != null ? context.getApplicationContext() : null;
@@ -197,15 +202,69 @@ public final class DebugLog {
         }
     }
 
+    // ── Always-on redaction ──────────────────────────────────────────────────
+    // Keep the logs useful for troubleshooting, but never let personal data reach
+    // an exported/shared log: scrub MACs, device/secret ids, tokens and JWTs at the
+    // source (every written line), mirroring the websites' maskSecrets + redact
+    // pipeline. Space-separated frame bytes ("55 71 ..") are 2-char tokens and
+    // survive, so the actual scooter traffic is still readable. This is always on
+    // (the in-app "redact" control is shown checked and locked, to match the sites).
+    private static final Pattern RE_JWT       = Pattern.compile("eyJ[A-Za-z0-9_-]{4,}\\.[A-Za-z0-9_-]{4,}\\.[A-Za-z0-9_-]{4,}");
+    private static final Pattern RE_BEARER_KV = Pattern.compile("\\bBearer\\s+[A-Za-z0-9._~+/=-]+", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RE_TOKEN_KV  = Pattern.compile("\\b(access[_-]?token|refresh[_-]?token|token|jwt|password|passwd|pwd|secret|code|otp)\\b(\\s*[:=]\\s*)(\"?)([^\\s\",}]+)\\3", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RE_MAC       = Pattern.compile("\\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\\b");
+    private static final Pattern RE_SECRET_KV = Pattern.compile("\\b(secret|token|key|aes|pwd|password|pin|mac|serial|vin|uid|imei)\\b(\\s*[:=]\\s*)(\"?)([^\\s\",]+)\\3", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RE_HEX       = Pattern.compile("\\b[0-9A-Fa-f]{16,}\\b");
+
+    /** Always-on PII/secret scrub applied to every written line (see comment above). */
+    static String redactLine(String line) {
+        if (line == null) return null;
+        String s = line;
+        s = RE_JWT.matcher(s).replaceAll("[redacted-jwt]");
+        s = RE_BEARER_KV.matcher(s).replaceAll("Bearer ***");
+        s = RE_TOKEN_KV.matcher(s).replaceAll("$1$2***");
+        s = RE_MAC.matcher(s).replaceAll("[redacted-mac]");
+        s = RE_SECRET_KV.matcher(s).replaceAll("$1$2[redacted]");
+        s = RE_HEX.matcher(s).replaceAll("[redacted-hex]");
+        return s;
+    }
+
+    /** Register a connection identifier (device address or custom BLE name) to scrub
+     *  literally from every logged line. Short or blank values are ignored. Thread-safe. */
+    public void addRedactLiteral(String v) {
+        if (v == null) return;
+        String t = v.trim();
+        if (t.length() < 3) return;
+        synchronized (lock) {
+            if (redactLiterals.contains(t)) return;
+            if (redactLiterals.size() >= 32) {               // cap: drop the oldest
+                java.util.Iterator<String> it = redactLiterals.iterator();
+                if (it.hasNext()) { it.next(); it.remove(); }
+            }
+            redactLiterals.add(t);
+        }
+    }
+
+    /** Forget all registered identifiers (e.g. on disconnect). */
+    public void clearRedactLiterals() {
+        synchronized (lock) { redactLiterals.clear(); }
+    }
+
     private void writeLine(String line) {
         if (line == null) return;
         synchronized (lock) {
             if (writer == null) return;
             try {
-                writer.write(line);
+                String out = redactLine(line);
+                if (!redactLiterals.isEmpty()) {
+                    for (String lit : redactLiterals) {
+                        if (out.contains(lit)) out = out.replace(lit, "[redacted-id]");
+                    }
+                }
+                writer.write(out);
                 writer.write('\n');
                 writer.flush();
-                bytesWritten += line.length() + 1;
+                bytesWritten += out.length() + 1;
                 if (bytesWritten > MAX_BYTES) rotate();
             } catch (Throwable ignored) {
             }

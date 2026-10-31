@@ -20,6 +20,8 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Printable theme guide.</b> The in-app theme guide now links to a formatted PDF (English &amp; German) and to its raw Markdown source for AI assistants, all generated from one source so they always match.",
+      "<b>Debug logs are scrubbed of personal data.</b> When you export or share a debug log, MAC addresses, device names, IDs and secrets are removed automatically - the useful troubleshooting data stays. Always on.",
       "<b>Recorded routes open again.</b> The Recorded-routes button in Settings works again - it had been opening the list behind the full-screen Settings page, so nothing seemed to happen.",
       "<b>Installs on every phone again.</b> The APK now carries both signature schemes (v1 + v2), so phones that rejected the update as &quot;invalid&quot; - notably Xiaomi/MIUI - install it again.",
     ],
@@ -780,6 +782,8 @@ window.I18N = {
     "settings.debug.group.title": "Debug",
     "settings.debug.mode.hint": "Records logs for troubleshooting",
     "settings.debug.mode.label": "Debug mode",
+    "settings.debug.redact.label": "Redact personal data",
+    "settings.debug.redact.hint": "Always on - MACs, device names, IDs and secrets are removed before a log is shared",
     "settings.bottomnav.hint": "Navigation bar at the bottom instead of top-right",
     "settings.bottomnav.label": "Navigation bottom",
     "settings.bottomnav.left.label": "Left shortcut",
@@ -867,6 +871,8 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Druckbarer Theme-Guide.</b> Der In-App-Theme-Guide verlinkt jetzt ein formatiertes PDF (Deutsch &amp; Englisch) und seine rohe Markdown-Quelle f&uuml;r KI-Assistenten - alles aus einer Quelle erzeugt, sodass es immer zusammenpasst.",
+      "<b>Debug-Logs werden von persönlichen Daten bereinigt.</b> Beim Exportieren oder Teilen eines Debug-Logs werden MAC-Adressen, Gerätenamen, IDs und Secrets automatisch entfernt - die nützlichen Fehlersuchdaten bleiben. Immer an.",
       "<b>Aufgezeichnete Routen gehen wieder auf.</b> Der Knopf Aufgezeichnete Routen in den Einstellungen funktioniert wieder - er hatte die Liste hinter der Vollbild-Einstellungsseite geöffnet, sodass scheinbar nichts passierte.",
       "<b>Installiert wieder auf jedem Handy.</b> Die APK hat jetzt beide Signatur-Schemata (v1 + v2), damit Handys, die das Update als &quot;ungültig&quot; abgelehnt haben - vor allem Xiaomi/MIUI - es wieder installieren.",
     ],
@@ -1627,6 +1633,8 @@ window.I18N = {
     "settings.debug.group.title": "Debug",
     "settings.debug.mode.hint": "Zeichnet Logs zur Fehlersuche auf",
     "settings.debug.mode.label": "Debug-Modus",
+    "settings.debug.redact.label": "Persönliche Daten schwärzen",
+    "settings.debug.redact.hint": "Immer an - MACs, Gerätenamen, IDs und Secrets werden entfernt, bevor ein Log geteilt wird",
     "settings.bottomnav.hint": "Menüleiste unten statt oben rechts",
     "settings.bottomnav.label": "Navigation unten",
     "settings.bottomnav.left.label": "Shortcut links",
