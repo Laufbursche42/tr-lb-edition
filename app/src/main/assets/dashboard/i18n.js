@@ -20,8 +20,9 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
-      "<b>Theme transparency now works in every theme.</b> The tile and button transparency sliders in the Style editor take effect in the Default theme too, not only in custom themes.",
-      "<b>Gauge-transparency only where it matters.</b> The gauge-transparency slider is hidden for themes without a gauge (like the Default theme), where it had no effect.",
+      "<b>GPS route recording keeps going with the screen off.</b> Your ride's track is now logged by a native background service, so the full route is saved even when the screen is locked or the app is in the background. Recording arms once the scooter has moved and stops when it disconnects.",
+      "<b>Finished routes import automatically.</b> A recorded track appears in your routes list when the app is next open - no ride is lost because the screen went dark.",
+      "<b>Settings fields scroll above the keyboard.</b> When the on-screen keyboard opens over a settings field, the field is pulled into view.",
     ],
 
     'disclaimer.points': [
@@ -510,6 +511,7 @@ window.I18N = {
     "msg.model.option.tetra": "Tetra (not supported)",
     "msg.model.unknown": "Unknown Teverun model",
     "msg.ride.stop.button": "Stop ride",
+    "msg.route.autostart.failed": "Route recording could not start automatically - please start it manually in the app.",
     "msg.route.gpx.button": "↓ GPX",
     "msg.route.nopoints": "No GPS points in this route",
     "msg.route.showmap.button": "Show map",
@@ -866,8 +868,9 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
-      "<b>Transparenz wirkt jetzt in jedem Theme.</b> Die Tile- und Button-Transparenzregler im Style-Editor wirken auch im Standard-Theme, nicht nur in eigenen Themes.",
-      "<b>Tacho-Transparenz nur, wo es sie gibt.</b> Der Tacho-Transparenz-Regler wird bei Themes ohne Tacho (wie dem Standard-Theme) ausgeblendet, wo er keine Wirkung hatte.",
+      "<b>GPS-Routenaufzeichnung läuft auch bei ausgeschaltetem Display weiter.</b> Die Strecke deiner Fahrt wird jetzt von einem nativen Hintergrunddienst aufgezeichnet, sodass die komplette Route auch bei gesperrtem Bildschirm oder App im Hintergrund gespeichert wird. Die Aufzeichnung startet, sobald sich der Scooter bewegt, und endet beim Trennen.",
+      "<b>Fertige Routen werden automatisch übernommen.</b> Eine aufgezeichnete Strecke erscheint beim nächsten Öffnen der App in deiner Routenliste - keine Fahrt geht verloren, weil das Display aus war.",
+      "<b>Eingabefelder scrollen über die Tastatur.</b> Wenn die Bildschirmtastatur ein Einstellungsfeld verdeckt, wird das Feld in den sichtbaren Bereich geholt.",
     ],
 
     'disclaimer.points': [
@@ -1356,6 +1359,7 @@ window.I18N = {
     "msg.model.option.tetra": "Tetra (nicht unterstützt)",
     "msg.model.unknown": "Unbekanntes Teverun Modell",
     "msg.ride.stop.button": "Fahrt beenden",
+    "msg.route.autostart.failed": "Routenaufzeichnung konnte nicht automatisch gestartet werden - bitte in der App manuell starten.",
     "msg.route.gpx.button": "↓ GPX",
     "msg.route.nopoints": "Keine GPS Punkte in dieser Route",
     "msg.route.showmap.button": "Karte zeigen",

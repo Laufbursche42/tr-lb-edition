@@ -1426,12 +1426,13 @@ var BB_SHORTCUTS = {
 function _bbDashShortcuts() {
   var result = [];
   document.querySelectorAll('[data-bb-shortcut]').forEach(function(el) {
-    // Exclude only elements that are structurally absent (e.g. inside a hidden theme section)
-    if (!el.isConnected) return;
+    // Exclude elements that are structurally absent (e.g. inside a hidden theme section) or
+    // capability-hidden (a control the connected model does not support -> .is-hidden).
+    if (!el.isConnected || el.classList.contains('is-hidden')) return;
     var key = el.dataset.bbShortcut;
     result.push({
       key: key,
-      label: el.dataset.bbLabel || el.textContent.trim().substring(0, 6),
+      label: el.dataset.bbLabel || el.textContent.trim(),
       el: el
     });
   });
@@ -2102,34 +2103,74 @@ function startRide() {
 
 function finalizeRide() {
   if (!state.currentRide) return;
-  state.currentRide.endTime = Date.now();
-  state.routes = loadRoutes().filter(r => r.id !== state.currentRide.id);
-  // Only save if ride has meaningful data
-  if (state.currentRide.points.length >= 2 || state.currentRide.dist > 0.01) {
-    state.routes.push({ ...state.currentRide });
-  }
-  saveRoutes(state.routes);
+  // The native RouteRecorderService owns the recorded track (it keeps logging GPS with the screen
+  // off, which a WebView geolocation watch cannot). This JS ride object is only the live overlay; it
+  // is NOT persisted. The finished native track is pulled in by importNativeRoutes() shortly after.
   state.currentRide = null;
   clearInterval(state.rideTimer);
   clearInterval(state.saveTimer);
-  // GPS keeps running while connected (live speed on the main screen); it stops only on disconnect.
-  renderRoutes();
   updateRideUI();
+  setTimeout(importNativeRoutes, 1500);
 }
 
-// Stop button for a live ride: finalize now and block auto-re-arm until the next reconnect.
+// Stop button for a live ride: stop native recording too and block auto-re-arm until the next reconnect.
 function stopLiveRide() {
   state.rideStopped = true;
+  try { if (typeof LB !== 'undefined' && LB.stopRouteRecording) LB.stopRouteRecording(); } catch (e) {}
   finalizeRide();
 }
 
-function periodicSaveRide() {
-  if (!state.currentRide) return;
-  // Save current ride as last element with endTime=0 (crash recovery)
-  state.routes = loadRoutes().filter(r => r.id !== state.currentRide.id);
-  state.routes.push({ ...state.currentRide, endTime: 0 });
-  saveRoutes(state.routes);
-  renderRoutes();
+// Durability is now the native recorder's job (flushes every fix to disk), so the old JS crash-save
+// is a no-op - keeping it avoids double-persisting the same ride.
+function periodicSaveRide() {}
+
+// Pull every finished native GPS route into the saved-routes list. The native side hands them over
+// once (deleting its files), so this is safe to call repeatedly (app start, opening the routes list,
+// after a ride). This is what makes a full track appear even when it was recorded with the screen off.
+function buildRouteFromNative(nr) {
+  const src = (nr && Array.isArray(nr.points)) ? nr.points : [];
+  const route = { id: 'ride_' + nr.id, startTime: nr.start || nr.id, endTime: nr.end || nr.id,
+                  dist: 0, hmPlus: 0, hmMinus: 0, points: [] };
+  for (const p of src) {
+    const lat = +p.lat, lon = +p.lon;
+    if (!isFinite(lat) || !isFinite(lon)) continue;
+    const alt = (p.alt != null && isFinite(+p.alt)) ? +p.alt : 0;
+    const pt = { lat, lon, alt, ts: +p.ts || 0, speed: Math.round((+p.speed || 0) * 10) / 10 };
+    if (route.points.length > 0) {
+      const prev = route.points[route.points.length - 1];
+      route.dist = Math.round((route.dist + haversine(prev.lat, prev.lon, lat, lon)) * 100) / 100;
+      const dAlt = alt - prev.alt;
+      if (dAlt > 0.5) route.hmPlus = Math.round(route.hmPlus + dAlt);
+      else if (dAlt < -0.5) route.hmMinus = Math.round(route.hmMinus + Math.abs(dAlt));
+    }
+    route.points.push(pt);
+  }
+  return route;
+}
+
+function importNativeRoutes() {
+  try {
+    if (typeof LB === 'undefined' || !LB.takeRecordedRoutes) return;
+    let arr;
+    try { arr = JSON.parse(LB.takeRecordedRoutes() || '[]'); } catch (e) { return; }
+    if (!Array.isArray(arr) || !arr.length) return;
+    const routes = loadRoutes();
+    let added = 0;
+    for (const nr of arr) {
+      const r = buildRouteFromNative(nr);
+      if (r.points.length >= 2 || r.dist > 0.01) { routes.push(r); added++; }
+    }
+    if (added) { saveRoutes(routes); state.routes = routes; renderRoutes(); }
+  } catch (e) {}
+}
+
+// Keep the native recorder's config in step with the dashboard (it cannot read localStorage).
+function syncGpsConfigToNative() {
+  try {
+    if (typeof LB !== 'undefined' && LB.setGpsRecordConfig) {
+      LB.setGpsRecordConfig(!!state.gpsAutoStart, Math.max(1, Math.round(state.gpsIntervalMs / 1000)));
+    }
+  } catch (e) {}
 }
 
 /* ── GPS Tracking ─────────────────────────────────────────── */
@@ -2176,17 +2217,24 @@ function onGPSSuccess(pos) {
   // Prefer the GPS Doppler speed (coords.speed) - most accurate source. Some devices/WebViews
   // never report it; fall back to distance/time from the previous fix so the readout still
   // tracks reality instead of dropping to 0.
+  const acc = (coords.accuracy != null && coords.accuracy >= 0) ? coords.accuracy : 9999; // metres
   let spd;
   if (coords.speed != null && coords.speed >= 0) {
     spd = coords.speed * 3.6; // m/s -> km/h
   } else if (state.gpsPos && state.gpsPos.lat != null) {
     const dts = (ts - state.gpsPos.ts) / 1000; // seconds since last fix
-    spd = (dts > 0.2 && dts < 5)
-      ? haversine(state.gpsPos.lat, state.gpsPos.lon, lat, lon) / (dts / 3600) // km / h
-      : (state.gpsPos.speed || 0);
+    if (dts > 0.2 && dts < 5) {
+      const movedM = haversine(state.gpsPos.lat, state.gpsPos.lon, lat, lon) * 1000; // metres
+      // Movement smaller than the position accuracy is GPS noise while standing still, not travel.
+      spd = (movedM > Math.max(acc, 5)) ? (movedM / 1000) / (dts / 3600) : 0; // km/h
+    } else {
+      spd = (state.gpsPos.speed || 0);
+    }
   } else {
     spd = 0;
   }
+  // Standstill clamp: a scooter that is not moving must read 0, never a phantom GPS crawl.
+  if (spd < 2) spd = 0;
 
   state.gpsPos = { lat, lon, alt, speed: spd, ts };
 
@@ -2545,6 +2593,7 @@ function loadSettings() {
   state.gpsIntervalMs = gpsIntSec * 1000;
   const gpsIntSel = document.getElementById('gps-interval-sel');
   if (gpsIntSel) gpsIntSel.value = String(gpsIntSec);
+  syncGpsConfigToNative();   // the native recorder mirrors this config
 
   // Fullscreen (native immersive mode; reflect the persisted native flag into the toggle).
   try {
@@ -3049,6 +3098,13 @@ window.__onBleScan = function(listArg) {
 };
 
 /* Native pushes connection state here: {connected, name, address, status}. */
+window.__onRouteError = function(argObj) {
+  let o = argObj;
+  try { if (typeof argObj === 'string') o = JSON.parse(argObj); } catch (e) { o = {}; }
+  o = o || {};
+  if (o.error === 'fgservice') showToast(t('msg.route.autostart.failed'));
+};
+
 window.__onBleState = function(stArg) {
   let s = stArg;
   try { if (typeof stArg === 'string') s = JSON.parse(stArg); } catch (e) { s = {}; }
@@ -3818,7 +3874,7 @@ function activateTheme(name) {
 function renderTileEditor(themeName) {
   var el = document.getElementById('tile-editor');
   if (!el) return;
-  var tiles = Array.from(document.querySelectorAll('#scroller [data-tile-id]')).filter(function(t) { return !t.dataset.tileNoEditor; });
+  var tiles = Array.from(document.querySelectorAll('#scroller [data-tile-id]')).filter(function(t) { return !t.dataset.tileNoEditor && !t.dataset.capHidden; });
   if (tiles.length === 0) { el.style.display = 'none'; return; }
   el.style.display = 'block';
 
@@ -4288,9 +4344,13 @@ function renderStyleEditor(themeName) {
       ghdr.textContent = t(_groupLabels[def.group]) || def.group;
       el.appendChild(ghdr);
     }
+    // Unsaved var: seed from what the active theme actually shows, not the global fallback palette.
+    // A colour input only takes #rrggbb, so a computed hsl()/rgb() value falls back to the default.
+    var live = _readCssVar(varName);
+    if (live && def.type === 'color' && !/^#[0-9a-fA-F]{6}$/.test(live)) live = null;
     var current = saved[varName] !== undefined
       ? String(saved[varName])
-      : (_readCssVar(varName) || (def.default !== undefined ? String(def.default) : ''));
+      : (live || (def.default !== undefined ? String(def.default) : ''));
     var row = document.createElement('div');
     row.className = 'style-editor-row';
     var lbl = document.createElement('label');
@@ -4513,6 +4573,9 @@ function initTileDrag() {
 
 function _onFoldTouchStart(e) {
   if (_isDashLocked() || _foldDragEl) return;
+  // A hero card is both a tile and a cell: its long-press belongs to the cell drag (which can also
+  // move it into another row), so a second, competing tile drag is not started on it.
+  if (this.dataset && this.dataset.cellId) return;
   if (_foldLongTimer) { clearTimeout(_foldLongTimer); _foldLongTimer = null; }
   var el = this;
   var t0 = e.touches[0];
@@ -4558,7 +4621,8 @@ function _onFoldDragMove(e) {
   // so this works correctly even when #fold-inner has transform:scale applied.
   var under = null;
   document.querySelectorAll('#scroller [data-tile-id]').forEach(function(tile) {
-    if (tile === _foldDragEl || tile.dataset.tileNoEditor) return;
+    // Cards (data-cell-id) are moved by the cell drag only, so they are no drop target here.
+    if (tile === _foldDragEl || tile.dataset.tileNoEditor || tile.dataset.cellId) return;
     var r = tile.getBoundingClientRect();
     if (tx >= r.left && tx <= r.right && ty >= r.top && ty <= r.bottom) under = tile;
   });
@@ -4695,7 +4759,7 @@ function _onCellDragMove(e) {
   _cellDragEl.style.pointerEvents = 'none';
   var under = document.elementFromPoint(t.clientX, t.clientY);
   _cellDragEl.style.pointerEvents = '';
-  while (under && !under.dataset.cellId) under = under.parentElement;
+  while (under && !(under.dataset && under.dataset.cellId)) under = under.parentElement;
   document.querySelectorAll('.cell-drop-target').forEach(function(c) { c.classList.remove('cell-drop-target'); });
   _cellDropTarget = (under && under !== _cellDragEl) ? under : null;
   if (_cellDropTarget) _cellDropTarget.classList.add('cell-drop-target');
@@ -4712,6 +4776,7 @@ function _onCellDragEnd(e) {
   if (_cellDropTarget && !cancelled) {
     _reorderCellNode(el, _cellDropTarget);
     _saveCellOrder();
+    try { if (typeof applyCaps === 'function') applyCaps(); } catch(e2) {}   // a row may have gained/lost its last visible card
   }
   _cellDragEl = null; _cellDropTarget = null;
 }
@@ -5137,6 +5202,7 @@ function _activatePoolTile(conceptId, source, themeName) {
   cfg.poolEnabled = poolEnabled;
   try { if (typeof LB !== 'undefined' && LB.saveTileConfig) LB.saveTileConfig(themeName, JSON.stringify(cfg)); } catch(e) {}
   applyTileConfig();
+  initCellDrag();
   renderTileEditor(themeName);
 }
 
@@ -6658,6 +6724,13 @@ function initFold() {
   scheduleFitFold();
   window.addEventListener('resize', scheduleFitFold);
   window.addEventListener('orientationchange', scheduleFitFold);
+  // A soft keyboard on a settings field shrinks the viewport (native IME inset padding in UiChrome).
+  // Once it has opened, pull the focused input into the visible area above the keyboard.
+  document.addEventListener('focusin', (e) => {
+    const t = e.target;
+    if (!t || !/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+    setTimeout(() => { try { t.scrollIntoView({ block: 'center' }); } catch (_) {} }, 300);
+  });
   if (window.ResizeObserver) {
     const inner = document.getElementById('fold-inner');
     const scroller = document.getElementById('scroller');
@@ -6893,9 +6966,11 @@ function wireEvents() {
     storage.set('lb_gps_auto', state.gpsAutoStart ? 'on' : 'off');
     if (!state.gpsAutoStart) {
       // Turning auto-tracking off stops the current RECORDING only - the live GPS speed keeps running.
+      try { if (typeof LB !== 'undefined' && LB.stopRouteRecording) LB.stopRouteRecording(); } catch (err) {}
       if (state.currentRide) finalizeRide();
       state.armDistM = 0;
     }
+    syncGpsConfigToNative();
   });
 
   // GPS recording interval: persist and apply live to the ongoing/next recording.
@@ -6904,6 +6979,7 @@ function wireEvents() {
     const sec = parseInt(e.target.value, 10) || 5;
     state.gpsIntervalMs = sec * 1000;
     storage.set('lb_gps_interval', String(sec));
+    syncGpsConfigToNative();
   });
 
   // Fullscreen toggle: hide/show the Android status bar via the native bridge (persisted natively).
@@ -7076,6 +7152,11 @@ function init() {
   populateModelSelect();
   wireBminiSpeeds();
   recoverStuckRides();
+  importNativeRoutes();   // pull in any track the native recorder finished while the app was away
+  // ...and again whenever the app returns to the foreground (a ride may have finished while away).
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { try { importNativeRoutes(); } catch (e) {} }
+  });
   renderRoutes();
   initNavBanner();
   initRideBanner();

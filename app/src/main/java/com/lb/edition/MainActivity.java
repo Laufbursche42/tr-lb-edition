@@ -73,6 +73,7 @@ public class MainActivity extends Activity {
     private BleManager ble;
     private DebugLog debugLog;
     private RideLogger rideLogger;
+    private RouteRecorder routeRecorder;
     private SharedPreferences prefs;
     private ThemeManager themeManager;
     // Set by JS via LB.setCanGoBack(bool); true = a page is open, back should navigate in-app.
@@ -109,6 +110,18 @@ public class MainActivity extends Activity {
 
         // Ride logging: native NDJSON ride recorder, driven from the BLE listener callbacks below.
         rideLogger = new RideLogger(getApplicationContext());
+        routeRecorder = new RouteRecorder(getApplicationContext());
+        // Forward native route-recorder errors (e.g. a refused background foreground-service start on
+        // Android 12+) to the dashboard, which shows the rider a clear message.
+        routeRecorder.setListener(code -> {
+            try {
+                org.json.JSONObject o = new org.json.JSONObject();
+                o.put("error", code);
+                runJs("(function(){try{if(window.__onRouteError)window.__onRouteError(" + jsArg(o.toString()) + ");}catch(e){}})();");
+            } catch (Throwable t) {
+                Log.e(TAG, "route error forward failed", t);
+            }
+        });
 
         // Debug logging: persistent across restarts (SharedPreferences key lb_debug).
         // Resume capture immediately if the user left it enabled.
@@ -252,6 +265,31 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Wrap a JSON payload as a safe JS argument: a fully-escaped string literal handed to
+     *  JSON.parse, so no field value can break out of the evaluateJavascript script. */
+    private static String jsArg(String json) {
+        String s = json == null ? "null" : json;
+        StringBuilder b = new StringBuilder(s.length() + 16);
+        b.append("JSON.parse('");
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '\\': b.append("\\\\"); break;
+                case '\'': b.append("\\'"); break;
+                case '\n': b.append("\\n"); break;
+                case '\r': b.append("\\r"); break;
+                case '\t': b.append("\\t"); break;
+                case 0x2028: b.append("\\u2028"); break;
+                case 0x2029: b.append("\\u2029"); break;
+                default:
+                    if (c < 0x20) b.append(String.format(Locale.US, "\\u%04x", (int) c));
+                    else b.append(c);
+            }
+        }
+        b.append("')");
+        return b.toString();
+    }
+
     /** Push each navigation guidance snapshot to the WebView (window.__onNav) for the dashboard banner. */
     private final NavSession.Listener navListener = new NavSession.Listener() {
         @Override
@@ -291,6 +329,10 @@ public class MainActivity extends Activity {
                         if (nowConnected) rideLogger.onConnected();
                         else rideLogger.onDisconnected();
                     }
+                    if (routeRecorder != null) {
+                        if (nowConnected) routeRecorder.onConnected();
+                        else routeRecorder.onDisconnected();
+                    }
                 }
             } catch (Throwable t) {
                 Log.e(TAG, "ride state wiring failed", t);
@@ -308,6 +350,7 @@ public class MainActivity extends Activity {
             // Feed the latest snapshot to the ride logger (arms/samples the ride).
             try {
                 if (rideLogger != null) rideLogger.onLiveData(json);
+                if (routeRecorder != null) routeRecorder.onLiveData(json);
             } catch (Throwable t) {
                 Log.e(TAG, "ride live-data wiring failed", t);
             }
@@ -654,6 +697,7 @@ public class MainActivity extends Activity {
         try {
             // Safety net: finalize any active ride and stop the foreground service on teardown.
             if (rideLogger != null) rideLogger.onDisconnected();
+            if (routeRecorder != null) routeRecorder.onDisconnected();
         } catch (Throwable ignored) {
         }
         try {
@@ -1343,6 +1387,43 @@ public class MainActivity extends Activity {
                 if (rideLogger != null) rideLogger.deleteAllRides();
             } catch (Throwable t) {
                 Log.e(TAG, "deleteAllRides bridge failed", t);
+            }
+        }
+
+        /**
+         * Hand every FINISHED native GPS route to the dashboard as JSON and delete the files, so the
+         * WebView imports them into its recorded-routes list. Each: {@code {"id","start","end",
+         * "points":[{lat,lon,alt,ts,speed}]}}. The route being recorded right now is never returned.
+         * This is what lets a track survive the screen going off: the points are logged by the native
+         * foreground service, then picked up here whenever the dashboard is alive. "[]" if none.
+         */
+        @JavascriptInterface
+        public String takeRecordedRoutes() {
+            try {
+                return routeRecorder != null ? routeRecorder.takeRecordedRoutes() : "[]";
+            } catch (Throwable t) {
+                Log.e(TAG, "takeRecordedRoutes bridge failed", t);
+                return "[]";
+            }
+        }
+
+        /** Mirror the dashboard's GPS-recording config to the native recorder (auto-track + interval). */
+        @JavascriptInterface
+        public void setGpsRecordConfig(boolean autoTrack, int intervalSec) {
+            try {
+                if (routeRecorder != null) routeRecorder.setConfig(autoTrack, intervalSec);
+            } catch (Throwable t) {
+                Log.e(TAG, "setGpsRecordConfig bridge failed", t);
+            }
+        }
+
+        /** Stop button: end the native route recording and block re-arm until the next reconnect. */
+        @JavascriptInterface
+        public void stopRouteRecording() {
+            try {
+                if (routeRecorder != null) routeRecorder.stopRecording();
+            } catch (Throwable t) {
+                Log.e(TAG, "stopRouteRecording bridge failed", t);
             }
         }
 

@@ -14,6 +14,19 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.35
+
+### New
+
+- **GPS route recording survives the screen going off.**  A native foreground service now logs the ride's GPS track to disk, so the full route is recorded even with the screen locked or the app in the background. The previous WebView-only recording was throttled and stopped after a few hundred metres. The track arms automatically once the scooter has moved ~20 m and stops when it disconnects; finished tracks are imported into the routes list when the app is next in the foreground.
+
+### Improvements
+
+- **GPS speed reads zero at a standstill.**  The live GPS speed no longer shows a phantom crawl while the scooter is stopped; a position accuracy gate and a standstill clamp keep it at 0.
+- **Settings fields scroll above the on-screen keyboard.**  When the soft keyboard opens over a settings input, the field is pulled into the visible area.
+- **Style editor colour pickers seed more reliably.**  A colour variable that resolves to a computed (non-hex) value no longer blanks its picker; it falls back to the theme default instead.
+- **Safer JS bridging.**  Native-to-WebView messages that carry a payload now pass it as a fully escaped argument.
+
 ## 1.1.34
 
 ### Bug fixes

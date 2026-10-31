@@ -90,6 +90,14 @@
             android:exported="false"
             android:foregroundServiceType="location"/>
 
+        <!-- Foreground service that logs the GPS route of an active ride natively, so the track keeps
+             recording with the screen off (a WebView geolocation watch would be throttled/frozen).
+             Started only internally by RouteRecorder once the scooter has moved; stopped on disconnect. -->
+        <service
+            android:name=".RouteRecorderService"
+            android:exported="false"
+            android:foregroundServiceType="location"/>
+
         <!-- Screen streaming module (package com.lb.srt).
              exported=false: launched only internally via an explicit Intent from MainActivity
              (LB.startStream), so no other app can start screen capture toward an attacker URL. -->
