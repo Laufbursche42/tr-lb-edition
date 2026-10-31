@@ -4279,6 +4279,8 @@ function renderStyleEditor(themeName) {
   el.innerHTML = '';
   keys.forEach(function(varName) {
     var def = cssVars[varName];
+    // Hide the gauge-transparency slider when the active theme has no gauge (e.g. Default).
+    if (varName === '--gauge-alpha' && !document.querySelector('#scroller .speed-drum svg, #scroller #speed-row svg')) return;
     if (def.group && def.group !== _lastGroup) {
       _lastGroup = def.group;
       var ghdr = document.createElement('div');

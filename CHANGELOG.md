@@ -14,6 +14,13 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.34
+
+### Bug fixes
+
+- **Theme transparency works in every theme.**  The tile and button transparency sliders in the Style editor now take effect in the Default theme too, not only in custom themes.
+- **Gauge-transparency control only when there is a gauge.**  The gauge-transparency slider is hidden for themes without a gauge (such as the Default theme), where it had no effect.
+
 ## 1.1.33
 
 ### Bug fixes

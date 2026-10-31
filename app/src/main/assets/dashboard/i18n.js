@@ -20,10 +20,8 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
-      "<b>Back button fixed on Samsung &amp; Android 13&ndash;16.</b> Pressing the Android back button no longer exits the app from sub-pages. The app now uses the modern back gesture API &mdash; fully compatible with Samsung One UI 6+, Android 13 through 16 and all gesture navigation modes.",
-      "<b>One tap back to the main screen.</b> Opening Scooter Info, Battery Info or Error Reports now closes the Settings menu first &mdash; one back press returns directly to the main screen.",
-      "<b>Reorder quick buttons into hidden slots.</b> While dragging a quick button, hidden buttons appear as faint placeholder slots so you can drop a button exactly where you want &mdash; even onto a currently hidden position. The grid stays four per row, no sideways overflow.",
-      "<b>Show-all tiles button.</b> The tile editor has a new button that re-shows every hidden tile in one tap.",
+      "<b>Theme transparency now works in every theme.</b> The tile and button transparency sliders in the Style editor take effect in the Default theme too, not only in custom themes.",
+      "<b>Gauge-transparency only where it matters.</b> The gauge-transparency slider is hidden for themes without a gauge (like the Default theme), where it had no effect.",
     ],
 
     'disclaimer.points': [
@@ -868,10 +866,8 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
-      "<b>Zur&uuml;ck-Taste auf Samsung &amp; Android 13&ndash;16 repariert.</b> Die Android-Zur&uuml;ck-Taste schlie&szlig;t die App nicht mehr, wenn man sich auf einer Unterseite befindet. Die App verwendet jetzt die moderne Gesten-API &mdash; vollst&auml;ndig kompatibel mit Samsung One UI 6+, Android 13 bis 16 und allen Navigationsmodi.",
-      "<b>Einmal Zur&uuml;ck direkt zur Hauptseite.</b> Scooter-Info, Akku-Info oder Fehlerberichte &ouml;ffnen schlie&szlig;t das Einstellungs-Men&uuml; automatisch &mdash; ein Tastendruck bringt direkt zur Hauptseite.",
-      "<b>Quick-Buttons in versteckte Slots umsortieren.</b> Beim Ziehen eines Quick-Buttons erscheinen versteckte Buttons jetzt als blasse Platzhalter-Slots &mdash; so l&auml;sst sich ein Button genau an die gew&uuml;nschte Stelle ablegen, auch auf eine gerade versteckte Position. Das Raster bleibt vier pro Reihe, kein seitliches &Uuml;berlaufen.",
-      "<b>&bdquo;Alle einblenden&ldquo;-Button.</b> Der Kachel-Editor hat einen neuen Button, der alle ausgeblendeten Kacheln mit einem Tipp wieder einblendet.",
+      "<b>Transparenz wirkt jetzt in jedem Theme.</b> Die Tile- und Button-Transparenzregler im Style-Editor wirken auch im Standard-Theme, nicht nur in eigenen Themes.",
+      "<b>Tacho-Transparenz nur, wo es sie gibt.</b> Der Tacho-Transparenz-Regler wird bei Themes ohne Tacho (wie dem Standard-Theme) ausgeblendet, wo er keine Wirkung hatte.",
     ],
 
     'disclaimer.points': [
