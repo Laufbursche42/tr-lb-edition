@@ -38,28 +38,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Bump releaseCount and compute version
+      - name: Compute the next version (no bump yet)
         id: ver
         run: |
-          # releaseCount in version.properties is the patch of the LAST release.
-          # Incrementing it here means: this push = one new release.
+          # releaseCount in version.properties is the patch of the LAST PUBLISHED release, so the
+          # next release is releaseCount + 1. NOTHING is written back here: the counter is advanced
+          # only AFTER the release is published (final step), so a failed or skipped build never
+          # burns a version number. The version is passed to gradle with -PverName/-PverCode, so the
+          # APK number matches the tag exactly (no second +1 in build.gradle).
           MAJOR=$(sed -n 's/^major=//p' version.properties)
           MINOR=$(sed -n 's/^minor=//p' version.properties)
+          CODE_BASE=$(sed -n 's/^codeBase=//p' version.properties)
           OLD_COUNT=$(sed -n 's/^releaseCount=//p' version.properties)
-          NEW_COUNT=$(( OLD_COUNT + 1 ))
-          # Update version.properties in-place.
-          sed -i "s/^releaseCount=.*/releaseCount=$NEW_COUNT/" version.properties
-          echo "version=$MAJOR.$MINOR.$NEW_COUNT" >> "$GITHUB_OUTPUT"
-          echo "tag=v$MAJOR.$MINOR.$NEW_COUNT" >> "$GITHUB_OUTPUT"
-          echo "Version $MAJOR.$MINOR.$NEW_COUNT  (releaseCount bumped $OLD_COUNT -> $NEW_COUNT)"
-
-      - name: Commit bumped releaseCount back to main
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add version.properties
-          git commit -m "ci: release ${{ steps.ver.outputs.tag }} [skip ci]"
-          git push
+          NEXT=$(( OLD_COUNT + 1 ))
+          VCODE=$(( CODE_BASE + NEXT + 1 ))
+          echo "version=$MAJOR.$MINOR.$NEXT" >> "$GITHUB_OUTPUT"
+          echo "tag=v$MAJOR.$MINOR.$NEXT" >> "$GITHUB_OUTPUT"
+          echo "vcode=$VCODE" >> "$GITHUB_OUTPUT"
+          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "Next release: $MAJOR.$MINOR.$NEXT (versionCode $VCODE); releaseCount stays $OLD_COUNT until published."
 
       - name: Skip if this version was already released
         id: exists
@@ -106,7 +103,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease -PverName="${{ steps.ver.outputs.version }}" -PverCode="${{ steps.ver.outputs.vcode }}"
 
       - name: Stage APK under the release name
         if: steps.exists.outputs.exists == 'false'
@@ -132,6 +129,20 @@ jobs:
             --target "${{ github.sha }}" \
             --title "Laufbursche Edition ${{ steps.ver.outputs.tag }}" \
             --notes-file "$RUNNER_TEMP/release-notes.md"
+
+      - name: Advance releaseCount and commit it back (only after a successful publish)
+        if: steps.exists.outputs.exists == 'false'
+        run: |
+          # The release is now published, so this version number is used up: advance releaseCount to
+          # it. version.properties is in paths-ignore and the message carries [skip ci], so this
+          # commit never retriggers the workflow. If anything above failed, this step never runs and
+          # the counter stays put, so the same number is retried next push (one release = one bump).
+          sed -i "s/^releaseCount=.*/releaseCount=${{ steps.ver.outputs.next }}/" version.properties
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.properties
+          git commit -m "ci: release ${{ steps.ver.outputs.tag }} [skip ci]"
+          git push
 
       - name: Refresh the profile-page roster so the new APK shows at once
         if: steps.exists.outputs.exists == 'false'

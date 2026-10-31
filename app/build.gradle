@@ -60,6 +60,16 @@ def VERSION_BASE  = versionProps.getProperty('codeBase').toInteger()
 def appVersionCode = VERSION_BASE + RELEASE_COUNT + 1
 def appVersionName = "${VERSION_MAJOR}.${VERSION_MINOR}.${RELEASE_COUNT + 1}"
 
+// CI override: the release workflow computes the next version (releaseCount + 1) and passes it in
+// with -PverName / -PverCode, so the number baked into the APK matches the GitHub Release tag
+// exactly instead of being bumped a second time here. Local builds keep the releaseCount scheme.
+if (project.hasProperty('verName') && project.property('verName')?.trim()) {
+    appVersionName = project.property('verName').trim()
+}
+if (project.hasProperty('verCode') && project.property('verCode')?.trim()) {
+    appVersionCode = project.property('verCode').trim().toInteger()
+}
+
 android {
     namespace = 'com.lb.edition'
     compileSdk = 36
