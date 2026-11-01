@@ -87,7 +87,19 @@ final class FrameParser {
     // Raw speed word from 55 72 (kept to derive the road speed once the wheel size is known)
     private int speedRaw = 0;
 
-    // Identity / version strings (55 41..45, 4D)
+    // 55 79 / 55 7A - Tetra 4-motor second axle (front-right + rear-right). Byte layout mirrors the
+    // primary axle's 55 72 (motor) / 55 71 (control). have7a is set once a 55 7A frame has arrived
+    // and drives availability (fourMotor): the rows stay hidden on non-Tetra units.
+    private double rfMotorCurrent, rrMotorCurrent;    // 55 7A t[4..5] / t[12..13] (0.1 A)
+    private int rfMotorTemp, rrMotorTemp;             // 55 7A t[9] / t[17] (raw degC, >0 guard)
+    private int[] rfEcuStatus1 = new int[8];          // 55 7A t[2]
+    private int[] rrEcuStatus1 = new int[8];          // 55 7A t[10]
+    private int[] rfControlStatus = new int[8];       // 55 79 t[16]
+    private int[] rrControlStatus = new int[8];       // 55 79 t[4]
+    private String rfSwVer = "", rrSwVer = "";        // 55 4D t[10..12] / t[4..6]
+    private boolean have7a = false;
+
+    // Identity / version strings (55 41..44)
     private volatile String batteryCode = "";
     private volatile String frameNum = "";
     private String swVer = "", hwVer = "", displayVer = "";
@@ -144,8 +156,10 @@ final class FrameParser {
             case 0x42: frameNum = ascii(t, 2, 18, null); break;
             case 0x43: parse43(t); break;
             case 0x44: parse44(t); break;
-            case 0x45: case 0x4D: /* other fw version strings - not surfaced */ break;
-            case 0x79: case 0x7A: /* Tetra 4-motor - not used by this unit */ break;
+            case 0x45: /* primary front/rear controller fw version - not surfaced */ break;
+            case 0x4D: parse4d(t); break;   // Tetra 2nd-axle controller fw versions
+            case 0x79: parse79(t); break;   // Tetra 2nd-axle control status
+            case 0x7A: parse7a(t); break;   // Tetra 2nd-axle motor current/temp/ecu
             default: break;
         }
     }
@@ -283,6 +297,38 @@ final class FrameParser {
         customKey = u8(t, 17);
         if (u8(t, 18) != 0xFF) status73 = bits(u8(t, 18));        // PowerMode/LightSens/Voice/AtLevel
         have73 = true;
+    }
+
+    /** 55 79 - Tetra second-axle control status (mirror of 55 71 t[4]/t[16]). */
+    private synchronized void parse79(int[] t) {
+        rrControlStatus = bits(u8(t, 4));
+        rfControlStatus = bits(u8(t, 16));
+    }
+
+    /** 55 7A - Tetra second-axle motor current/temp/ECU status (mirror of 55 72). */
+    private synchronized void parse7a(int[] t) {
+        rfEcuStatus1 = bits(u8(t, 2));
+        rrEcuStatus1 = bits(u8(t, 10));
+        rfMotorCurrent = u16(t, 4) * 0.1;
+        rrMotorCurrent = u16(t, 12) * 0.1;
+        int rfTempRaw = u8(t, 9);
+        if (rfTempRaw > 0) rfMotorTemp = rfTempRaw;      // raw (no -40 offset), as f/rMotorTemp
+        int rrTempRaw = u8(t, 17);
+        if (rrTempRaw > 0) rrMotorTemp = rrTempRaw;
+        have7a = true;
+    }
+
+    /**
+     * 55 4D - Tetra second-axle controller firmware versions (mirror of 55 45). t[4..6] = rear-right
+     * SW version, t[10..12] = front-right. All-FF (t[4..7] / t[10..13]) => unknown, keep blank.
+     */
+    private synchronized void parse4d(int[] t) {
+        if (!(u8(t, 4) == 0xFF && u8(t, 5) == 0xFF && u8(t, 6) == 0xFF && u8(t, 7) == 0xFF)) {
+            rrSwVer = u8(t, 4) + "." + u8(t, 5) + "." + u8(t, 6);
+        }
+        if (!(u8(t, 10) == 0xFF && u8(t, 11) == 0xFF && u8(t, 12) == 0xFF && u8(t, 13) == 0xFF)) {
+            rfSwVer = u8(t, 10) + "." + u8(t, 11) + "." + u8(t, 12);
+        }
     }
 
     private synchronized void parse43(int[] t) {
@@ -431,6 +477,18 @@ final class FrameParser {
             o.put("fMotorTemp", frontMotorTemp);
             o.put("rMotorTemp", rearMotorTemp);
 
+            // Tetra 4-motor second axle (front-right + rear-right). fourMotor gates the 2nd-axle
+            // rows; the values stay 0/empty on non-Tetra units (no 55 7A frame ever arrives).
+            o.put("fourMotor", have7a);
+            o.put("rfCurrent", round1(rfMotorCurrent));
+            o.put("rrCurrent", round1(rrMotorCurrent));
+            o.put("rfTemp", rfMotorTemp);
+            o.put("rrTemp", rrMotorTemp);
+            o.put("rfEcuStatus1", intArr(rfEcuStatus1));
+            o.put("rrEcuStatus1", intArr(rrEcuStatus1));
+            o.put("rfControlStatus", intArr(rfControlStatus));
+            o.put("rrControlStatus", intArr(rrControlStatus));
+
             // Battery detail table
             o.put("top", buildTop());
             o.put("bottom", buildBottom());
@@ -441,6 +499,8 @@ final class FrameParser {
             if (!swVer.isEmpty()) o.put("swVer", swVer);
             if (!hwVer.isEmpty()) o.put("hwVer", hwVer);
             if (!displayVer.isEmpty()) o.put("displayVer", displayVer);
+            if (!rrSwVer.isEmpty()) o.put("rrSwVer", rrSwVer);   // 55 4D rear-right controller
+            if (!rfSwVer.isEmpty()) o.put("rfSwVer", rfSwVer);   // 55 4D front-right controller
 
             o.put("ts", System.currentTimeMillis());
         } catch (JSONException ignored) {
@@ -509,6 +569,15 @@ final class FrameParser {
             a.put(nv("Motor Mode", motorModeText(rearMotorOn, dualMotor)));      // 55 72 t[3]/t[11]
             a.put(nv("Power", round2(power) + " kW"));                           // derived
             a.put(nv("Speed", round1(speed) + (settings.unitMiles ? " mph" : " km/h")));
+        }
+        if (have7a) {
+            // Tetra 4-motor second axle (front-right + rear-right); hidden unless a 55 7A frame arrived.
+            a.put(nv("RF Motor Current", round1(rfMotorCurrent) + " A"));        // 55 7A t[4..5]
+            a.put(nv("RR Motor Current", round1(rrMotorCurrent) + " A"));        // 55 7A t[12..13]
+            a.put(nv("RF Motor Temp", rfMotorTemp + " °C"));                     // 55 7A t[9]
+            a.put(nv("RR Motor Temp", rrMotorTemp + " °C"));                     // 55 7A t[17]
+            a.put(nv("RF Control Status", activeBits(rfControlStatus)));         // 55 79 t[16]
+            a.put(nv("RR Control Status", activeBits(rrControlStatus)));         // 55 79 t[4]
         }
         if (settings.received71) {
             a.put(nv("Reverse Gear", yesNo(flag(systemStatus, 5))));          // 55 71 t[17] bit5

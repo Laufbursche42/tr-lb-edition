@@ -56,6 +56,16 @@
 
 /* ── Reset / Base ──────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* User background image (set per theme in the Theme Manager). A fixed full-viewport layer behind the
+   whole dashboard; when active it replaces the theme's own background (its weave svg + clear-coat). */
+#lb-user-bg { display: none; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-size: cover; background-position: center; background-repeat: no-repeat; }
+body.has-user-bg #lb-user-bg { display: block; }
+/* Let the fixed #lb-user-bg layer show through: body + the scroller must not paint their own
+   background over it, and the theme's own background (weave svg + clear-coat) is hidden. */
+body.has-user-bg, body.has-user-bg #scroller { background-color: transparent !important; }
+body.has-user-bg #scroller .lb-surface > svg,
+body.has-user-bg #scroller .lb-surface::after { display: none !important; }
 html, body {
   width: 100%; height: 100%; overflow: hidden;
   background: var(--bg); color: var(--text);

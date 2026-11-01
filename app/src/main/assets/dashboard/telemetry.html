@@ -19,6 +19,7 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
 <link id="theme-css-link" rel="stylesheet" href="active-theme.css">
 </head>
 <body>
+<div id="lb-user-bg" aria-hidden="true"></div>
 <div id="app">
 
   <!-- ── Topbar ─────────────────────────────────────── -->
@@ -991,6 +992,9 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <div id="btn-row-editor"></div>
     <div id="row-align-editor"></div>
     <div id="style-editor"></div>
+    <div class="theme-section-title" data-i18n="theme.userbg.section">Background image</div>
+    <button type="button" id="btn-pick-bg" class="settings-btn settings-btn-secondary" data-i18n="theme.userbg.pick">&#128444; Choose background image&hellip;</button>
+    <button type="button" id="btn-reset-bg" class="settings-btn settings-btn-secondary is-hidden" data-i18n="theme.userbg.reset">Reset to theme background</button>
     <button type="button" id="btn-open-guide" class="settings-btn settings-btn-secondary" data-i18n="theme.guide.btn">&#127912; Theme creation guide</button>
   </div>
 </div>
@@ -1661,6 +1665,12 @@ const AV_HELP = {
   "Motor Mode": 'msg.help.av.motor.mode',
   "Power": 'msg.help.av.power',
   "Speed": 'msg.help.av.speed',
+  "RF Motor Current": 'msg.help.av.rf.motor.current',
+  "RR Motor Current": 'msg.help.av.rr.motor.current',
+  "RF Motor Temp": 'msg.help.av.rf.motor.temp',
+  "RR Motor Temp": 'msg.help.av.rr.motor.temp',
+  "RF Control Status": 'msg.help.av.rf.control.status',
+  "RR Control Status": 'msg.help.av.rr.control.status',
   "Reverse Gear": 'msg.help.av.reverse.gear',
   "Rear Control Status": 'msg.help.av.rear.control.status',
   "Front Control Status": 'msg.help.av.front.control.status',
@@ -4650,6 +4660,7 @@ function applyTileConfig() {
     });
   }
   try { applyRowAlign(); } catch(e3) {}
+  try { applyUserBg(); } catch(e4) {}
   initTileDrag();
   try { scheduleFitFold(); } catch(e2) {}
 }
@@ -5092,6 +5103,27 @@ function _initEditorRowDrag(handle, row, listEl, order, themeName) {
    Default theme: all mode vars always computed and set (includes DEFAULT_CSS_VARS fallback).
    Custom theme: only user overrides and theme-declared defaults are set; everything else
    is removeProperty'd so the theme's own CSS retains control of its palette. */
+/* ── User background image (per theme) ───────────────────────────────────────
+   The rider can set a background image per theme; it is stored as a compact data URI in
+   storage['lb_bg_<theme>'] and shown on the fixed #lb-user-bg layer, which replaces the theme's own
+   background (weave + clear-coat) while active. The native side downscales the picked image. */
+function _userBgKey(theme) { return 'lb_bg_' + (theme || _themeActive || 'Default'); }
+function applyUserBg(theme) {
+  var uri = '';
+  try { uri = storage.get(_userBgKey(theme)) || ''; } catch (e) {}
+  var layer = document.getElementById('lb-user-bg');
+  if (layer) layer.style.backgroundImage = uri ? ('url("' + uri + '")') : '';
+  document.body.classList.toggle('has-user-bg', !!uri);
+  var reset = document.getElementById('btn-reset-bg');
+  if (reset) reset.classList.toggle('is-hidden', !uri);
+}
+window.__onBgImagePicked = function(uri) {
+  if (!uri) return;
+  try { storage.set(_userBgKey(), uri); } catch (e) {}
+  applyUserBg();
+  try { showToast(t('theme.userbg.set')); } catch (e) {}
+};
+
 function injectThemeVars() {
   var name = _themeActive || 'Default';
   var root = document.documentElement;
@@ -6921,6 +6953,8 @@ function wireEvents() {
   });
   document.getElementById('btn-theme-back').addEventListener('click', closeThemePage);
   document.getElementById('btn-open-guide').addEventListener('click', openGuidePage);
+  { var pbg = document.getElementById('btn-pick-bg'); if (pbg) pbg.addEventListener('click', function() { if (typeof LB !== 'undefined' && LB.pickBackgroundImage) LB.pickBackgroundImage(); else showToast(t('msg.app.only.in.app')); }); }
+  { var rbg = document.getElementById('btn-reset-bg'); if (rbg) rbg.addEventListener('click', function() { try { storage.set(_userBgKey(), ''); } catch (e) {} applyUserBg(); }); }
   document.getElementById('btn-guide-back').addEventListener('click', closeGuidePage);
   document.getElementById('btn-theme-import').addEventListener('click', () => {
     if (typeof LB !== 'undefined' && LB.pickThemeFiles) LB.pickThemeFiles();

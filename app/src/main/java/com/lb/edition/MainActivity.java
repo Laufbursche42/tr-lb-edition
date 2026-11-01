@@ -62,6 +62,8 @@ public class MainActivity extends Activity {
     private static final int REQ_PERMS = 4711;
     private static final int REQ_OTA_FILE = 4712;
     private static final int REQ_THEME_ZIP = 4713;
+    private static final int REQ_BG_IMAGE = 4714;
+    private volatile String pendingBgImage = null;
 
     // Picked firmware file, held natively until the user starts the flash (never round-trips through
     // JS - only its metadata does). Guarded by the main thread (set in onActivityResult, read in the
@@ -421,6 +423,10 @@ public class MainActivity extends Activity {
             handleThemeZipPick(resultCode, data);
             return;
         }
+        if (requestCode == REQ_BG_IMAGE) {
+            handleBgImagePick(resultCode, data);
+            return;
+        }
         if (requestCode != REQ_OTA_FILE) return;
         if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
             pushOtaFile("{\"ok\":false,\"cancelled\":true}");
@@ -444,6 +450,46 @@ public class MainActivity extends Activity {
             otaFileName = null;
             pushOtaFile("{\"ok\":false,\"error\":\"read failed\"}");
         }
+    }
+
+    /** Decode a picked image, downscale it to a compact JPEG data URI and hand it to the page via the
+        staged __pullBgImage() getter. Runs off the UI thread; big photos are sampled down to avoid OOM. */
+    private void handleBgImagePick(int resultCode, Intent data) {
+        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) return;
+        final Uri uri = data.getData();
+        new Thread(() -> {
+            try {
+                final int MAX = 1440;
+                android.graphics.BitmapFactory.Options bo = new android.graphics.BitmapFactory.Options();
+                bo.inJustDecodeBounds = true;
+                try (InputStream b = getContentResolver().openInputStream(uri)) {
+                    android.graphics.BitmapFactory.decodeStream(b, null, bo);
+                }
+                int sample = 1;
+                while (bo.outWidth / sample > MAX * 2 || bo.outHeight / sample > MAX * 2) sample *= 2;
+                android.graphics.BitmapFactory.Options o2 = new android.graphics.BitmapFactory.Options();
+                o2.inSampleSize = sample;
+                android.graphics.Bitmap bmp;
+                try (InputStream s = getContentResolver().openInputStream(uri)) {
+                    bmp = android.graphics.BitmapFactory.decodeStream(s, null, o2);
+                }
+                if (bmp == null) return;
+                int w = bmp.getWidth(), h = bmp.getHeight();
+                float scale = Math.min(1f, (float) MAX / Math.max(w, h));
+                if (scale < 1f) {
+                    android.graphics.Bitmap sb = android.graphics.Bitmap.createScaledBitmap(
+                            bmp, Math.round(w * scale), Math.round(h * scale), true);
+                    if (sb != bmp) { bmp.recycle(); bmp = sb; }
+                }
+                java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 82, bos);
+                bmp.recycle();
+                pendingBgImage = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bos.toByteArray(), android.util.Base64.NO_WRAP);
+                runJs("(function(){try{var u=LB.__pullBgImage();if(u&&window.__onBgImagePicked)window.__onBgImagePicked(u);}catch(e){}})();");
+            } catch (Throwable t) {
+                Log.e(TAG, "handleBgImagePick failed", t);
+            }
+        }).start();
     }
 
     private void handleThemeZipPick(int resultCode, Intent data) {
@@ -1574,6 +1620,27 @@ public class MainActivity extends Activity {
                 }
             });
         }
+
+        /** Pick a background image; the result is downscaled to a JPEG data URI and sent to
+            window.__onBgImagePicked(uri). The page stores + applies it per theme. */
+        @JavascriptInterface
+        public void pickBackgroundImage() {
+            Log.i(TAG, "LB.pickBackgroundImage()");
+            runOnUiThread(() -> {
+                try {
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("image/*");
+                    startActivityForResult(i, REQ_BG_IMAGE);
+                } catch (Throwable t) {
+                    Log.e(TAG, "pickBackgroundImage failed", t);
+                }
+            });
+        }
+
+        /** Staged getter for the last downscaled background-image data URI (cleared on read). */
+        @JavascriptInterface
+        public String __pullBgImage() { String s = pendingBgImage; pendingBgImage = null; return s; }
 
         /** Per-theme tile layout: JSON {order:[ids], hidden:[ids]}. */
         @JavascriptInterface
