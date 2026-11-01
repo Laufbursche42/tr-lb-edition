@@ -212,6 +212,13 @@ window.I18N = {
     "theme.editor.tiles.show.all": "Show all",
 
     "theme.btnrow.section": "Quick buttons",
+    "theme.rowalign.center": "Centered",
+    "theme.rowalign.fill": "Fill",
+    "theme.rowalign.hint": "per row",
+    "theme.rowalign.left": "Left",
+    "theme.rowalign.right": "Right",
+    "theme.rowalign.row": "Row",
+    "theme.rowalign.section": "Row alignment",
     "theme.btnrow.align.section": "Button row alignment",
     "theme.btnrow.align.section.hint": "how buttons are aligned in the row",
 
@@ -1063,6 +1070,13 @@ window.I18N = {
     "theme.editor.tiles.show.all": "Alle einblenden",
 
     "theme.btnrow.section": "Schnellknöpfe",
+    "theme.rowalign.center": "Zentriert",
+    "theme.rowalign.fill": "Füllen",
+    "theme.rowalign.hint": "pro Zeile",
+    "theme.rowalign.left": "Links",
+    "theme.rowalign.right": "Rechts",
+    "theme.rowalign.row": "Zeile",
+    "theme.rowalign.section": "Zeilen-Ausrichtung",
     "theme.btnrow.align.section": "Ausrichtung der Schnellknöpfe",
     "theme.btnrow.align.section.hint": "wie die Knöpfe in der Reihe ausgerichtet werden",
 

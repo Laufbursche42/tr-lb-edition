@@ -997,6 +997,7 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <div id="theme-list"></div>
     <div id="tile-editor"></div>
     <div id="btn-row-editor"></div>
+    <div id="row-align-editor"></div>
     <div id="style-editor"></div>
     <button type="button" id="btn-open-guide" class="settings-btn settings-btn-secondary" data-i18n="theme.guide.btn">&#127912; Theme creation guide</button>
   </div>
@@ -3880,6 +3881,7 @@ function renderThemeList() {
   const editorTheme = activeCustomTheme || 'Default';
   renderTileEditor(editorTheme);
   renderButtonRowEditor(editorTheme);
+  renderRowAlignEditor(editorTheme);
   renderStyleEditor(editorTheme);
 }
 
@@ -4098,22 +4100,98 @@ function applyButtonRowConfig(theme) {
     });
   }
   grid.style.display = anyVisible ? '' : 'none';
-  if (anyVisible) {
-    /* Max 4 per row; items wrap to additional rows automatically via CSS grid. */
-    var cols = Math.min(visCount, 4);
-    var align = '';
-    try { align = (typeof storage !== 'undefined' ? storage.get('lb_btn_row_align') : '') || ''; } catch(e) {}
-    if (align === 'center') {
-      grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, auto))';
-      grid.style.justifyContent = 'center';
-    } else if (align === 'edges') {
-      grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, auto))';
-      grid.style.justifyContent = 'space-between';
-    } else {
-      grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
-      grid.style.justifyContent = '';
-    }
-  }
+  // Column layout + alignment are owned by the per-row alignment pass (centre by default; a wrapping
+  // partial last row centres). The button row is just another row there.
+  if (anyVisible) try { _applyRowAlign1(grid, _rowAlignMode(theme, grid)); } catch (e) {}
+}
+
+/* ── Per-row alignment (user setting, per theme) ─────────────────────────────
+   Each row is centred by default; left / right / fill are selectable per row in the theme manager.
+   A perfectly FULL single row keeps its native grid (it fills, so every alignment looks identical).
+   An under-filled row, or a wrapping one (its partial last row), is switched to flex so justify-content
+   centres / left- / right-aligns it while each cell keeps its full-row column width. Theme-agnostic:
+   the same row ids exist in every theme, so no theme zip is touched. */
+var _ALIGN_ROWS_SEL = '#scroller #speed-row, #scroller #hero-row, #scroller #motor-row, #scroller #motor-row-2, #scroller #motor-row-3, #scroller #quick-grid, #scroller .dg-row';
+function _rowAlignKey(row) {
+  if (row.id) return row.id;
+  var c = row.querySelector('[id]');
+  return 'dgrow-' + (c ? c.id : (row.parentNode ? Array.prototype.indexOf.call(row.parentNode.children, row) : 0));
+}
+function _rowAlignMap(theme) {
+  try { return JSON.parse(storage.get('lb_row_align_' + (theme || _themeActive || 'Default')) || '{}') || {}; } catch (e) { return {}; }
+}
+function _saveRowAlignMap(theme, map) {
+  try { storage.set('lb_row_align_' + (theme || _themeActive || 'Default'), JSON.stringify(map)); } catch (e) {}
+}
+function _rowAlignMode(theme, row) { return _rowAlignMap(theme)[_rowAlignKey(row)] || 'center'; }
+function applyRowAlign(theme) {
+  var map = _rowAlignMap(theme);
+  document.querySelectorAll(_ALIGN_ROWS_SEL).forEach(function(row) {
+    _applyRowAlign1(row, map[_rowAlignKey(row)] || 'center');
+  });
+}
+function _applyRowAlign1(row, mode) {
+  var kids = Array.prototype.filter.call(row.children, function(c) { return c.nodeType === 1; });
+  // reset to the theme's native layout first (also lets getComputedStyle report the native grid columns)
+  row.style.display = ''; row.style.flexWrap = ''; row.style.justifyContent = ''; row.style.alignContent = '';
+  kids.forEach(function(c) { c.style.flex = ''; c.style.maxWidth = ''; });
+  if (mode === 'fill') return;
+  var vis = kids.filter(function(c) { return c.style.display !== 'none'; });
+  if (vis.length === 0) return;
+  var cs = getComputedStyle(row);
+  var tmpl = cs.gridTemplateColumns || '';
+  var cols = (tmpl && tmpl !== 'none') ? tmpl.split(' ').filter(Boolean).length : vis.length;
+  if (cols < 1) cols = 1;
+  if (vis.length === cols) return;   // perfectly full single row: native grid already fills it
+  var gap = parseFloat(cs.columnGap || cs.gap || '0') || 0;
+  row.style.display = 'flex'; row.style.flexWrap = 'wrap'; row.style.alignContent = 'flex-start';
+  row.style.justifyContent = mode === 'left' ? 'flex-start' : mode === 'right' ? 'flex-end' : 'center';
+  var basis = 'calc((100% - ' + (gap * (cols - 1)) + 'px) / ' + cols + ')';
+  vis.forEach(function(c) { c.style.flex = '0 0 ' + basis; c.style.maxWidth = basis; });
+}
+
+function _rowAlignLabel(row) {
+  if (row.dataset.i18nTileLabel) { var l = t(row.dataset.i18nTileLabel); if (l && l !== row.dataset.i18nTileLabel) return l; }
+  if (row.dataset.tileLabel) return row.dataset.tileLabel;
+  var parts = [];
+  Array.prototype.forEach.call(row.children, function(c) {
+    if (c.nodeType !== 1 || c.style.display === 'none') return;
+    var lk = c.getAttribute('data-i18n-tile-label');
+    if (lk) { var tl = t(lk); if (tl && tl !== lk) { parts.push(tl); return; } }
+    if (c.dataset && c.dataset.tileLabel) { parts.push(c.dataset.tileLabel); return; }
+    var dl = c.querySelector('.dg-label, .mc-title, .hc-unit, .sd-unit');
+    if (dl && dl.textContent.trim()) parts.push(dl.textContent.trim());
+  });
+  if (parts.length) return parts.slice(0, 3).join(' / ');
+  return row.id || t('theme.rowalign.row');
+}
+// Row-alignment editor: one selector per row (Centre default / Left / Right / Fill), saved per theme.
+function renderRowAlignEditor(theme) {
+  var el = document.getElementById('row-align-editor');
+  if (!el) return;
+  var rows = Array.prototype.filter.call(document.querySelectorAll(_ALIGN_ROWS_SEL), function(r) {
+    return Array.prototype.some.call(r.children, function(c) { return c.nodeType === 1; });
+  });
+  if (!rows.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'block';
+  el.innerHTML = '';
+  var hdr = document.createElement('div'); hdr.className = 'theme-section-title'; hdr.textContent = t('theme.rowalign.section');
+  var hint = document.createElement('span'); hint.className = 'theme-hint'; hint.textContent = ' - ' + t('theme.rowalign.hint'); hdr.appendChild(hint); el.appendChild(hdr);
+  var map = _rowAlignMap(theme);
+  var MODES = [['center', 'theme.rowalign.center'], ['left', 'theme.rowalign.left'], ['right', 'theme.rowalign.right'], ['fill', 'theme.rowalign.fill']];
+  rows.forEach(function(row) {
+    var key = _rowAlignKey(row);
+    var r = document.createElement('div'); r.className = 'tile-editor-row';
+    var label = document.createElement('span'); label.textContent = _rowAlignLabel(row); label.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    var sel = document.createElement('select'); sel.className = 'theme-sel';
+    MODES.forEach(function(m) { var o = document.createElement('option'); o.value = m[0]; o.textContent = t(m[1]); o.setAttribute('data-i18n', m[1]); sel.appendChild(o); });
+    sel.value = map[key] || 'center';
+    sel.addEventListener('change', function() {
+      var mp = _rowAlignMap(theme); mp[key] = sel.value; _saveRowAlignMap(theme, mp);
+      _applyRowAlign1(row, sel.value); try { scheduleFitFold(); } catch (e) {}
+    });
+    r.appendChild(label); r.appendChild(sel); el.appendChild(r);
+  });
 }
 
 function renderButtonRowEditor(theme) {
@@ -4222,38 +4300,7 @@ function renderButtonRowEditor(theme) {
   }
 
   _rebuildSlotRows();
-
-  /* Alignment - with a clear label explaining what it controls. */
-  var alignHdr = document.createElement('div');
-  alignHdr.className = 'theme-section-title';
-  alignHdr.textContent = t('theme.btnrow.align.section');
-  var alignHint = document.createElement('span'); alignHint.className = 'theme-hint'; alignHint.textContent = ' - ' + t('theme.btnrow.align.section.hint');
-  alignHdr.appendChild(alignHint);
-  el.appendChild(alignHdr);
-
-  var alignRow = document.createElement('div');
-  alignRow.className = 'settings-row';
-  var alignSel = document.createElement('select');
-  alignSel.className = 'theme-sel';
-  [
-    ['fill', 'Verteilt (Reihe füllen)', 'settings.btnrow.align.fill'],
-    ['center', 'Zentriert', 'settings.btnrow.align.center'],
-    ['edges', 'Rand an Rand', 'settings.btnrow.align.edges']
-  ].forEach(function(opt) {
-    var o = document.createElement('option');
-    o.value = opt[0]; o.textContent = opt[1]; o.setAttribute('data-i18n', opt[2]);
-    alignSel.appendChild(o);
-  });
-  var storedAlign = '';
-  try { storedAlign = (typeof storage !== 'undefined' ? storage.get('lb_btn_row_align') : '') || ''; } catch(e) {}
-  alignSel.value = storedAlign || 'fill';
-  alignRow.appendChild(alignSel);
-  el.appendChild(alignRow);
-
-  alignSel.addEventListener('change', function() {
-    if (typeof storage !== 'undefined') storage.set('lb_btn_row_align', alignSel.value);
-    applyButtonRowConfig(theme);
-  });
+  // Button-row alignment moved into the unified per-row alignment editor (renderRowAlignEditor).
 }
 
 /* Drag-reorder for button slots in the editor (separate from tile-editor drag). */
@@ -4572,6 +4619,7 @@ function applyTileConfig() {
       children.forEach(function(c) { parent.appendChild(c); });
     });
   }
+  try { applyRowAlign(); } catch(e3) {}
   initTileDrag();
   try { scheduleFitFold(); } catch(e2) {}
 }
