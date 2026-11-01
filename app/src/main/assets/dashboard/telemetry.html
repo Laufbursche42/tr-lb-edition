@@ -137,16 +137,8 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <!-- Quick action grid: motor-mode + drive-mode buttons merged into one 8-cell grid.
          Each button has data-btn-id so they can be individually drag-sorted between rows.
          Greyed out (qg-disabled) until the scooter is connected. -->
-    <div id="quick-grid" class="qg-disabled" role="group" data-tile-id="quick-actions" data-tile-label="Quick Buttons" data-tile-no-editor="true">
-      <button type="button" class="mq-btn" data-mm="2" aria-label="Front motor only" data-i18n-aria="dash.motors.mode.front.aria" data-i18n="dash.motors.mode.front" data-btn-id="btn-mm-front" data-bb-shortcut="mm-front" data-bb-label="Front">Front</button>
-      <button type="button" class="mq-btn" data-mm="1" aria-label="Rear motor only" data-i18n-aria="dash.motors.mode.rear.aria" data-i18n="dash.motors.mode.rear" data-btn-id="btn-mm-rear" data-bb-shortcut="mm-rear" data-bb-label="Rear">Rear</button>
-      <button type="button" class="mq-btn" data-mm="0" aria-label="Both motors" data-i18n-aria="dash.motors.mode.both.aria" data-i18n="dash.motors.mode.both" data-btn-id="btn-mm-both" data-bb-shortcut="mm-both" data-bb-label="Both">Both</button>
-      <button type="button" class="mq-btn mq-smart" aria-label="Toggle Smart (TCS)" data-i18n-aria="dash.motors.mode.smart.aria" data-i18n="dash.motors.mode.smart" data-btn-id="btn-mm-smart" data-bb-shortcut="mm-smart" data-bb-label="Smart">Smart</button>
-      <button type="button" class="dq-btn" data-dq="startMode" aria-label="Toggle kick start" data-i18n-aria="dash.drive.quick.kickstart.aria" data-i18n="dash.drive.quick.kickstart" data-btn-id="btn-dq-kick" data-bb-shortcut="dq-kick" data-bb-label="Kick">Kickstart</button>
-      <button type="button" class="dq-btn" data-dq="abs" aria-label="Toggle ABS" data-i18n-aria="dash.drive.quick.abs.aria" data-i18n="dash.drive.quick.abs" data-btn-id="btn-dq-abs" data-bb-shortcut="dq-abs" data-bb-label="ABS">ABS</button>
-      <button type="button" class="dq-btn" data-dq="ecoMode" aria-label="Toggle eco mode" data-i18n-aria="dash.drive.quick.eco.aria" data-i18n="dash.drive.quick.eco" data-btn-id="btn-dq-eco" data-bb-shortcut="dq-eco" data-bb-label="Eco">Eco</button>
-      <button type="button" class="dq-btn" data-dq="cruise" aria-label="Toggle cruise control" data-i18n-aria="dash.drive.quick.cruise.aria" data-i18n="dash.drive.quick.cruise" data-btn-id="btn-dq-cruise" data-bb-shortcut="dq-cruise" data-bb-label="Cruise">Cruise</button>
-    </div>
+    <!-- Quick controls: empty skin container; the driver fills it via renderQuickControls(). -->
+    <div id="quick-grid" class="qg-disabled" role="group" data-tile-id="quick-actions" data-tile-label="Quick Buttons" data-tile-no-editor="true"></div>
 
      </div>
     </div>
@@ -4548,6 +4540,44 @@ function reattachSpeedUnlock() {
   });
 }
 
+/* Driver control set: every quick control this manufacturer offers. renderQuickControls() builds them
+   into #quick-grid (standard fold or an injected theme) with markup identical to the old hand-written
+   buttons, so reattachQuickGridHandlers()/reflect*() keep wiring + mirroring them by selector. Types:
+   'mm' = exclusive motor-mode (setMotorMode), 'smart' = Smart/TCS toggle, 'dq' = drive-quick toggle. */
+var TR_QUICK_CONTROLS = [
+  { type: 'mm', mm: 2, btnId: 'btn-mm-front', bb: 'mm-front', bbLabel: 'Front', i18n: 'dash.motors.mode.front', aria: 'dash.motors.mode.front.aria' },
+  { type: 'mm', mm: 1, btnId: 'btn-mm-rear',  bb: 'mm-rear',  bbLabel: 'Rear',  i18n: 'dash.motors.mode.rear',  aria: 'dash.motors.mode.rear.aria' },
+  { type: 'mm', mm: 0, btnId: 'btn-mm-both',  bb: 'mm-both',  bbLabel: 'Both',  i18n: 'dash.motors.mode.both',  aria: 'dash.motors.mode.both.aria' },
+  { type: 'smart',     btnId: 'btn-mm-smart', bb: 'mm-smart', bbLabel: 'Smart', i18n: 'dash.motors.mode.smart', aria: 'dash.motors.mode.smart.aria' },
+  { type: 'dq', dq: 'startMode', btnId: 'btn-dq-kick',   bb: 'dq-kick',   bbLabel: 'Kick',   i18n: 'dash.drive.quick.kickstart', aria: 'dash.drive.quick.kickstart.aria' },
+  { type: 'dq', dq: 'abs',       btnId: 'btn-dq-abs',    bb: 'dq-abs',    bbLabel: 'ABS',    i18n: 'dash.drive.quick.abs',       aria: 'dash.drive.quick.abs.aria' },
+  { type: 'dq', dq: 'ecoMode',   btnId: 'btn-dq-eco',    bb: 'dq-eco',    bbLabel: 'Eco',    i18n: 'dash.drive.quick.eco',       aria: 'dash.drive.quick.eco.aria' },
+  { type: 'dq', dq: 'cruise',    btnId: 'btn-dq-cruise', bb: 'dq-cruise', bbLabel: 'Cruise', i18n: 'dash.drive.quick.cruise',    aria: 'dash.drive.quick.cruise.aria' }
+];
+function renderQuickControls(grid) {
+  if (!grid) grid = document.getElementById('quick-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  TR_QUICK_CONTROLS.forEach(function(c) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = c.type === 'smart' ? 'mq-btn mq-smart' : c.type === 'mm' ? 'mq-btn' : 'dq-btn';
+    if (c.type === 'mm') b.dataset.mm = String(c.mm);
+    if (c.type === 'dq') b.dataset.dq = c.dq;
+    b.dataset.btnId = c.btnId;
+    b.dataset.bbShortcut = c.bb;
+    if (c.bbLabel) b.dataset.bbLabel = c.bbLabel;
+    b.setAttribute('data-i18n', c.i18n);
+    if (c.aria) { b.setAttribute('data-i18n-aria', c.aria); b.setAttribute('aria-label', t(c.aria)); }
+    b.textContent = t(c.i18n);
+    grid.appendChild(b);
+  });
+  try { applyButtonRowConfig(); } catch (e) {}
+  try { reattachQuickGridHandlers(); } catch (e) {}
+  try { reflectMotorModeMain(); } catch (e) {}
+  try { reflectDriveQuick(); } catch (e) {}
+}
+
 /* Re-attach motor-mode and drive-quick click handlers to the theme's #quick-grid buttons.
    Page-load init wires handlers to the original DOM; after theme injection the buttons are
    new elements and need re-wiring. Called immediately after reattachSpeedUnlock(). */
@@ -5386,7 +5416,7 @@ function initActiveTheme() {
           container.innerHTML = html;
           _cleanPoolAfterInjection();
           reattachSpeedUnlock();
-          reattachQuickGridHandlers();
+          renderQuickControls();   // the injected theme's #quick-grid is an empty skin; the driver fills it
           // Re-run the i18n pass so data-i18n attributes in the injected HTML are translated.
           // applyLang() runs before initActiveTheme() at startup so the theme HTML would
           // otherwise miss the translation pass entirely.
@@ -6940,18 +6970,9 @@ function wireEvents() {
     else showToast(t('msg.app.only.in.app'));
   });
 
-  // Main-screen motor-mode quick toggle: Front/Rear/Both reuse setMotorMode(); Smart toggles TCS.
-  // (When disconnected the control has pointer-events:none, so these never fire.)
-  document.querySelectorAll('.mq-btn[data-mm]').forEach(btn => {
-    btn.addEventListener('click', () => setMotorMode(parseInt(btn.dataset.mm, 10)));
-  });
-  const mqSmart = document.querySelector('.mq-smart');
-  if (mqSmart) mqSmart.addEventListener('click', toggleSmartMain);
-
-  // Main-screen drive-mode quick toggles: kick start / ABS / eco / cruise.
-  document.querySelectorAll('.dq-btn[data-dq]').forEach(btn => {
-    btn.addEventListener('click', () => toggleDriveQuick(btn.dataset.dq));
-  });
+  // Build the quick controls from the driver set (TR_QUICK_CONTROLS) and wire them. The old hand-written
+  // buttons are gone; renderQuickControls() creates identical markup and reattaches the handlers by selector.
+  renderQuickControls();
 
   // Hidden gesture: triple-tap the VCU speed tile to toggle the FIN speed lock (add/remove "DE").
   // Wire speed-unlock (triple-tap) to speed drums - check DOM first, then pool (for custom themes)
