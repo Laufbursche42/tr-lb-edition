@@ -21,6 +21,7 @@ If no matching section exists the notes fall back to the commit messages, so kee
 - Per-row alignment. Every dashboard row - tiles and quick buttons - can be aligned (centre by default, or left / right / fill) in the Theme Manager, saved per theme; a part-filled last row centres.
 - Tetra 4WD: the second axle's telemetry (front motor temperature and current) is decoded and shown, and each theme can carry its own background image.
 - Voltage help clarified: it falls back to the nominal value when the scooter has no smart BMS.
+- Back button returns one level. The on-screen back arrows and the Android back button now step back exactly one level (a sub-page returns to Settings, Settings to the dashboard) instead of sometimes jumping straight to the dashboard.
 
 ## 1.1.38
 

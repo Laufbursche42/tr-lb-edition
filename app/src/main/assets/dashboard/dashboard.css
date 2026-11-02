@@ -634,6 +634,9 @@ select.theme-sel {
   display: flex; flex-direction: column;
   transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
 }
+/* Settings sits one step below the sub-pages so every sub-page (incl. #routes-page, which is
+   earlier in the DOM) opens on top of the open Settings sheet and back returns to it. */
+#settings-sheet { z-index: 119; }
 #routes-page.open, #streaming-page.open,
 #connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #battery-page.open, #firmware-page.open, #display-page.open, #theme-page.open, #guide-page.open, #settings-sheet.open { transform: translateX(0); }
 #streaming-scroller,

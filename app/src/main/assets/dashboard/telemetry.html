@@ -3367,7 +3367,6 @@ function renderErrorReports() {
 
 let _errTimer = null;
 function openErrorReports() {
-  closeSettings();
   renderErrorReports();
   document.getElementById('error-reports-page').classList.add('open');
   clearInterval(_errTimer);
@@ -5758,7 +5757,6 @@ function renderRideLog() {
 
 let _infoTimer = null;
 function openInfoPage() {
-  closeSettings();
   _btNamePrefilled = false;   // re-prefill the identity editor with the current FIN on open
   renderInfoPage();
   renderRideLog();                                  // toggle state + last-3-rides list, refreshed on open
@@ -5864,7 +5862,6 @@ function renderBatteryPage() {
 
 let _batteryTimer = null;
 function openBatteryPage() {
-  closeSettings();
   renderBatteryPage();
   document.getElementById('battery-page').classList.add('open');
   clearInterval(_batteryTimer);
@@ -6997,7 +6994,6 @@ function wireEvents() {
 
   // Routes sub-page open/close
   document.getElementById('btn-open-routes').addEventListener('click', () => {
-    closeSettings();
     importNativeRoutes();   // pull in any track recorded natively (incl. with the screen off)
     renderRoutes();
     document.getElementById('routes-page').classList.add('open');
@@ -7132,7 +7128,6 @@ function wireEvents() {
 
   // Version Info & Disclaimer (side-menu footer): open the modal (Close / backdrop / Escape).
   document.getElementById('btn-version-info').addEventListener('click', () => {
-    closeSettings();
     openVersionInfo();
   });
   document.getElementById('verinfo-close').addEventListener('click', closeVersionInfo);
@@ -7147,7 +7142,6 @@ function wireEvents() {
 
   // What is new: from the settings and Got it / backdrop / Escape to close.
   document.getElementById('btn-whatsnew').addEventListener('click', () => {
-    closeSettings();
     openWhatsNew();
   });
   document.getElementById('whatsnew-close').addEventListener('click', closeWhatsNew);

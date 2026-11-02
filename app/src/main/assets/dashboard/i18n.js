@@ -20,6 +20,7 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Back button fixed.</b> The back arrows and the Android back button now step back exactly one level - a sub-page returns to Settings, not straight to the dashboard.",
       "<b>Fully customizable dashboard.</b> Every live-value tile is now filled by your Teverun's own driver into a shared layout - the app shows exactly what your scooter reports (per-motor temperatures and currents, battery health, voltage, power, total, trip). In the Theme Manager a 'Live tiles' list lets you pick, per theme, which value each tile shows (a dropdown per tile, like the quick buttons).",
       "<b>Carbon &amp; Lambo refreshed.</b> The built-in gauge themes now render your driver's values in their own skin, cap the fold tidily (9 tiles / 8 buttons), and mark 40-100 km/h dark red on the gauge for unlocked scooters that reach those speeds. They auto-update on this release.",
       "<b>Printable theme guide.</b> The in-app theme guide now links to a formatted PDF (English &amp; German) and to its raw Markdown source for AI assistants, all generated from one source so they always match.",
@@ -923,6 +924,7 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Zurück-Taste korrigiert.</b> Die Zurück-Pfeile und die Android-Zurück-Taste gehen jetzt genau eine Ebene zurück - eine Unterseite führt zurück zu den Einstellungen, nicht direkt aufs Dashboard.",
       "<b>Voll anpassbares Dashboard.</b> Jede Live-Wert-Kachel wird jetzt vom Treiber deines Teverun in ein geteiltes Layout gef&uuml;llt - die App zeigt genau das, was dein Roller meldet (Motor-Temperaturen und -Str&ouml;me je Achse, Akku-Gesundheit, Spannung, Leistung, Gesamt, Trip). Im Theme-Manager w&auml;hlst du &uuml;ber eine 'Live-Kacheln'-Liste pro Theme, welchen Wert jede Kachel zeigt (ein Dropdown pro Kachel, wie bei den Buttons).",
       "<b>Carbon &amp; Lambo &uuml;berarbeitet.</b> Die eingebauten Gauge-Themes rendern jetzt die Treiber-Werte in eigener Optik, deckeln den Fold sauber (9 Kacheln / 8 Buttons) und markieren 40-100 km/h dunkelrot auf dem Tacho f&uuml;r entsperrte Roller. Sie aktualisieren sich mit diesem Release automatisch.",
       "<b>Druckbarer Theme-Guide.</b> Der In-App-Theme-Guide verlinkt jetzt ein formatiertes PDF (Deutsch &amp; Englisch) und seine rohe Markdown-Quelle f&uuml;r KI-Assistenten - alles aus einer Quelle erzeugt, sodass es immer zusammenpasst.",
