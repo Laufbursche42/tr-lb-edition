@@ -198,7 +198,7 @@ html[data-theme-loading] #scroller { visibility: hidden; }
 
 /* ── Hero Metrics ──────────────────────────────────────────── */
 /* Hero cells and motor cells are the same kind of tile row, so they share one grid. */
-#hero-row, #motor-row, #motor-row-2, #motor-row-3, #motor-row-4 {
+#hero-row, #motor-row, #motor-row-2, #motor-row-3, #motor-row-4, #motor-row-5 {
   display: grid; grid-template-columns: 1fr 1fr 1fr;
   gap: var(--gap);
 }
@@ -454,11 +454,12 @@ html[data-theme-loading] #scroller { visibility: hidden; }
 
 /* Stacked tile rows (Live values): temps+power, currents, then the battery/distance superset rows. */
 #motor-area { display: flex; flex-direction: column; gap: var(--gap); }
-/* Default-fold availability (applyDataSlots): hide cells with no data, and let a row's column count
-   follow its visible-cell count so 1- and 2-cell rows stay full-width. Empty rows/section collapse. */
+/* Default only: applyDataSlots adds .lb-packed to #motor-area so the cells this app fills flow into
+   ONE shared row that wraps 3-up and centres a partial last row; a custom theme keeps per-row grid. */
+#motor-area.lb-packed { display: flex; flex-direction: row; flex-wrap: wrap; gap: var(--gap); justify-content: center; align-content: start; }
+#motor-area.lb-packed > [id^="motor-row"] { display: contents; }
+#motor-area.lb-packed .motor-cell { flex: 0 1 calc((100% - 2 * var(--gap)) / 3); }
 #motor-area .motor-cell.slot-hidden { display: none; }
-#motor-area [data-vis="2"] { grid-template-columns: 1fr 1fr; }
-#motor-area [data-vis="1"] { grid-template-columns: 1fr; }
 #motor-area .row-hidden { display: none; }
 #motors-section.sect-hidden { display: none; }
 /* Unified quick-action grid: motor-mode + drive-mode buttons, max 4 visible, configurable in Settings. */

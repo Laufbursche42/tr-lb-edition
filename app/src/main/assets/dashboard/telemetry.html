@@ -2032,7 +2032,7 @@ function updateBLEUI(data) {
   setTxt('mf-cur', data.frontCurrent.toFixed(1));
   const mrt = document.getElementById('mr-temp'); if (mrt) mrt.style.color = tempColor(data.rTemp);
   const mft = document.getElementById('mf-temp'); if (mft) mft.style.color = tempColor(data.fTemp);
-  setTxt('m-power', Math.round(data.power * 1000));   // data.power is kW; fold unit is W
+  setTxt('m-power', isNaN(data.power) ? '-' : data.power.toFixed(2));   // data.power is kW; fold unit is W
   setTxt('m-total-cur', (data.rearCurrent + data.frontCurrent).toFixed(1));
   // Live values rows 3-4: same sources as the below-fold grid, raw (units live in the cell).
   setTxt('tl-volt', data.volt.toFixed(1));
@@ -4673,6 +4673,8 @@ function applyDataSlots() {
   if (_themeActive && _themeActive !== 'Default') return;
   var sect = document.getElementById('motors-section');
   if (!sect) return;
+  var area = document.getElementById('motor-area');
+  if (area) area.classList.add('lb-packed');
   var anyRow = false;
   ['motor-row','motor-row-2','motor-row-3','motor-row-4','motor-row-5'].forEach(function(rid) {
     var row = document.getElementById(rid);
