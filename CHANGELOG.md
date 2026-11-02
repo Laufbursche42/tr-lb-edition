@@ -14,6 +14,14 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.39
+
+- Driver-rendered, customizable dashboard. Every live-value tile is now filled by your Teverun's own driver into a shared layout, so the app shows exactly what your scooter reports - per-motor temperatures and currents, battery health, voltage, power (kW), total and trip - and hides the rest. In the Theme Manager a "Live tiles" list (between the fixed speed row and the scroll area) lets you pick, per theme, which value each tile shows: a dropdown per tile, just like the quick buttons.
+- Manufacturer-neutral themes, driver-filled. The quick-control bar and the live tiles are built from the app's own driver into empty skin containers, so the built-in Carbon and Lambo theme .zips are byte-identical across the Teverun, SoFlow and Navee apps; each app fills them with its own scooter's values. Carbon & Lambo auto-update on this release - driver-filled, the fold capped tidily (9 tiles / 8 buttons on the gauge themes), and the gauge marks 40-100 km/h dark red for unlocked scooters.
+- Per-row alignment. Every dashboard row - tiles and quick buttons - can be aligned (centre by default, or left / right / fill) in the Theme Manager, saved per theme; a part-filled last row centres.
+- Tetra 4WD: the second axle's telemetry (front motor temperature and current) is decoded and shown, and each theme can carry its own background image.
+- Voltage help clarified: it falls back to the nominal value when the scooter has no smart BMS.
+
 ## 1.1.38
 
 - Added: the in-app theme guide now links to a formatted PDF (EN and DE) and to the raw Markdown source for AI assistants; the in-app guide, the PDF and the Markdown are generated from one source so they always match.

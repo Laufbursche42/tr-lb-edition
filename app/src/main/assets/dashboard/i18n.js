@@ -20,6 +20,8 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Fully customizable dashboard.</b> Every live-value tile is now filled by your Teverun's own driver into a shared layout - the app shows exactly what your scooter reports (per-motor temperatures and currents, battery health, voltage, power, total, trip). In the Theme Manager a 'Live tiles' list lets you pick, per theme, which value each tile shows (a dropdown per tile, like the quick buttons).",
+      "<b>Carbon &amp; Lambo refreshed.</b> The built-in gauge themes now render your driver's values in their own skin, cap the fold tidily (9 tiles / 8 buttons), and mark 40-100 km/h dark red on the gauge for unlocked scooters that reach those speeds. They auto-update on this release.",
       "<b>Printable theme guide.</b> The in-app theme guide now links to a formatted PDF (English &amp; German) and to its raw Markdown source for AI assistants, all generated from one source so they always match.",
       "<b>Debug logs are scrubbed of personal data.</b> When you export or share a debug log, MAC addresses, device names, IDs and secrets are removed automatically - the useful troubleshooting data stays. Always on.",
       "<b>Recorded routes open again.</b> The Recorded-routes button in Settings works again - it had been opening the list behind the full-screen Settings page, so nothing seemed to happen.",
@@ -221,6 +223,21 @@ window.I18N = {
     "theme.editor.section.add": "Add",
     "theme.editor.section.add.hint": "activate standard tiles",
     "theme.editor.add.placeholder": "＋ Add…",
+    "theme.livetiles.section": "Live tiles",
+    "theme.livetiles.pick.aria": "Choose the value for this tile",
+    "dash.pick.soc": "Battery %",
+    "dash.pick.gear": "Gear",
+    "dash.pick.current": "Pack current",
+    "dash.pick.volt": "Voltage",
+    "dash.pick.soh": "Battery health",
+    "dash.pick.power": "Power",
+    "dash.pick.rtemp": "Rear motor temp",
+    "dash.pick.ftemp": "Front motor temp",
+    "dash.pick.rcur": "Rear motor current",
+    "dash.pick.fcur": "Front motor current",
+    "dash.pick.tcur": "Total current",
+    "dash.pick.total": "Total distance",
+    "dash.pick.trip": "Trip",
     "theme.editor.remove.title": "Remove",
     "theme.editor.tiles.show.all": "Show all",
 
@@ -906,6 +923,8 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Voll anpassbares Dashboard.</b> Jede Live-Wert-Kachel wird jetzt vom Treiber deines Teverun in ein geteiltes Layout gef&uuml;llt - die App zeigt genau das, was dein Roller meldet (Motor-Temperaturen und -Str&ouml;me je Achse, Akku-Gesundheit, Spannung, Leistung, Gesamt, Trip). Im Theme-Manager w&auml;hlst du &uuml;ber eine 'Live-Kacheln'-Liste pro Theme, welchen Wert jede Kachel zeigt (ein Dropdown pro Kachel, wie bei den Buttons).",
+      "<b>Carbon &amp; Lambo &uuml;berarbeitet.</b> Die eingebauten Gauge-Themes rendern jetzt die Treiber-Werte in eigener Optik, deckeln den Fold sauber (9 Kacheln / 8 Buttons) und markieren 40-100 km/h dunkelrot auf dem Tacho f&uuml;r entsperrte Roller. Sie aktualisieren sich mit diesem Release automatisch.",
       "<b>Druckbarer Theme-Guide.</b> Der In-App-Theme-Guide verlinkt jetzt ein formatiertes PDF (Deutsch &amp; Englisch) und seine rohe Markdown-Quelle f&uuml;r KI-Assistenten - alles aus einer Quelle erzeugt, sodass es immer zusammenpasst.",
       "<b>Debug-Logs werden von persönlichen Daten bereinigt.</b> Beim Exportieren oder Teilen eines Debug-Logs werden MAC-Adressen, Gerätenamen, IDs und Secrets automatisch entfernt - die nützlichen Fehlersuchdaten bleiben. Immer an.",
       "<b>Aufgezeichnete Routen gehen wieder auf.</b> Der Knopf Aufgezeichnete Routen in den Einstellungen funktioniert wieder - er hatte die Liste hinter der Vollbild-Einstellungsseite geöffnet, sodass scheinbar nichts passierte.",
@@ -1107,6 +1126,21 @@ window.I18N = {
     "theme.editor.section.add": "Hinzufügen",
     "theme.editor.section.add.hint": "Standard-Kacheln aktivieren",
     "theme.editor.add.placeholder": "＋ Hinzufügen…",
+    "theme.livetiles.section": "Live-Kacheln",
+    "theme.livetiles.pick.aria": "Wert für diese Kachel wählen",
+    "dash.pick.soc": "Batterie %",
+    "dash.pick.gear": "Gang",
+    "dash.pick.current": "Pack-Strom",
+    "dash.pick.volt": "Spannung",
+    "dash.pick.soh": "Batterie-Gesundheit",
+    "dash.pick.power": "Leistung",
+    "dash.pick.rtemp": "Motor hinten Temp.",
+    "dash.pick.ftemp": "Motor vorne Temp.",
+    "dash.pick.rcur": "Motor hinten Strom",
+    "dash.pick.fcur": "Motor vorne Strom",
+    "dash.pick.tcur": "Gesamtstrom",
+    "dash.pick.total": "Gesamtstrecke",
+    "dash.pick.trip": "Trip",
     "theme.editor.remove.title": "Entfernen",
     "theme.editor.tiles.show.all": "Alle einblenden",
 

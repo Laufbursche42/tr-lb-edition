@@ -74,112 +74,13 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       </div>
     </div>
 
-    <!-- Hero Metrics -->
-    <div id="hero-row" data-section-container>
-      <div class="hero-cell" data-cell-id="hero-battery" data-tile-id="tile-hero-soc" data-tile-label="Battery %" data-i18n-tile-label="tile.label.battery">
-        <div class="hc-val" id="soc-val">-</div>
-        <div class="hc-unit" data-i18n="dash.hero.battery.unit">Battery %</div>
-      </div>
-      <div class="hero-cell" data-cell-id="hero-gear" data-tile-id="tile-hero-gear" data-tile-label="Gear" data-i18n-tile-label="tile.label.gear">
-        <div class="hc-val" id="gear-val">-</div>
-        <div class="hc-unit" data-i18n="dash.hero.gear.label">Gear</div>
-        <div class="hc-tag is-hidden" id="gear-tag"></div>
-      </div>
-      <div class="hero-cell" id="current-cell" data-cell-id="hero-current" data-tile-id="tile-hero-cur" data-tile-label="A Current" data-i18n-tile-label="tile.label.current">
-        <div class="hc-val" id="current-val">-</div>
-        <div class="hc-unit" data-i18n="dash.hero.current.unit">A Current</div>
-      </div>
-    </div>
-
-    <!-- Live values: shared superset grid. Rows 1-2 mirror the themed motor geometry (two 3-cell
-         rows); rows 3-4 add the battery/distance cells. The driver fills only the ids it has data
-         for (DATA_SLOTS); availability hides unfilled cells and collapses empty rows/section. -->
+    <!-- Live telemetry cells: empty neutral container; the driver renders the manufacturer value set
+         via renderTelemetryCells() (individual draggable tiles), trimmed to the model by key-presence. -->
     <div id="motors-section" data-section-container>
     <div class="section-hdr sub-hdr" id="tele-hdr">
       <span data-i18n="dash.tele.section">Live values</span>
     </div>
-    <div id="motor-area">
-      <div id="motor-row" data-tile-id="tile-tele-r1" data-tile-label="Live row 1" data-i18n-tile-label="tile.label.tele.r1">
-        <div class="motor-cell" data-cell-id="motor-rear-t">
-          <div class="mc-title" data-i18n="dash.motor.rear.title">REAR</div>
-          <div class="mc-main"><span id="mr-temp">-</span></div>
-          <div class="mc-unit" data-i18n="dash.motor.rear.temp.unit">°C</div>
-        </div>
-        <div class="motor-cell" data-cell-id="motor-front-t">
-          <div class="mc-title" data-i18n="dash.motor.front.title">FRONT</div>
-          <div class="mc-main"><span id="mf-temp">-</span></div>
-          <div class="mc-unit" data-i18n="dash.motor.front.temp.unit">°C</div>
-        </div>
-        <div class="motor-cell" data-cell-id="motor-power">
-          <div class="mc-title" data-i18n="dash.motor.power.title">POWER</div>
-          <div class="mc-main"><span id="m-power">-</span></div>
-          <div class="mc-unit" data-i18n="dash.tele.power.unit">W</div>
-        </div>
-      </div>
-      <div id="motor-row-2" data-tile-id="tile-tele-r2" data-tile-label="Live row 2" data-i18n-tile-label="tile.label.tele.r2">
-        <div class="motor-cell" data-cell-id="motor-rear-a">
-          <div class="mc-title" data-i18n="dash.motor.rear.title">REAR</div>
-          <div class="mc-main"><span id="mr-cur">-</span></div>
-          <div class="mc-unit" data-i18n="dash.motor.rear.current.unit">A</div>
-        </div>
-        <div class="motor-cell" data-cell-id="motor-front-a">
-          <div class="mc-title" data-i18n="dash.motor.front.title">FRONT</div>
-          <div class="mc-main"><span id="mf-cur">-</span></div>
-          <div class="mc-unit" data-i18n="dash.motor.front.current.unit">A</div>
-        </div>
-        <div class="motor-cell" data-cell-id="motor-total-a">
-          <div class="mc-title" data-i18n="dash.motor.current.total.title">TOTAL</div>
-          <div class="mc-main"><span id="m-total-cur">-</span></div>
-          <div class="mc-unit" data-i18n="dash.motor.rear.current.unit">A</div>
-        </div>
-      </div>
-      <div id="motor-row-3" data-tile-id="tile-tele-r3" data-tile-label="Live row 3" data-i18n-tile-label="tile.label.tele.r3">
-        <div class="motor-cell" data-cell-id="tele-volt">
-          <div class="mc-title" data-i18n="dash.tele.volt.title">VOLTAGE</div>
-          <div class="mc-main"><span id="tl-volt">-</span></div>
-          <div class="mc-unit" data-i18n="dash.tele.volt.unit">V</div>
-        </div>
-        <div class="motor-cell" data-cell-id="tele-soh">
-          <div class="mc-title" data-i18n="dash.tele.soh.title">SOH</div>
-          <div class="mc-main"><span id="tl-soh">-</span></div>
-          <div class="mc-unit" data-i18n="dash.tele.soh.unit">%</div>
-        </div>
-        <div class="motor-cell" data-cell-id="tele-temp">
-          <div class="mc-title" data-i18n="dash.tele.temp.title">BATTERY</div>
-          <div class="mc-main"><span id="tl-temp">-</span></div>
-          <div class="mc-unit" data-i18n="dash.tele.temp.unit">°C</div>
-        </div>
-      </div>
-      <div id="motor-row-4" data-tile-id="tile-tele-r4" data-tile-label="Live row 4" data-i18n-tile-label="tile.label.tele.r4">
-        <div class="motor-cell" data-cell-id="tele-range">
-          <div class="mc-title" data-i18n="dash.tele.range.title">RANGE</div>
-          <div class="mc-main"><span id="tl-range">-</span></div>
-          <div class="mc-unit" data-i18n="dash.tele.range.unit">km</div>
-        </div>
-        <div class="motor-cell" data-cell-id="tele-odo">
-          <div class="mc-title" data-i18n="dash.tele.odo.title">TOTAL</div>
-          <div class="mc-main"><span id="tl-odo">-</span></div>
-          <div class="mc-unit" data-i18n="dash.tele.odo.unit">km</div>
-        </div>
-        <div class="motor-cell" data-cell-id="tele-trip">
-          <div class="mc-title" data-i18n="dash.tele.trip.title">TRIP</div>
-          <div class="mc-main"><span id="tl-trip">-</span></div>
-          <div class="mc-unit" data-i18n="dash.tele.odo.unit">km</div>
-        </div>
-      </div>
-      <div id="motor-row-5" data-tile-id="tile-tele-r5" data-tile-label="Live row 5" data-i18n-tile-label="tile.label.tele.r5">
-        <div class="motor-cell" data-cell-id="tele-energy">
-          <div class="mc-title" data-i18n="dash.tele.energy.title">ENERGY</div>
-          <div class="mc-main"><span id="tl-energy">-</span></div>
-          <div class="mc-unit" data-i18n="dash.tele.energy.unit">Wh</div>
-        </div>
-        <div class="motor-cell" data-cell-id="tele-lock">
-          <div class="mc-title" data-i18n="dash.tele.lock.title">LOCK</div>
-          <div class="mc-main"><span id="tl-lock">-</span></div>
-          <div class="mc-unit" data-i18n="dash.tele.lock.unit">state</div>
-        </div>
-      </div>
-    </div>
+    <div id="tele-fold"></div>
     </div><!-- end #motors-section -->
 
     <!-- Quick controls: empty skin container; the driver fills it via renderQuickControls(). -->
@@ -1665,6 +1566,7 @@ function parseBLE(raw) {
       top:      Array.isArray(d.top) ? d.top : [],
       bottom:   Array.isArray(d.bottom) ? d.bottom : [],
       vcuUnlock: (typeof d.vcuUnlock === 'number' ? d.vcuUnlock : -1),   // 0=LOCKED, 1=UNLOCKED, -1=unknown (drives the km/h-VCU tile colour)
+      _keys:    Object.keys(d),   // raw driver keys -> presence availability for the Live-Values cells
       ts:       d.ts
     };
   } catch(e) { return null; }
@@ -1997,13 +1899,17 @@ function updateBLEUI(data) {
   setTxt('dg-avg', `${convSpeed(data.avgSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
   setTxt('dg-max', `${convSpeed(data.maxSpeed)} ${state.useMph ? 'mph' : 'km/h'}`);
 
+  // Live-Values cells: generic fill over the driver catalog (base text + presence '-'); the per-cell
+  // extras below (gear tag, signed/coloured current, motor-temp colours) then override their cells.
+  if (state.bleConnected && data._keys) data._keys.forEach(function (k) { _teleSeen[k] = true; });
+  TR_TELE_CATALOG.forEach(function(e) { setTxt(e.valId, (data._keys && data._keys.indexOf(e.dataKey) < 0) ? '-' : e.fmt(data)); });
+  try { applyTeleAvailability(); } catch(e) {}
+
   // Hero
-  setTxt('soc-val', Math.round(data.soc));
   const bit = (v) => v === true || v === 1 || v === '1';
   const isPark = bit(data.park);
   // Park takes over the gear number itself rather than adding a small marker beneath it, so the
   // state is readable at a glance while riding.
-  setTxt('gear-val', isPark ? t('msg.gear.tag.park') : data.gear);
   const gt = gearTag(false, Array.isArray(data.systemStatus) && bit(data.systemStatus[5]));
   const gearTagEl = document.getElementById('gear-tag');
   if (gearTagEl) {
@@ -2025,20 +1931,9 @@ function updateBLEUI(data) {
   }
   try { showEl(document.getElementById('bmini-fw-banner'), bminiFwBlocked()); } catch (e) {}   // Blade Mini on non-3.4.6: needs 3.4.6 to unlock
 
-  // Live values rows 1-2 (dual motor: temps + power, then currents)
-  setTxt('mr-temp', data.rTemp.toFixed(0));
-  setTxt('mf-temp', data.fTemp.toFixed(0));
-  setTxt('mr-cur', data.rearCurrent.toFixed(1));
-  setTxt('mf-cur', data.frontCurrent.toFixed(1));
+  // Live-Values motor-temp colours (cell text is set by the generic catalog fill above).
   const mrt = document.getElementById('mr-temp'); if (mrt) mrt.style.color = tempColor(data.rTemp);
   const mft = document.getElementById('mf-temp'); if (mft) mft.style.color = tempColor(data.fTemp);
-  setTxt('m-power', isNaN(data.power) ? '-' : data.power.toFixed(2));   // data.power is kW; fold unit is W
-  setTxt('m-total-cur', (data.rearCurrent + data.frontCurrent).toFixed(1));
-  // Live values rows 3-4: same sources as the below-fold grid, raw (units live in the cell).
-  setTxt('tl-volt', data.volt.toFixed(1));
-  setTxt('tl-soh', Math.round(data.soh));
-  setTxt('tl-odo', Math.round(convDist(data.totalMile)));
-  setTxt('tl-trip', convDist(data.singleMile).toFixed(1));
 
   // Grid
   setTxt('dg-volt', `${data.volt.toFixed(1)} V`);
@@ -2099,6 +1994,8 @@ function onBLEConnectionChange(nowConnected) {
   } else {
     // BLE dropped (manual disconnect or the scooter powered off - same thing): always finalize
     // the ride and stop GPS.
+    _teleSeen = {};   // forget which Live-Values keys were seen, so the fold shows the full set again
+    try { applyTeleAvailability(); } catch(e) {}
     finalizeRide();
     stopGPSWatch();
     state.armDistM = 0;
@@ -4011,6 +3908,8 @@ function renderTileEditor(themeName) {
       var tile = tiles.find(function(t) { return t.dataset.tileId === id; });
       if (tile && foldMap[id]) _addTileRow(id, tile);
     });
+    // Live-Values picker: above-fold value slots, between the fixed fold tiles and the scroll area.
+    var _lteBox = document.createElement('div'); el.appendChild(_lteBox); try { renderLiveTileEditor(themeName, _lteBox); } catch(e) {}
     var hdr2 = document.createElement('div');
     hdr2.className = 'theme-section-title';
     hdr2.textContent = t('theme.editor.section.scroll');
@@ -4113,14 +4012,21 @@ function _saveTileEditorState(themeName, el, order) {
 /* Max buttons = all buttons the model's quick-grid offers (no hardcoded cap). */
 var _BTN_ROW_DEFAULT = ['btn-mm-front', 'btn-mm-rear', 'btn-mm-both', 'btn-mm-smart', 'btn-dq-kick', 'btn-dq-abs', 'btn-dq-eco', 'btn-dq-cruise'];
 
+// Per-theme quick-button cap: a theme's CSS sets --lb-fold-buttons (Carbon/Lambo = 8 for the gauge
+// layout); Default = no practical cap. activateTheme reloads, so the value is live at load.
+function _btnLimit() {
+  try { var v = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--lb-fold-buttons'), 10); if (v >= 1 && v <= 24) return v; } catch(e) {}
+  return 24;
+}
+
 function _getBtnRowConfig(theme) {
   var key = 'lb_btn_row_' + (theme || 'Default');
   try {
     var s = (typeof storage !== 'undefined' ? storage.get(key) : null);
     var parsed = JSON.parse(s || 'null');
-    if (Array.isArray(parsed)) return parsed;
+    if (Array.isArray(parsed)) return parsed.slice(0, _btnLimit());
   } catch(e) {}
-  return _BTN_ROW_DEFAULT.slice();
+  return _BTN_ROW_DEFAULT.slice(0, _btnLimit());
 }
 
 function _saveBtnRowConfig(theme, cfg) {
@@ -4163,7 +4069,7 @@ function applyButtonRowConfig(theme) {
    An under-filled row, or a wrapping one (its partial last row), is switched to flex so justify-content
    centres / left- / right-aligns it while each cell keeps its full-row column width. Theme-agnostic:
    the same row ids exist in every theme, so no theme zip is touched. */
-var _ALIGN_ROWS_SEL = '#scroller #speed-row, #scroller #hero-row, #scroller #motor-row, #scroller #motor-row-2, #scroller #motor-row-3, #scroller #quick-grid, #scroller .dg-row';
+var _ALIGN_ROWS_SEL = '#scroller #speed-row, #scroller #hero-row, #scroller #motor-row, #scroller #motor-row-2, #scroller #motor-row-3, #scroller #quick-grid, #scroller .dg-row:not(#dg-stop-row)';
 function _rowAlignKey(row) {
   if (row.id) return row.id;
   var c = row.querySelector('[id]');
@@ -4215,7 +4121,7 @@ function _rowAlignLabel(row) {
     if (dl && dl.textContent.trim()) parts.push(dl.textContent.trim());
   });
   if (parts.length) return parts.slice(0, 3).join(' / ');
-  return row.id || t('theme.rowalign.row');
+  return t('theme.rowalign.row');
 }
 // Row-alignment editor: one selector per row (Centre default / Left / Right / Fill), saved per theme.
 function renderRowAlignEditor(theme) {
@@ -4260,7 +4166,7 @@ function renderButtonRowEditor(theme) {
   allBtns.forEach(function(b) {
     labelMap[b.dataset.btnId] = b.dataset.bbLabel || b.textContent.trim();
   });
-  var maxSlots = allBtns.length;
+  var maxSlots = Math.min(allBtns.length, _btnLimit());
 
   el.innerHTML = '';
   var hdr = document.createElement('div');
@@ -4661,36 +4567,157 @@ function reattachQuickGridHandlers() {
   });
 }
 
-/* Apply saved tile visibility + order to all [data-tile-id] elements in #scroller. */
-/* Default-fold availability. The Live-values grid is a shared superset across apps; this app fills
-   only the ids in DATA_SLOTS. Hide the cells it has no data for, give each row a visible-cell count
-   (CSS sizes 1-/2-cell rows), collapse empty rows and the whole section, so the pre-connect frame
-   matches what will actually populate. Custom themes inject their own fold, so this runs for Default only. */
-var DATA_SLOTS = ['mr-temp','mf-temp','m-power','mr-cur','mf-cur','m-total-cur',
-  'tl-volt','tl-soh','tl-odo','tl-trip'];
+/* Driver value catalog: every Live-Values tile the Teverun driver can fill. The fold is a per-theme,
+   user-curated subset of these (managed in the Theme manager, like the quick buttons). Each cell keeps
+   tr's existing value-id + i18n + exact formatting, so updateBLEUI's generic fill reproduces the old
+   fold. dataKey = the raw live-data key whose presence trims the cell to the connected model. */
+var TR_TELE_CATALOG = [
+  { cat:'soc',     hero:true, cellId:'hero-battery', valId:'soc-val', lb:'soc', dataKey:'soc', label:'dash.hero.battery.unit', pick:'dash.pick.soc', tileId:'tile-hero-soc', tileLabel:'tile.label.battery', tileEn:'Battery %', fmt:function(d){ return isNaN(d.soc)?'-':String(Math.round(d.soc)); } },
+  { cat:'gear',    hero:true, tag:true, cellId:'hero-gear', valId:'gear-val', lb:'gear', dataKey:'gear', label:'dash.hero.gear.label', pick:'dash.pick.gear', tileId:'tile-hero-gear', tileLabel:'tile.label.gear', tileEn:'Gear', fmt:function(d){ return d.park ? t('msg.gear.tag.park') : String(d.gear); } },
+  { cat:'current', hero:true, elemId:'current-cell', cellId:'hero-current', valId:'current-val', lb:'current', dataKey:'current', label:'dash.hero.current.unit', pick:'dash.pick.current', tileId:'tile-hero-cur', tileLabel:'tile.label.current', tileEn:'A Current', fmt:function(d){ var c=d.current; if(c==null||!isFinite(c))return '-'; var s=-c; return s>0?('+'+s.toFixed(1)):s.toFixed(1); } },
+  { cat:'voltage', cellId:'tele-volt', valId:'tl-volt', lb:'volt', dataKey:'volt', title:'dash.tele.volt.title', unit:'dash.tele.volt.unit', pick:'dash.pick.volt', tileId:'tile-tele-volt', tileLabel:'dash.tele.volt.title', tileEn:'Voltage', fmt:function(d){ return isNaN(d.volt)?'-':d.volt.toFixed(1); } },
+  { cat:'soh',     cellId:'tele-soh', valId:'tl-soh', lb:'soh', dataKey:'soh', title:'dash.tele.soh.title', unit:'dash.tele.soh.unit', pick:'dash.pick.soh', tileId:'tile-tele-soh', tileLabel:'dash.tele.soh.title', tileEn:'SOH', fmt:function(d){ return isNaN(d.soh)?'-':String(Math.round(d.soh)); } },
+  { cat:'power',   cellId:'motor-power', valId:'m-power', lb:'power', dataKey:'power', title:'dash.motor.power.title', unit:'dash.tele.power.unit', pick:'dash.pick.power', tileId:'tile-tele-power', tileLabel:'dash.motor.power.title', tileEn:'Power', fmt:function(d){ return isNaN(d.power)?'-':d.power.toFixed(2); } },
+  { cat:'rtemp',   cellId:'motor-rear-t', valId:'mr-temp', lb:'rtemp', dataKey:'rTemp', title:'dash.motor.rear.title', unit:'dash.motor.rear.temp.unit', pick:'dash.pick.rtemp', tileId:'tile-tele-rtemp', tileLabel:'dash.pick.rtemp', tileEn:'Rear temp', fmt:function(d){ return isNaN(d.rTemp)?'-':d.rTemp.toFixed(0); } },
+  { cat:'ftemp',   cellId:'motor-front-t', valId:'mf-temp', lb:'ftemp', dataKey:'fTemp', title:'dash.motor.front.title', unit:'dash.motor.front.temp.unit', pick:'dash.pick.ftemp', tileId:'tile-tele-ftemp', tileLabel:'dash.pick.ftemp', tileEn:'Front temp', fmt:function(d){ return isNaN(d.fTemp)?'-':d.fTemp.toFixed(0); } },
+  { cat:'rcur',    cellId:'motor-rear-a', valId:'mr-cur', lb:'rcur', dataKey:'rearCurrent', title:'dash.motor.rear.title', unit:'dash.motor.rear.current.unit', pick:'dash.pick.rcur', tileId:'tile-tele-rcur', tileLabel:'dash.pick.rcur', tileEn:'Rear cur', fmt:function(d){ return isNaN(d.rearCurrent)?'-':d.rearCurrent.toFixed(1); } },
+  { cat:'fcur',    cellId:'motor-front-a', valId:'mf-cur', lb:'fcur', dataKey:'frontCurrent', title:'dash.motor.front.title', unit:'dash.motor.front.current.unit', pick:'dash.pick.fcur', tileId:'tile-tele-fcur', tileLabel:'dash.pick.fcur', tileEn:'Front cur', fmt:function(d){ return isNaN(d.frontCurrent)?'-':d.frontCurrent.toFixed(1); } },
+  { cat:'total',   cellId:'tele-odo', valId:'tl-odo', lb:'total', dataKey:'totalMile', title:'dash.tele.odo.title', unit:'dash.tele.odo.unit', pick:'dash.pick.total', tileId:'tile-tele-odo', tileLabel:'dash.tele.odo.title', tileEn:'Total', fmt:function(d){ return isNaN(d.totalMile)?'-':String(Math.round(convDist(d.totalMile))); } },
+  { cat:'trip',    cellId:'tele-trip', valId:'tl-trip', lb:'trip', dataKey:'singleMile', title:'dash.tele.trip.title', unit:'dash.tele.odo.unit', pick:'dash.pick.trip', tileId:'tile-tele-trip', tileLabel:'dash.tele.trip.title', tileEn:'Trip', fmt:function(d){ return isNaN(d.singleMile)?'-':convDist(d.singleMile).toFixed(1); } },
+  { cat:'tcur',    cellId:'motor-total-a', valId:'m-total-cur', lb:'tcur', dataKey:'rearCurrent', title:'dash.motor.current.total.title', unit:'dash.motor.rear.current.unit', pick:'dash.pick.tcur', tileId:'tile-tele-tcur', tileLabel:'dash.pick.tcur', tileEn:'Total cur', fmt:function(d){ return (isNaN(d.rearCurrent)&&isNaN(d.frontCurrent))?'-':((d.rearCurrent||0)+(d.frontCurrent||0)).toFixed(1); } }
+];
+// Per-theme fold capacity: a theme's CSS sets --lb-fold-tiles (gauge themes = 9); Default falls back
+// to 12 (the 2-3-3-3-3 grid). activateTheme reloads, so the value is live at load.
+function _foldLimit() { try { var v = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--lb-fold-tiles'), 10); if (v >= 1 && v <= 14) return v; } catch(e) {} return 12; }
+function _foldDefault() { return TR_TELE_CATALOG.map(function(c){ return c.cat; }).slice(0, _foldLimit()); }
+function _catById(id) { for (var i = 0; i < TR_TELE_CATALOG.length; i++) if (TR_TELE_CATALOG[i].cat === id) return TR_TELE_CATALOG[i]; return null; }
+function _getFoldValues(theme) {
+  var key = 'lb_fold_values_' + (theme || 'Default');
+  try { var p = JSON.parse((typeof storage !== 'undefined' ? storage.get(key) : null) || 'null');
+    if (Array.isArray(p)) { var f = p.filter(_catById); if (f.length) return f.slice(0, _foldLimit()); } } catch(e) {}
+  return _foldDefault();
+}
+function _saveFoldValues(theme, arr) {
+  var key = 'lb_fold_values_' + (theme || 'Default');
+  if (typeof storage !== 'undefined') { storage.set(key, JSON.stringify(arr.slice(0, _foldLimit()))); storage.set('lb_fold_userset_' + (theme || 'Default'), '1'); }
+}
+function _foldUserset(theme) { try { return (typeof storage !== 'undefined' ? storage.get('lb_fold_userset_' + (theme || 'Default')) : null) === '1'; } catch(e) { return false; } }
 
-function applyDataSlots() {
-  if (_themeActive && _themeActive !== 'Default') return;
-  var sect = document.getElementById('motors-section');
-  if (!sect) return;
-  var area = document.getElementById('motor-area');
-  if (area) area.classList.add('lb-packed');
-  var anyRow = false;
-  ['motor-row','motor-row-2','motor-row-3','motor-row-4','motor-row-5'].forEach(function(rid) {
-    var row = document.getElementById(rid);
-    if (!row) return;
-    var vis = 0;
-    row.querySelectorAll('.motor-cell').forEach(function(cell) {
-      var span = cell.querySelector('.mc-main span[id]');
-      var ok = !!(span && DATA_SLOTS.indexOf(span.id) !== -1);
-      cell.classList.toggle('slot-hidden', !ok);
-      if (ok) vis++;
-    });
-    row.setAttribute('data-vis', String(vis));
-    row.classList.toggle('row-hidden', vis === 0);
-    if (vis > 0) anyRow = true;
+/* Presence availability: a cell shows until connected, then only once its raw live key has appeared.
+   A user-curated fold keeps every chosen tile (shows '-' when absent). _teleSeen is reset on disconnect. */
+var _teleSeen = {};
+function applyTeleAvailability() {
+  var userset = _foldUserset(_themeActive || 'Default');
+  var fold = document.getElementById('tele-fold');
+  if (fold) fold.querySelectorAll('[data-cell-id]').forEach(function(cell) {
+    var key = cell.dataset.teleKey;
+    cell.classList.toggle('is-hidden', !(userset || !state.bleConnected || !key || _teleSeen[key]));
   });
-  sect.classList.toggle('sect-hidden', !anyRow);
+  var sect = document.getElementById('motors-section');
+  if (sect && fold) sect.classList.toggle('sect-hidden', !fold.querySelector('[data-cell-id]:not(.is-hidden)'));
+  try { scheduleFitFold(); } catch(e) {}
+}
+
+/* Build one cell node (hero = value+label; motor = title+value+unit), reproducing tr's standard DOM. */
+function _buildTeleCell(c) {
+  var cell = document.createElement('div');
+  cell.className = c.hero ? 'hero-cell' : 'motor-cell';
+  if (c.elemId) cell.id = c.elemId;
+  cell.dataset.cellId = c.cellId;
+  cell.dataset.teleKey = c.dataKey;
+  cell.dataset.tileId = c.tileId;
+  cell.dataset.tileNoEditor = '1';   // managed by the dropdown picker, not the checkbox tile editor
+  cell.dataset.tileLabel = c.tileEn;
+  cell.setAttribute('data-i18n-tile-label', c.tileLabel);
+  if (c.hero) {
+    var hv = document.createElement('div'); hv.className = 'hc-val'; hv.id = c.valId; hv.setAttribute('data-lb', c.lb); hv.textContent = '-';
+    var hu = document.createElement('div'); hu.className = 'hc-unit'; hu.setAttribute('data-i18n', c.label); hu.textContent = t(c.label);
+    cell.appendChild(hv); cell.appendChild(hu);
+    if (c.tag) { var tg = document.createElement('div'); tg.className = 'hc-tag is-hidden'; tg.id = 'gear-tag'; cell.appendChild(tg); }
+  } else {
+    var mt = document.createElement('div'); mt.className = 'mc-title'; mt.setAttribute('data-i18n', c.title); mt.textContent = t(c.title);
+    var mm = document.createElement('div'); mm.className = 'mc-main';
+    var sp = document.createElement('span'); sp.id = c.valId; sp.setAttribute('data-lb', c.lb); sp.textContent = '-'; mm.appendChild(sp);
+    var mu = document.createElement('div'); mu.className = 'mc-unit'; mu.setAttribute('data-i18n', c.unit); mu.textContent = t(c.unit);
+    cell.appendChild(mt); cell.appendChild(mm); cell.appendChild(mu);
+  }
+  return cell;
+}
+/* Render the driver's telemetry cells into #tele-fold (or a theme's own empty #tele-fold). */
+function renderTelemetryCells(container) {
+  if (!container) container = document.getElementById('tele-fold');
+  if (!container) return;
+  container.innerHTML = '';
+  _getFoldValues(_themeActive || 'Default').forEach(function(id) { var c = _catById(id); if (c) container.appendChild(_buildTeleCell(c)); });
+  try { initCellDrag(); } catch (e) {}
+  try { applyQuickCellOrder(); } catch (e) {}
+  try { applyTeleAvailability(); } catch (e) {}
+}
+/* Re-render the fold cells from the saved list, re-fill from the last live data, re-apply presence. */
+function _reflectFold(theme) {
+  renderTelemetryCells();
+  try { var d = parseBLE(typeof storage !== 'undefined' ? storage.get('lb_live_data') : null); if (d) TR_TELE_CATALOG.forEach(function(e) { setTxt(e.valId, e.fmt(d)); }); } catch(e) {}
+  try { applyTeleAvailability(); } catch(e) {}
+  try { scheduleFitFold(); } catch(e) {}
+}
+/* Live-tile editor: pick which driver values fill the fold, per theme (modeled on renderButtonRowEditor). */
+function renderLiveTileEditor(theme, target) {
+  var el = target || document.getElementById('live-tile-editor');
+  if (!el) return;
+  el.style.display = 'block'; el.innerHTML = '';
+  var hdr = document.createElement('div'); hdr.className = 'theme-section-title'; hdr.textContent = t('theme.livetiles.section'); el.appendChild(hdr);
+  var labelOf = function(c) { return t(c.pick || (c.hero ? c.label : c.title)); };
+  function _rebuild() {
+    el.querySelectorAll('.lt-slot-row, .lt-slot-add').forEach(function(r) { r.remove(); });
+    var cfg = _getFoldValues(theme);
+    cfg.forEach(function(id, idx) {
+      var c = _catById(id); if (!c) return;
+      var row = document.createElement('div'); row.className = 'tile-editor-row btn-slot-row lt-slot-row'; row.dataset.id = id;
+      var handle = document.createElement('span'); handle.className = 'tile-drag-handle'; handle.textContent = '≡'; handle.setAttribute('aria-label', t('theme.drag.handle.aria'));
+      var sel = document.createElement('select'); sel.className = 'theme-sel lt-slot-sel'; sel.setAttribute('aria-label', t('theme.livetiles.pick.aria'));
+      TR_TELE_CATALOG.forEach(function(e) { var o = document.createElement('option'); o.value = e.cat; o.textContent = labelOf(e); sel.appendChild(o); });
+      sel.value = id;
+      var del = document.createElement('button'); del.type = 'button'; del.className = 'btn-slot-del'; del.textContent = '×';
+      del.addEventListener('click', function() { var cc = _getFoldValues(theme); cc.splice(idx, 1); _saveFoldValues(theme, cc); _reflectFold(theme); _rebuild(); });
+      sel.addEventListener('change', function(ev) { ev.stopPropagation(); var cc = _getFoldValues(theme); var nv = sel.value, j = cc.indexOf(nv); if (j >= 0 && j !== idx) cc[j] = cc[idx]; cc[idx] = nv; _saveFoldValues(theme, cc); _reflectFold(theme); _rebuild(); });
+      sel.addEventListener('touchstart', function(ev) { ev.stopPropagation(); }, { passive: true });
+      row.appendChild(handle); row.appendChild(sel); row.appendChild(del); el.appendChild(row);
+      _initLtSlotDrag(handle, row, el, theme);
+    });
+    var used = _getFoldValues(theme);
+    if (used.length < _foldLimit()) {
+      var addRow = document.createElement('div'); addRow.className = 'tile-editor-row btn-slot-add lt-slot-add';
+      var addSel = document.createElement('select'); addSel.className = 'theme-sel';
+      var ph = document.createElement('option'); ph.value = ''; ph.textContent = t('theme.editor.add.placeholder'); addSel.appendChild(ph);
+      TR_TELE_CATALOG.forEach(function(e) { if (used.indexOf(e.cat) < 0) { var o = document.createElement('option'); o.value = e.cat; o.textContent = labelOf(e); addSel.appendChild(o); } });
+      addSel.addEventListener('change', function() { if (!addSel.value) return; var cc = _getFoldValues(theme); if (cc.indexOf(addSel.value) < 0 && cc.length < _foldLimit()) { cc.push(addSel.value); _saveFoldValues(theme, cc); _reflectFold(theme); _rebuild(); } addSel.value = ''; });
+      addRow.appendChild(addSel); el.appendChild(addRow);
+    }
+  }
+  _rebuild();
+}
+/* Drag-reorder for Live-tile slots (keyed on the fold list). */
+function _initLtSlotDrag(handle, row, listEl, theme) {
+  var _edTarget = null;
+  handle.addEventListener('touchstart', function(e) { e.stopPropagation(); row.classList.add('tile-drag-active'); document.addEventListener('touchmove', onMove, { passive: false }); document.addEventListener('touchend', onEnd, { once: true }); }, { passive: true });
+  function onMove(e) {
+    e.preventDefault(); var y = e.touches[0].clientY;
+    var rows = Array.from(listEl.querySelectorAll('.lt-slot-row')).filter(function(r) { return r !== row; });
+    rows.forEach(function(r) { r.classList.remove('tile-drop-above', 'tile-drop-below'); });
+    var best = null, bd = Infinity;
+    rows.forEach(function(r) { var rc = r.getBoundingClientRect(); var mid = rc.top + rc.height / 2; var d = Math.abs(y - mid); if (d < bd) { bd = d; best = { el: r, above: y < mid }; } });
+    if (best) best.el.classList.add(best.above ? 'tile-drop-above' : 'tile-drop-below'); _edTarget = best;
+  }
+  function onEnd() {
+    row.classList.remove('tile-drag-active'); document.removeEventListener('touchmove', onMove);
+    listEl.querySelectorAll('.tile-drop-above, .tile-drop-below').forEach(function(r) { r.classList.remove('tile-drop-above', 'tile-drop-below'); });
+    if (_edTarget) {
+      var id = row.dataset.id, targetId = _edTarget.el.dataset.id;
+      var cfg = _getFoldValues(theme); var i = cfg.indexOf(id), ti = cfg.indexOf(targetId);
+      if (i >= 0 && ti >= 0 && i !== ti) { cfg.splice(i, 1); var ni = cfg.indexOf(targetId); _edTarget.above ? cfg.splice(ni, 0, id) : cfg.splice(ni + 1, 0, id); _saveFoldValues(theme, cfg); _reflectFold(theme); renderLiveTileEditor(theme, listEl); }
+    }
+    _edTarget = null;
+  }
 }
 
 function applyTileConfig() {
@@ -4742,7 +4769,7 @@ function applyTileConfig() {
   }
   try { applyRowAlign(); } catch(e3) {}
   try { applyUserBg(); } catch(e4) {}
-  try { applyDataSlots(); } catch(e5) {}   // Default fold: hide cells/rows this app has no data for
+  try { applyTeleAvailability(); } catch(e5) {}   // Default fold: trim Live-Values cells to the connected model
   initTileDrag();
   try { scheduleFitFold(); } catch(e2) {}
 }
@@ -4884,7 +4911,7 @@ function _saveTileOrder() {
 
 /* ── Individual card drag (hero-cell / motor-cell via data-cell-id) ────────── */
 var _cellDragEl = null, _cellDropTarget = null, _cellLongTimer = null;
-var _CELL_ROWS = ['hero-row', 'motor-row', 'motor-row-2'];
+var _CELL_ROWS = ['tele-fold'];
 
 function applyQuickCellOrder() {
   var stored;
@@ -5533,6 +5560,7 @@ function initActiveTheme() {
           _cleanPoolAfterInjection();
           reattachSpeedUnlock();
           renderQuickControls();   // the injected theme's #quick-grid is an empty skin; the driver fills it
+          renderTelemetryCells();  // likewise the theme's empty #tele-fold is filled by the driver
           // Re-run the i18n pass so data-i18n attributes in the injected HTML are translated.
           // applyLang() runs before initActiveTheme() at startup so the theme HTML would
           // otherwise miss the translation pass entirely.
@@ -7091,6 +7119,7 @@ function wireEvents() {
   // Build the quick controls from the driver set (TR_QUICK_CONTROLS) and wire them. The old hand-written
   // buttons are gone; renderQuickControls() creates identical markup and reattaches the handlers by selector.
   renderQuickControls();
+  renderTelemetryCells();  // build the driver's Live-Values cells into #tele-fold (Default fold)
 
   // Hidden gesture: triple-tap the VCU speed tile to toggle the FIN speed lock (add/remove "DE").
   // Wire speed-unlock (triple-tap) to speed drums - check DOM first, then pool (for custom themes)

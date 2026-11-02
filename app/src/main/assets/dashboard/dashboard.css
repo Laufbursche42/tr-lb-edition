@@ -461,6 +461,15 @@ html[data-theme-loading] #scroller { visibility: hidden; }
 #motor-area.lb-packed .motor-cell { flex: 0 1 calc((100% - 2 * var(--gap)) / 3); }
 #motor-area .motor-cell.slot-hidden { display: none; }
 #motor-area .row-hidden { display: none; }
+
+/* Driver-rendered Live-Values grid (#tele-fold): centred wrapping 3-column flow; a partial last row
+   centres. Same contract in a theme's own empty #tele-fold, so the skin stays manufacturer-neutral. */
+#tele-fold { display: flex; flex-direction: row; flex-wrap: wrap; gap: var(--gap); justify-content: center; align-content: start; }
+#tele-fold > .hero-cell, #tele-fold > .motor-cell { flex: 0 1 calc((100% - 2 * var(--gap)) / 3); overflow: hidden; }
+#tele-fold .hero-cell.is-hidden, #tele-fold .motor-cell.is-hidden { display: none; }
+/* In the packed grid the hero value takes the motor-value size and long words clip rather than spill. */
+#tele-fold .hc-val { font-size: var(--sz-hero-val, clamp(22px, 6vw, 30px)); }
+#tele-fold .hc-val, #tele-fold .mc-main { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #motors-section.sect-hidden { display: none; }
 /* Unified quick-action grid: motor-mode + drive-mode buttons, max 4 visible, configurable in Settings. */
 #quick-grid {
