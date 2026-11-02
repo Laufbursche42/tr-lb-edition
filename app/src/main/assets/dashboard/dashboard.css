@@ -198,7 +198,7 @@ html[data-theme-loading] #scroller { visibility: hidden; }
 
 /* ── Hero Metrics ──────────────────────────────────────────── */
 /* Hero cells and motor cells are the same kind of tile row, so they share one grid. */
-#hero-row, #motor-row, #motor-row-2 {
+#hero-row, #motor-row, #motor-row-2, #motor-row-3, #motor-row-4 {
   display: grid; grid-template-columns: 1fr 1fr 1fr;
   gap: var(--gap);
 }
@@ -452,8 +452,15 @@ html[data-theme-loading] #scroller { visibility: hidden; }
 #motor-row-2 .mc-main  { font-size: var(--sz-m2-mid, clamp(22px, 7vw, 30px)); }
 #motor-row-2 .mc-unit  { font-size: var(--sz-m2-bot, var(--fs-sm)); }
 
-/* Two stacked tile rows: temperatures and power above, currents below. */
+/* Stacked tile rows (Live values): temps+power, currents, then the battery/distance superset rows. */
 #motor-area { display: flex; flex-direction: column; gap: var(--gap); }
+/* Default-fold availability (applyDataSlots): hide cells with no data, and let a row's column count
+   follow its visible-cell count so 1- and 2-cell rows stay full-width. Empty rows/section collapse. */
+#motor-area .motor-cell.slot-hidden { display: none; }
+#motor-area [data-vis="2"] { grid-template-columns: 1fr 1fr; }
+#motor-area [data-vis="1"] { grid-template-columns: 1fr; }
+#motor-area .row-hidden { display: none; }
+#motors-section.sect-hidden { display: none; }
 /* Unified quick-action grid: motor-mode + drive-mode buttons, max 4 visible, configurable in Settings. */
 #quick-grid {
   display: grid;

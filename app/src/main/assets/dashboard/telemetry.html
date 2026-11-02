@@ -91,14 +91,15 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       </div>
     </div>
 
-    <!-- Motors (dual motor: rear + front). One value per tile: the temperatures and the power in
-         the first row, the currents in the second. -->
+    <!-- Live values: shared superset grid. Rows 1-2 mirror the themed motor geometry (two 3-cell
+         rows); rows 3-4 add the battery/distance cells. The driver fills only the ids it has data
+         for (DATA_SLOTS); availability hides unfilled cells and collapses empty rows/section. -->
     <div id="motors-section" data-section-container>
-    <div class="section-hdr sub-hdr">
-      <span data-i18n="dash.motors.section">Motors</span>
+    <div class="section-hdr sub-hdr" id="tele-hdr">
+      <span data-i18n="dash.tele.section">Live values</span>
     </div>
     <div id="motor-area">
-      <div id="motor-row" data-tile-id="tile-motor-r1" data-tile-label="Motors row 1" data-i18n-tile-label="tile.label.motor.r1">
+      <div id="motor-row" data-tile-id="tile-tele-r1" data-tile-label="Live row 1" data-i18n-tile-label="tile.label.tele.r1">
         <div class="motor-cell" data-cell-id="motor-rear-t">
           <div class="mc-title" data-i18n="dash.motor.rear.title">REAR</div>
           <div class="mc-main"><span id="mr-temp">-</span></div>
@@ -112,10 +113,10 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
         <div class="motor-cell" data-cell-id="motor-power">
           <div class="mc-title" data-i18n="dash.motor.power.title">POWER</div>
           <div class="mc-main"><span id="m-power">-</span></div>
-          <div class="mc-unit" data-i18n="dash.motor.power.unit">kW</div>
+          <div class="mc-unit" data-i18n="dash.tele.power.unit">W</div>
         </div>
       </div>
-      <div id="motor-row-2" data-tile-id="tile-motor-r2" data-tile-label="Motors row 2" data-i18n-tile-label="tile.label.motor.r2">
+      <div id="motor-row-2" data-tile-id="tile-tele-r2" data-tile-label="Live row 2" data-i18n-tile-label="tile.label.tele.r2">
         <div class="motor-cell" data-cell-id="motor-rear-a">
           <div class="mc-title" data-i18n="dash.motor.rear.title">REAR</div>
           <div class="mc-main"><span id="mr-cur">-</span></div>
@@ -132,14 +133,57 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
           <div class="mc-unit" data-i18n="dash.motor.rear.current.unit">A</div>
         </div>
       </div>
+      <div id="motor-row-3" data-tile-id="tile-tele-r3" data-tile-label="Live row 3" data-i18n-tile-label="tile.label.tele.r3">
+        <div class="motor-cell" data-cell-id="tele-volt">
+          <div class="mc-title" data-i18n="dash.tele.volt.title">VOLTAGE</div>
+          <div class="mc-main"><span id="tl-volt">-</span></div>
+          <div class="mc-unit" data-i18n="dash.tele.volt.unit">V</div>
+        </div>
+        <div class="motor-cell" data-cell-id="tele-soh">
+          <div class="mc-title" data-i18n="dash.tele.soh.title">SOH</div>
+          <div class="mc-main"><span id="tl-soh">-</span></div>
+          <div class="mc-unit" data-i18n="dash.tele.soh.unit">%</div>
+        </div>
+        <div class="motor-cell" data-cell-id="tele-temp">
+          <div class="mc-title" data-i18n="dash.tele.temp.title">BATTERY</div>
+          <div class="mc-main"><span id="tl-temp">-</span></div>
+          <div class="mc-unit" data-i18n="dash.tele.temp.unit">°C</div>
+        </div>
+      </div>
+      <div id="motor-row-4" data-tile-id="tile-tele-r4" data-tile-label="Live row 4" data-i18n-tile-label="tile.label.tele.r4">
+        <div class="motor-cell" data-cell-id="tele-range">
+          <div class="mc-title" data-i18n="dash.tele.range.title">RANGE</div>
+          <div class="mc-main"><span id="tl-range">-</span></div>
+          <div class="mc-unit" data-i18n="dash.tele.range.unit">km</div>
+        </div>
+        <div class="motor-cell" data-cell-id="tele-odo">
+          <div class="mc-title" data-i18n="dash.tele.odo.title">TOTAL</div>
+          <div class="mc-main"><span id="tl-odo">-</span></div>
+          <div class="mc-unit" data-i18n="dash.tele.odo.unit">km</div>
+        </div>
+        <div class="motor-cell" data-cell-id="tele-trip">
+          <div class="mc-title" data-i18n="dash.tele.trip.title">TRIP</div>
+          <div class="mc-main"><span id="tl-trip">-</span></div>
+          <div class="mc-unit" data-i18n="dash.tele.odo.unit">km</div>
+        </div>
+      </div>
+      <div id="motor-row-5" data-tile-id="tile-tele-r5" data-tile-label="Live row 5" data-i18n-tile-label="tile.label.tele.r5">
+        <div class="motor-cell" data-cell-id="tele-energy">
+          <div class="mc-title" data-i18n="dash.tele.energy.title">ENERGY</div>
+          <div class="mc-main"><span id="tl-energy">-</span></div>
+          <div class="mc-unit" data-i18n="dash.tele.energy.unit">Wh</div>
+        </div>
+        <div class="motor-cell" data-cell-id="tele-lock">
+          <div class="mc-title" data-i18n="dash.tele.lock.title">LOCK</div>
+          <div class="mc-main"><span id="tl-lock">-</span></div>
+          <div class="mc-unit" data-i18n="dash.tele.lock.unit">state</div>
+        </div>
+      </div>
     </div>
     </div><!-- end #motors-section -->
 
-    <!-- Quick action grid: motor-mode + drive-mode buttons merged into one 8-cell grid.
-         Each button has data-btn-id so they can be individually drag-sorted between rows.
-         Greyed out (qg-disabled) until the scooter is connected. -->
     <!-- Quick controls: empty skin container; the driver fills it via renderQuickControls(). -->
-    <div id="quick-grid" class="qg-disabled" role="group" data-tile-id="quick-actions" data-tile-label="Quick Buttons" data-tile-no-editor="true"></div>
+    <div id="quick-grid" class="qg-disabled" role="group" aria-label="Function quick toggles" data-i18n-aria="dash.drive.quick.group" data-tile-id="quick-actions" data-tile-label="Quick Buttons" data-tile-no-editor="true"></div>
 
      </div>
     </div>
@@ -1889,7 +1933,8 @@ function updateBLEUI(data) {
 
   const DASH = ['ble-speed','soc-val','gear-val','current-val','dg-avg','dg-max',
     'dg-volt','dg-pole','dg-soh','dg-fb','dg-total','dg-single','dg-rssi',
-    'mr-temp','mr-cur','mf-temp','mf-cur','m-power','m-total-cur'];
+    'mr-temp','mr-cur','mf-temp','mf-cur','m-power','m-total-cur',
+    'tl-volt','tl-soh','tl-odo','tl-trip'];
 
   if (!data) {
     DASH.forEach(id => setTxt(id, '-'));
@@ -1980,15 +2025,20 @@ function updateBLEUI(data) {
   }
   try { showEl(document.getElementById('bmini-fw-banner'), bminiFwBlocked()); } catch (e) {}   // Blade Mini on non-3.4.6: needs 3.4.6 to unlock
 
-  // Motors (dual motor)
+  // Live values rows 1-2 (dual motor: temps + power, then currents)
   setTxt('mr-temp', data.rTemp.toFixed(0));
   setTxt('mf-temp', data.fTemp.toFixed(0));
   setTxt('mr-cur', data.rearCurrent.toFixed(1));
   setTxt('mf-cur', data.frontCurrent.toFixed(1));
   const mrt = document.getElementById('mr-temp'); if (mrt) mrt.style.color = tempColor(data.rTemp);
   const mft = document.getElementById('mf-temp'); if (mft) mft.style.color = tempColor(data.fTemp);
-  setTxt('m-power', data.power.toFixed(2));
+  setTxt('m-power', Math.round(data.power * 1000));   // data.power is kW; fold unit is W
   setTxt('m-total-cur', (data.rearCurrent + data.frontCurrent).toFixed(1));
+  // Live values rows 3-4: same sources as the below-fold grid, raw (units live in the cell).
+  setTxt('tl-volt', data.volt.toFixed(1));
+  setTxt('tl-soh', Math.round(data.soh));
+  setTxt('tl-odo', Math.round(convDist(data.totalMile)));
+  setTxt('tl-trip', convDist(data.singleMile).toFixed(1));
 
   // Grid
   setTxt('dg-volt', `${data.volt.toFixed(1)} V`);
@@ -4612,6 +4662,35 @@ function reattachQuickGridHandlers() {
 }
 
 /* Apply saved tile visibility + order to all [data-tile-id] elements in #scroller. */
+/* Default-fold availability. The Live-values grid is a shared superset across apps; this app fills
+   only the ids in DATA_SLOTS. Hide the cells it has no data for, give each row a visible-cell count
+   (CSS sizes 1-/2-cell rows), collapse empty rows and the whole section, so the pre-connect frame
+   matches what will actually populate. Custom themes inject their own fold, so this runs for Default only. */
+var DATA_SLOTS = ['mr-temp','mf-temp','m-power','mr-cur','mf-cur','m-total-cur',
+  'tl-volt','tl-soh','tl-odo','tl-trip'];
+
+function applyDataSlots() {
+  if (_themeActive && _themeActive !== 'Default') return;
+  var sect = document.getElementById('motors-section');
+  if (!sect) return;
+  var anyRow = false;
+  ['motor-row','motor-row-2','motor-row-3','motor-row-4','motor-row-5'].forEach(function(rid) {
+    var row = document.getElementById(rid);
+    if (!row) return;
+    var vis = 0;
+    row.querySelectorAll('.motor-cell').forEach(function(cell) {
+      var span = cell.querySelector('.mc-main span[id]');
+      var ok = !!(span && DATA_SLOTS.indexOf(span.id) !== -1);
+      cell.classList.toggle('slot-hidden', !ok);
+      if (ok) vis++;
+    });
+    row.setAttribute('data-vis', String(vis));
+    row.classList.toggle('row-hidden', vis === 0);
+    if (vis > 0) anyRow = true;
+  });
+  sect.classList.toggle('sect-hidden', !anyRow);
+}
+
 function applyTileConfig() {
   var name = _themeActive || 'Default';
   var cfg = {};
@@ -4661,6 +4740,7 @@ function applyTileConfig() {
   }
   try { applyRowAlign(); } catch(e3) {}
   try { applyUserBg(); } catch(e4) {}
+  try { applyDataSlots(); } catch(e5) {}   // Default fold: hide cells/rows this app has no data for
   initTileDrag();
   try { scheduleFitFold(); } catch(e2) {}
 }
@@ -5253,7 +5333,7 @@ function injectThemeVars() {
 }
 
 /* ── Tile Catalog ────────────────────────────────────────────────────────────
-   All 19 standard model tile concepts. Speed = ONE concept with two selectable
+   All 21 standard model tile concepts. Speed = ONE concept with two selectable
    sources (VCU / GPS) instead of two separate tiles. Used by the "Available to add"
    section in renderTileEditor for themes that don't natively include standard tiles. */
 var TILE_CATALOG = [
@@ -5266,8 +5346,10 @@ var TILE_CATALOG = [
   { id: 'tile-hero-soc',     label: 'tile.label.battery'      },
   { id: 'tile-hero-gear',    label: 'tile.label.gear'         },
   { id: 'tile-hero-cur',     label: 'tile.label.current'      },
-  { id: 'tile-motor-r1',     label: 'tile.label.motor.r1'     },
-  { id: 'tile-motor-r2',     label: 'tile.label.motor.r2'     },
+  { id: 'tile-tele-r1',      label: 'tile.label.tele.r1'      },
+  { id: 'tile-tele-r2',      label: 'tile.label.tele.r2'      },
+  { id: 'tile-tele-r3',      label: 'tile.label.tele.r3'      },
+  { id: 'tile-tele-r4',      label: 'tile.label.tele.r4'      },
   { id: 'tile-dg-speed',     label: 'tile.label.dg.speed'     },
   { id: 'tile-dg-volt',      label: 'tile.label.dg.volt'      },
   { id: 'tile-dg-soh',       label: 'tile.label.dg.soh'       },
