@@ -762,6 +762,27 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
         <div class="settings-row-left"><div class="settings-row-label" data-i18n="info.scooter.lb.firmware">Laufbursche firmware</div></div>
         <span class="note-md" id="info-hwver">-</span>
       </div>
+      <!-- Auxiliary node firmware versions (55 44 display/battery/light + 55 45 primary controllers). -->
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="info.scooter.display.fw">Display firmware</div></div>
+        <span class="note-md" id="info-disver">-</span>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="info.scooter.battery.fw">Battery firmware</div></div>
+        <span class="note-md" id="info-batfw">-</span>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="info.scooter.light.fw">Light controller firmware</div></div>
+        <span class="note-md" id="info-lcfw">-</span>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="info.scooter.front.ctrl.fw">Front controller firmware</div></div>
+        <span class="note-md" id="info-frontctrl">-</span>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="info.scooter.rear.ctrl.fw">Rear controller firmware</div></div>
+        <span class="note-md" id="info-rearctrl">-</span>
+      </div>
     </div>
 
     <!-- Ride log: opt-in local recording of the full BLE telemetry snapshot (native side owns storage). -->
@@ -3396,6 +3417,18 @@ function renderInfoPage() {
     const major = d.hwVer ? parseInt(String(d.hwVer).split('.')[0], 10) : 0;
     setTxt('info-hwver', major > 0 ? ('V' + major) : t('msg2.info.fw_build.none'));
   }
+  // Auxiliary node firmware (55 44 / 55 45). Append proType.proCode in brackets when the node reports it.
+  const verCode = (ver, pt, pc) => {
+    const v = (ver === undefined || ver === null || ver === '') ? '' : ('' + ver);
+    const code = (pt || pc) ? (pt + '.' + pc) : '';
+    if (!v) return code ? code : '-';
+    return code ? (v + ' (' + code + ')') : v;
+  };
+  setTxt('info-disver',    verCode(d.displayVer, d.disProType, d.disProCode));
+  setTxt('info-batfw',     verCode(d.batFwVer, d.batProType, d.batProCode));
+  setTxt('info-lcfw',      verCode(d.lcFwVer, d.lcProType, d.lcProCode));
+  setTxt('info-frontctrl', dash(d.frontCtrlVer));
+  setTxt('info-rearctrl',  dash(d.rearCtrlVer));
   syncBtNameEditor();
 }
 

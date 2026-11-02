@@ -103,6 +103,12 @@ final class FrameParser {
     private volatile String batteryCode = "";
     private volatile String frameNum = "";
     private String swVer = "", hwVer = "", displayVer = "";
+    // 55 44 node identity (proType/proCode) + battery-pack / light-controller fw versions
+    private int disProType, disProCode, batProType, batProCode, lcProType, lcProCode;
+    private String batFwVer = "", lcFwVer = "";
+    private boolean have44 = false;
+    // 55 45 primary rear/front motor-controller fw versions (mirror of 55 4D)
+    private String frontCtrlVer = "", rearCtrlVer = "";
 
     FrameParser(SettingsState settings) {
         this.settings = settings;
@@ -156,7 +162,7 @@ final class FrameParser {
             case 0x42: frameNum = ascii(t, 2, 18, null); break;
             case 0x43: parse43(t); break;
             case 0x44: parse44(t); break;
-            case 0x45: /* primary front/rear controller fw version - not surfaced */ break;
+            case 0x45: parse45(t); break;   // primary rear/front controller fw versions
             case 0x4D: parse4d(t); break;   // Tetra 2nd-axle controller fw versions
             case 0x79: parse79(t); break;   // Tetra 2nd-axle control status
             case 0x7A: parse7a(t); break;   // Tetra 2nd-axle motor current/temp/ecu
@@ -337,12 +343,37 @@ final class FrameParser {
     }
 
     /**
-     * 55 44 - display / battery / LC firmware (BLE_PROTOCOL §2.3). t[2]=disProType, t[3]=disProCode,
-     * t[4].t[5].t[6] = display SW version (decimal, dotted). FF FF FF => version unknown, keep blank.
+     * 55 44 - display / battery / light-controller firmware (KB teverun 55 44 decode).
+     * t[2],t[3]=display proType/proCode, t[4..6]=display SW version; t[8],t[9]=battery proType/proCode,
+     * t[10..12]=battery SW version; t[14],t[15]=LC proType/proCode, t[16..18]=LC SW version.
+     * FF FF FF on a version triplet => unknown, keep blank.
      */
     private synchronized void parse44(int[] t) {
+        have44 = true;
+        disProType = u8(t, 2); disProCode = u8(t, 3);
         if (!(u8(t, 4) == 0xFF && u8(t, 5) == 0xFF && u8(t, 6) == 0xFF)) {
             displayVer = u8(t, 4) + "." + u8(t, 5) + "." + u8(t, 6);
+        }
+        batProType = u8(t, 8); batProCode = u8(t, 9);
+        if (!(u8(t, 10) == 0xFF && u8(t, 11) == 0xFF && u8(t, 12) == 0xFF)) {
+            batFwVer = u8(t, 10) + "." + u8(t, 11) + "." + u8(t, 12);
+        }
+        lcProType = u8(t, 14); lcProCode = u8(t, 15);
+        if (!(u8(t, 16) == 0xFF && u8(t, 17) == 0xFF && u8(t, 18) == 0xFF)) {
+            lcFwVer = u8(t, 16) + "." + u8(t, 17) + "." + u8(t, 18);
+        }
+    }
+
+    /**
+     * 55 45 - primary rear/front motor-controller fw versions (same layout as 55 4D).
+     * t[4..6]=rear controller version, t[10..12]=front controller version. All-FF => keep blank.
+     */
+    private synchronized void parse45(int[] t) {
+        if (!(u8(t, 4) == 0xFF && u8(t, 5) == 0xFF && u8(t, 6) == 0xFF && u8(t, 7) == 0xFF)) {
+            rearCtrlVer = u8(t, 4) + "." + u8(t, 5) + "." + u8(t, 6);
+        }
+        if (!(u8(t, 10) == 0xFF && u8(t, 11) == 0xFF && u8(t, 12) == 0xFF && u8(t, 13) == 0xFF)) {
+            frontCtrlVer = u8(t, 10) + "." + u8(t, 11) + "." + u8(t, 12);
         }
     }
 
@@ -499,6 +530,19 @@ final class FrameParser {
             if (!swVer.isEmpty()) o.put("swVer", swVer);
             if (!hwVer.isEmpty()) o.put("hwVer", hwVer);
             if (!displayVer.isEmpty()) o.put("displayVer", displayVer);
+            // 55 44 node identity (proType/proCode only meaningful once the frame arrived)
+            if (have44) {
+                o.put("disProType", disProType);
+                o.put("disProCode", disProCode);
+                o.put("batProType", batProType);
+                o.put("batProCode", batProCode);
+                o.put("lcProType", lcProType);
+                o.put("lcProCode", lcProCode);
+            }
+            if (!batFwVer.isEmpty()) o.put("batFwVer", batFwVer);         // 55 44 battery pack
+            if (!lcFwVer.isEmpty()) o.put("lcFwVer", lcFwVer);            // 55 44 light controller
+            if (!frontCtrlVer.isEmpty()) o.put("frontCtrlVer", frontCtrlVer); // 55 45 front controller
+            if (!rearCtrlVer.isEmpty()) o.put("rearCtrlVer", rearCtrlVer);    // 55 45 rear controller
             if (!rrSwVer.isEmpty()) o.put("rrSwVer", rrSwVer);   // 55 4D rear-right controller
             if (!rfSwVer.isEmpty()) o.put("rfSwVer", rfSwVer);   // 55 4D front-right controller
 
