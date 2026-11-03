@@ -992,7 +992,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 .lang-switch button[aria-pressed="true"] {
   background: var(--text); border-color: var(--text); color: var(--bg);
 }
-.lang-switch button[aria-pressed="true"]::before { content: "¹3 a0"; }
+.lang-switch button[aria-pressed="true"]::before { content: "✓ "; }
 #whatsnew-list { margin: 12px 0 16px; padding-left: 18px; display: grid; gap: 8px; }
 #whatsnew-list li { color: var(--label); font-size: var(--fs-md); line-height: 1.5; }
 #whatsnew-list li b { color: var(--text); }
