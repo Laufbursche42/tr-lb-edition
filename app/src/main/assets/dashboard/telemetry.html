@@ -957,6 +957,17 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     <p class="settings-row-sublabel" data-i18n="theme.page.hint">Import a .zip bundle to customise the dashboard layout. The zip must contain theme.html and theme.css.</p>
     <button type="button" id="btn-theme-import" class="settings-btn" data-i18n="theme.import.action">&#8682; Import theme (.zip)</button>
     <p class="settings-row-sublabel m-6-0-2" data-i18n="theme.import.hint">Pick a single .zip file - one zip = one theme.</p>
+    <div class="settings-row" id="gauge-scale-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label" data-i18n="theme.gauge.scale.label">Speedometer scale</div>
+        <div class="settings-row-sublabel" data-i18n="theme.gauge.scale.hint">Marks on the gauge themes (Carbon, Lambo)</div>
+      </div>
+      <select class="set-ctrl" id="sel-gauge-scale">
+        <option value="klar" data-i18n="theme.gauge.scale.klar">Klar</option>
+        <option value="fein" data-i18n="theme.gauge.scale.fein">Fine</option>
+        <option value="rund" data-i18n="theme.gauge.scale.rund">Round</option>
+      </select>
+    </div>
     <div id="theme-list"></div>
     <div id="tile-editor"></div>
     <div id="btn-row-editor"></div>
@@ -5552,6 +5563,93 @@ function _cleanPoolAfterInjection() {
 }
 
 /* Inject custom theme HTML (non-Default), then apply tile config and CSS var overrides for ALL themes. */
+// ---- Managed gauge scale ---------------------------------------------------
+// A theme opts in with data-lb-gauge='{"prefix":..,"cx":..,"labelR":..,"tickR0":..,
+// "tickR1":..,"arcR":..}' on its gauge <svg>. We fill its .scale-locked / .scale-unlocked
+// groups with evenly-spaced marks from the selected preset and drive the needle piecewise,
+// so a mark (e.g. 22) sits exactly where the needle points. Custom themes without the
+// attribute keep their own hand-drawn scale untouched.
+var GAUGE_SCALE_PRESETS = {
+  klar: { locked: [0,10,15,20,22,25,30,40],          open: [0,15,20,22,25,30,40,50,60,80,100] },
+  fein: { locked: [0,5,10,15,20,22,25,30,35,40],      open: [0,5,10,15,20,22,25,30,35,40,50,60,70,80,90,100] },
+  rund: { locked: [0,10,20,30,40],                    open: [0,20,40,60,80,100] }
+};
+var GAUGE_RED_FROM = { locked: 30, open: 40 };   // speed where the red zone starts
+var _gaugeMarks = null;
+function gaugeScaleName() { try { return storage.get('lb_gauge_scale') || 'klar'; } catch (e) { return 'klar'; } }
+function _gaugePreset() { return GAUGE_SCALE_PRESETS[gaugeScaleName()] || GAUGE_SCALE_PRESETS.klar; }
+function _gMph(kmh) { return Math.round(kmh * 0.621371); }
+function _gFrac(i, n) { return n <= 1 ? 0 : i / (n - 1); }   // even angular position of mark i
+function _gPt(cx, cy, R, f) { var a = (135 + f * 270) * Math.PI / 180; return [cx + R * Math.cos(a), cy + R * Math.sin(a)]; }
+function _g2(n) { return (Math.round(n * 100) / 100).toString(); }
+// Piecewise speed -> arc fraction over the active marks (needle lands on the labelled mark).
+function gaugeSpeedFrac(speed, marks) {
+  if (!marks || marks.length < 2) return 0;
+  var n = marks.length;
+  if (speed <= marks[0]) return 0;
+  if (speed >= marks[n - 1]) return 1;
+  for (var i = 0; i < n - 1; i++) {
+    if (speed <= marks[i + 1]) {
+      var seg = (speed - marks[i]) / (marks[i + 1] - marks[i]);
+      return _gFrac(i, n) + seg * (_gFrac(i + 1, n) - _gFrac(i, n));
+    }
+  }
+  return 1;
+}
+function _gaugeBuildGroup(cfg, marks, redFrom) {
+  var cx = cfg.cx || 100, cy = cfg.cy || 100, n = marks.length, ticks = '', labels = '';
+  for (var i = 0; i < n; i++) {
+    var f = _gFrac(i, n), a = _gPt(cx, cy, cfg.tickR0, f), b = _gPt(cx, cy, cfg.tickR1, f), l = _gPt(cx, cy, cfg.labelR, f);
+    ticks += 'M' + _g2(a[0]) + ' ' + _g2(a[1]) + 'L' + _g2(b[0]) + ' ' + _g2(b[1]);
+    labels += '<text class="' + cfg.prefix + '-lbl lbl-kmh" x="' + _g2(l[0]) + '" y="' + _g2(l[1]) + '">' + marks[i] + '</text>'
+            + '<text class="' + cfg.prefix + '-lbl lbl-mph" x="' + _g2(l[0]) + '" y="' + _g2(l[1]) + '">' + _gMph(marks[i]) + '</text>';
+  }
+  var rf = gaugeSpeedFrac(redFrom, marks), pct = cfg.arcPct || 75;
+  var redDash = '0 ' + _g2(rf * pct) + ' ' + _g2((1 - rf) * pct) + ' 100';
+  var red = '<circle class="' + cfg.prefix + '-redzone-hi" cx="' + cx + '" cy="' + cy + '" r="' + cfg.arcR + '" pathLength="100" transform="rotate(135 ' + cx + ' ' + cy + ')" stroke-dasharray="' + redDash + '"/>';
+  return red + '<path class="' + cfg.prefix + '-tick" d="' + ticks + '"/>' + labels;
+}
+function renderManagedGaugeScale() {
+  var svg = document.querySelector('#scroller [data-lb-gauge]');
+  if (!svg) { _gaugeMarks = null; return; }
+  var cfg; try { cfg = JSON.parse(svg.getAttribute('data-lb-gauge')); } catch (e) { return; }
+  if (!cfg || !cfg.prefix) return;
+  var p = _gaugePreset();
+  var gl = svg.querySelector('.' + cfg.prefix + '-scale.scale-locked');
+  var gu = svg.querySelector('.' + cfg.prefix + '-scale.scale-unlocked');
+  if (gl) gl.innerHTML = _gaugeBuildGroup(cfg, p.locked, GAUGE_RED_FROM.locked);
+  if (gu) gu.innerHTML = _gaugeBuildGroup(cfg, p.open, GAUGE_RED_FROM.open);
+  _gaugeMarks = { locked: p.locked, open: p.open };
+}
+// Self-driven: read the app-provided --cur-speed each tick, auto-render the scale when a managed
+// gauge appears (theme (re)load), and drive the needle/arc piecewise. The var must sit on the gauge
+// <svg> itself - themes set --cn-f/--lm-f on it too, so a descendant pointer would otherwise inherit
+// the svg's linear calc. Runs independently of each app's telemetry render path.
+var _gaugeTimer = null;
+function _gaugeTick() {
+  var svg = document.querySelector('#scroller [data-lb-gauge]');
+  if (!svg) { _gaugeMarks = null; return; }
+  var gl = svg.querySelector('.scale-locked');
+  if (gl && !gl.firstChild) renderManagedGaugeScale();   // fill once after a theme (re)load
+  if (!_gaugeMarks) return;
+  var spd = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cur-speed')) || 0;
+  var marks = document.documentElement.classList.contains('lb-unlocked') ? _gaugeMarks.open : _gaugeMarks.locked;
+  var f = _g2(gaugeSpeedFrac(spd, marks));
+  svg.style.setProperty('--cn-f', f); svg.style.setProperty('--lm-f', f);
+}
+function startGaugeTicker() { if (!_gaugeTimer) _gaugeTimer = setInterval(function() { try { _gaugeTick(); } catch (e) {} }, 250); }
+// Theme-manager dropdown: pick the gauge scale preset; re-render the active gauge live.
+function initGaugeScalePicker() {
+  var sel = document.getElementById('sel-gauge-scale');
+  if (!sel) return;
+  sel.value = gaugeScaleName();
+  sel.addEventListener('change', function() {
+    try { storage.set('lb_gauge_scale', sel.value); } catch (e) {}
+    try { renderManagedGaugeScale(); } catch (e) {}
+  });
+}
+document.addEventListener('DOMContentLoaded', function() { try { initGaugeScalePicker(); } catch (e) {} startGaugeTicker(); });
+
 function initActiveTheme() {
   if (typeof LB === 'undefined' || !LB.listThemes) {
     // No LB bridge (browser/emulator): still apply tile config for Default

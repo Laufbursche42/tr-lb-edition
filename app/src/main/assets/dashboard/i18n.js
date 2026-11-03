@@ -20,7 +20,7 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
-      "<b>Speed gauge ends at 100.</b> On the unlocked scale the gauge now tops out at 100 km/h (it had briefly read 110); the locked scale still reads to 40, so the dial behaves the same in every Laufbursche app.",
+      "<b>Pick your speedometer scale.</b> The gauge themes now have evenly-spaced, easy-to-read marks and the needle sits exactly on the number. Choose Klar, Fine or Round in the Theme Manager - the eKFV speeds 20, 22 and 25 are now clearly apart.",
       "<b>Brighter dark-mode text by default.</b> The dark theme's text brightness now starts at full (100) instead of 90; you can still dial it down under the theme's Dark colours.",
       "<b>Quick buttons fit long labels.</b> The drive-mode quick toggles now use a smaller, adjustable font so long labels no longer overflow or overlap. Change the size under Settings &rarr; Display &rarr; Font sizes (and per theme in the Theme Manager).",
       "<b>More firmware versions shown.</b> The info page now lists the display, battery, light-controller and front/rear motor-controller firmware versions, like the official Teverun app.",
@@ -161,6 +161,11 @@ window.I18N = {
     "theme.page.hint": "Import a .zip bundle to customise the dashboard layout. The zip must contain theme.html and theme.css.",
     "theme.import.action": "&#8681; Import theme (.zip)",
     "theme.import.hint": "Pick a single .zip file - one zip = one theme.",
+    "theme.gauge.scale.label": "Speedometer scale",
+    "theme.gauge.scale.hint": "Marks on the gauge themes (Carbon, Lambo)",
+    "theme.gauge.scale.klar": "Klar",
+    "theme.gauge.scale.fein": "Fine",
+    "theme.gauge.scale.rund": "Round",
     "theme.guide.btn": "&#127912; Theme creation guide",
     "theme.guide.title": "Theme Guide",
     "theme.guide.toc": "Contents",
@@ -934,7 +939,7 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
-      "<b>Tacho endet bei 100.</b> Auf der entsperrten Skala reicht der Tacho jetzt bis 100 km/h (er zeigte kurzzeitig 110); die gesperrte Skala geht weiterhin bis 40, sodass sich der Tacho in jeder Laufbursche-App gleich verh\u00e4lt.",
+      "<b>Wähle deine Tacho-Skala.</b> Die Gauge-Themes haben jetzt gleichmäßig verteilte, gut lesbare Marken, und der Zeiger steht exakt auf der Zahl. Im Theme-Manager wählst du Klar, Fein oder Rund - die eKFV-Tempi 20, 22 und 25 sind jetzt klar getrennt.",
       "<b>Hellere Schrift im Dunkelmodus (Standard).</b> Die Text-Helligkeit des dunklen Themes startet jetzt bei voll (100) statt 90; herunterregeln kannst du sie weiterhin unter den Dunkel-Farben des Themes.",
       "<b>Schnell-Buttons fassen lange Beschriftungen.</b> Die Fahrmodus-Schnellumschalter nutzen jetzt eine kleinere, einstellbare Schrift, damit lange Beschriftungen nicht mehr überlaufen oder überlappen. Die Größe änderst du unter Einstellungen &rarr; Anzeige &rarr; Schriftgrößen (und pro Theme im Theme-Manager).",
       "<b>Mehr Firmware-Versionen.</b> Die Info-Seite listet jetzt die Firmware-Versionen von Display, Akku, Lichtsteuerung und Front-/Heck-Controller - wie die offizielle Teverun-App.",
@@ -1075,6 +1080,11 @@ window.I18N = {
     "theme.page.hint": "Ein .zip-Bundle importieren, um das Dashboard-Layout anzupassen. Die ZIP muss theme.html und theme.css enthalten.",
     "theme.import.action": "&#8681; Theme importieren (.zip)",
     "theme.import.hint": "Eine einzige .zip-Datei wählen - eine ZIP = ein Theme.",
+    "theme.gauge.scale.label": "Tacho-Skala",
+    "theme.gauge.scale.hint": "Skaleneinteilung der Gauge-Themes (Carbon, Lambo)",
+    "theme.gauge.scale.klar": "Klar",
+    "theme.gauge.scale.fein": "Fein",
+    "theme.gauge.scale.rund": "Rund",
     "theme.guide.btn": "&#127912; Anleitung: Eigenes Theme erstellen",
     "theme.guide.title": "Theme-Anleitung",
     "theme.guide.toc": "Inhalt",
