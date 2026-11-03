@@ -14,6 +14,10 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.41
+
+- Carbon and Lambo updated to theme version 5.2, and the Theme Manager now reliably shows each theme's real version - imported and re-seeded themes no longer lose it (it could appear as "1.0").
+
 ## 1.1.40
 
 - Adjustable quick-button font with a smaller default, so long labels (notably the German ones) no longer overflow or overlap. Tune it per theme under Settings -> Display -> Font sizes and in the Theme Manager.

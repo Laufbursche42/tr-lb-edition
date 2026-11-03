@@ -26,3 +26,7 @@ analysis-tool/
 
 # xelatex scratch dir from tools/build-guide.sh
 /tex/
+
+# Gradle/JVM crash dumps
+hs_err_pid*.log
+replay_pid*.log
