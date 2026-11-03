@@ -20,6 +20,7 @@ If no matching section exists the notes fall back to the commit messages, so kee
 - Speedometer scale presets. The gauge themes (Carbon, Lambo) now use evenly-spaced, readable marks with the needle pointing exactly at the number; pick the scale - Klar, Fine or Round - in the Theme Manager. Klar marks 0, 10, 15, 20, 22, 25, 30, 40 locked and up to 100 open; the locked scale still tops out at 40.
 - Dark-mode text brightness now defaults to full (100) instead of 90.
 - The app is now named "TR Laufbursche Edition" on the home screen, so the Laufbursche apps for the different scooter makes are easy to tell apart.
+- Language selector: the active language (EN/DE) is now clearly highlighted (filled, with a checkmark). It previously relied on an undefined colour, so the active button could render invisibly and the other one looked selected (GitHub #26).
 
 ## 1.1.39
 

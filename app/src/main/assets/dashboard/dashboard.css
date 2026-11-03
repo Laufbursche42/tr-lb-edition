@@ -984,13 +984,15 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 .lang-switch { display: flex; gap: 4px; flex-shrink: 0; }
 .lang-switch button {
   padding: 5px 9px; border-radius: 7px; border: 1px solid var(--border);
+  min-width: 3em; text-align: center;
   background: transparent; color: var(--label);
   font-family: monospace; font-size: var(--fs-sm); font-weight: var(--fw-bold);
   letter-spacing: .06em;
 }
 .lang-switch button[aria-pressed="true"] {
-  background: var(--accent); border-color: var(--accent); color: var(--bg);
+  background: var(--text); border-color: var(--text); color: var(--bg);
 }
+.lang-switch button[aria-pressed="true"]::before { content: "¹3 a0"; }
 #whatsnew-list { margin: 12px 0 16px; padding-left: 18px; display: grid; gap: 8px; }
 #whatsnew-list li { color: var(--label); font-size: var(--fs-md); line-height: 1.5; }
 #whatsnew-list li b { color: var(--text); }
