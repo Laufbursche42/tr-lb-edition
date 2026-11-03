@@ -220,9 +220,9 @@ Wird bei jedem BLE-Tick (500 ms) aktualisiert. Standard beim Seitenstart: abwese
 **CSS-Verwendung:**
 
 ```css
-/* Skalenring zeigt bei Entsperrung den vollen Bereich 0-110 */
+/* Skalenring zeigt bei Entsperrung den vollen Bereich 0-100 */
 .gauge-scale { --scale-max: 40; }
-:root.lb-unlocked .gauge-scale { --scale-max: 110; }
+:root.lb-unlocked .gauge-scale { --scale-max: 100; }
 
 /* Oder mit der numerischen Variable */
 .gauge-arc {
@@ -296,10 +296,37 @@ Definiere in CSS `--speed-max` auf dem Element und referenziere `--cur-speed` vo
 }
 
 /* Skala erweitern, wenn der Roller entsperrt ist (lb-unlocked auf <html>). */
-:root.lb-unlocked .gauge-arc { --speed-max: 110; }
+:root.lb-unlocked .gauge-arc { --speed-max: 100; }
 ```
 
 Kein JavaScript nötig - `--cur-speed` wird von der App alle 500 ms aktualisiert, und CSS berechnet automatisch neu.
+
+### Verwaltete Skalen-Marken (optional) - data-lb-gauge
+
+Bei den eingebauten Themes Carbon und Lambo kann der Nutzer die Zahlen-Skala des Tachos wählen - **Klar**, **Fein** oder **Rund** - unter **Einstellungen -> Theme-Manager -> „Tacho-Skala"**. Die App zeichnet die Tick-Marken und Zahlen-Labels (gleichmäßig verteilt, damit dichte niedrige Werte wie 20 / 22 / 25 lesbar bleiben) und steuert den Zeiger so, dass er exakt auf der gewählten Zahl steht.
+
+Dein eigenes Full-Scope-Theme kann das nutzen, statt die Skala selbst zu zeichnen: Füge deinem Tacho-`<svg>` ein `data-lb-gauge`-Attribut hinzu und lass zwei leere Gruppen für die App zum Füllen.
+
+```html
+<svg class="my-gauge"
+     data-lb-gauge='{"prefix":"my","cx":100,"cy":100,"labelR":61,"tickR0":84,"tickR1":94,"arcR":80,"arcPct":75}'
+     viewBox="0 0 200 200" aria-hidden="true">
+  <!-- dein statischer Track-Ring, Zeiger usw. -->
+  <g class="my-scale scale-locked"></g>
+  <g class="my-scale scale-unlocked"></g>
+</svg>
+```
+
+| Feld | Bedeutung |
+|------|-----------|
+| `prefix` | Klassen-Präfix für die von der App eingefügten Elemente (`my-tick`, `my-lbl`, `my-redzone-hi`) - in deinem CSS stylen |
+| `cx` / `cy` | Tacho-Mittelpunkt, in viewBox-Einheiten |
+| `labelR` | Radius der Zahlen-Labels |
+| `tickR0` / `tickR1` | innerer / äußerer Radius jeder Tick-Linie |
+| `arcR` | Radius des Rotzonen-Bogens |
+| `arcPct` | Prozent des Vollkreises, den der 270-Grad-Bogen einnimmt (`75`) |
+
+Die App füllt `.my-scale.scale-locked` mit den gesperrten Marken und `.scale-unlocked` mit den offenen (km/h in `.lbl-kmh`, mph in `.lbl-mph`, umgeschaltet per `lb-mph`), fügt einen `.my-redzone-hi`-Bogen hinzu und setzt jeden Tick **`--cn-f`** (0-1, der stückweise Zeiger-Anteil) auf dem `<svg>`. Steuere deinen Zeiger und Füllbogen damit, z. B. `transform: rotate(calc(135deg + var(--cn-f) * 270deg))`. Lässt du `data-lb-gauge` weg, bleibt die voll manuelle reine-CSS-Skala von oben.
 
 ### Einheiten-Umschalter
 
@@ -368,7 +395,7 @@ Keine `url()`- oder `http://`-Quellen erlaubt. SVG direkt einbetten:
   stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
   transition: stroke-dashoffset 0.4s ease-out;
 }
-:root.lb-unlocked .g-arc { --speed-max: 110; }
+:root.lb-unlocked .g-arc { --speed-max: 100; }
 
 .g-val       { font-size: 38px; font-weight: 700; fill: var(--text); font-family: inherit; }
 .g-unit      { font-size: 12px; fill: var(--label); font-family: inherit; }
@@ -878,7 +905,7 @@ Orbit ist ein vollständiges, importierbares Theme, das jede Technik aus dieser 
   stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
   transition: stroke-dashoffset 0.4s ease-out;
 }
-:root.lb-unlocked .ot-arc { --speed-max: 110; }
+:root.lb-unlocked .ot-arc { --speed-max: 100; }
 
 .ot-speed-val { font-size: 38px; font-weight: var(--fw-bold); fill: var(--text); font-family: inherit; }
 

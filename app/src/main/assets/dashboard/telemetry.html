@@ -962,7 +962,8 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
         <div class="settings-row-label" data-i18n="theme.gauge.scale.label">Speedometer scale</div>
         <div class="settings-row-sublabel" data-i18n="theme.gauge.scale.hint">Marks on the gauge themes (Carbon, Lambo)</div>
       </div>
-      <select class="set-ctrl" id="sel-gauge-scale">
+      <button type="button" class="set-help" data-set-help="gauge-scale" aria-label="What is this?" data-i18n-aria="settings.help.hint" data-i18n="settings.help.marker">?</button>
+        <select class="set-ctrl" id="sel-gauge-scale">
         <option value="klar" data-i18n="theme.gauge.scale.klar">Klar</option>
         <option value="fein" data-i18n="theme.gauge.scale.fein">Fine</option>
         <option value="rund" data-i18n="theme.gauge.scale.rund">Round</option>
@@ -1729,6 +1730,7 @@ function closeAvHelp() {
 const SETTINGS_HELP = {
   "disp-dark": { title: 'msg.help.set.disp.dark.title', text: 'msg.help.set.disp.dark.text' },
   "disp-mph": { title: 'msg.help.set.disp.mph.title', text: 'msg.help.set.disp.mph.text' },
+  "gauge-scale": { title: 'msg.help.set.gauge.scale.title', text: 'msg.help.set.gauge.scale.text' },
   "disp-fullscreen": { title: 'msg.help.set.disp.fullscreen.title', text: 'msg.help.set.disp.fullscreen.text' },
   "gps-auto": { title: 'msg.help.set.gps.auto.title', text: 'msg.help.set.gps.auto.text' },
   "gps-interval": { title: 'msg.help.set.gps.interval.title', text: 'msg.help.set.gps.interval.text' },

@@ -8,7 +8,7 @@
 <a class="tg-ai-link" href="https://github.com/Laufbursche42/tr-lb-edition/blob/main/THEME-GUIDE-EN.pdf">https://github.com/Laufbursche42/tr-lb-edition/blob/main/THEME-GUIDE-EN.pdf</a>
 </div>
 
-<div class="tg-toc"><p class="tg-toc-title" data-i18n="theme.guide.toc">Contents</p><ul><li><a href="#tg-en-what-a-theme-is-and-is-not">What a theme is and is not</a></li><li><a href="#tg-en-the-bundle-format">The bundle format</a></li><li><a href="#tg-en-theme-scope">Theme scope</a><ul><li><a href="#tg-en-full-scope-dom-skeleton">Full-scope DOM skeleton</a></li></ul></li><li><a href="#tg-en-themehtml---structure-and-hooks">theme.html - structure and hooks</a><ul><li><a href="#tg-en-live-value-hooks---data-lb">Live value hooks - data-lb</a></li><li><a href="#tg-en-state-hooks---data-lb-state">State hooks - data-lb-state</a></li><li><a href="#tg-en-action-hooks---data-lb-action">Action hooks - data-lb-action</a></li><li><a href="#tg-en-tile-registration---data-tile-id">Tile registration - data-tile-id</a></li><li><a href="#tg-en-available-data-keys">Available data keys</a></li></ul></li><li><a href="#tg-en-live-state-signals-on-html">Live-state signals on <code>&lt;html&gt;</code></a><ul><li><a href="#tg-en-throttle-lock-state">Throttle-lock state</a></li><li><a href="#tg-en-display-unit">Display unit</a></li></ul></li><li><a href="#tg-en-circular-speed-gauge---complete-technique">Circular speed gauge - complete technique</a><ul><li><a href="#tg-en-geometry">Geometry</a></li><li><a href="#tg-en-animating-the-fill-arc-with---cur-speed">Animating the fill arc with --cur-speed</a></li><li><a href="#tg-en-unit-label-toggle">Unit label toggle</a></li><li><a href="#tg-en-inline-svg-icons">Inline SVG icons</a></li><li><a href="#tg-en-complete-minimal-gauge">Complete minimal gauge</a></li></ul></li><li><a href="#tg-en-themecss---layout-and-variables">theme.css - layout and variables</a><ul><li><a href="#tg-en-app-provided-css-variables">App-provided CSS variables</a></li></ul></li><li><a href="#tg-en-themejson---metadata">theme.json - metadata</a></li><li><a href="#tg-en-css-variable-overrides---cssvars">CSS variable overrides - cssVars</a><ul><li><a href="#tg-en-label-localization">Label localization</a></li></ul></li><li><a href="#tg-en-security-model---no-javascript">Security model - no JavaScript</a></li><li><a href="#tg-en-how-to-import">How to import</a><ul><li><a href="#tg-en-step-1---create-the-zip">Step 1 - Create the ZIP</a></li><li><a href="#tg-en-step-2---import">Step 2 - Import</a></li></ul></li><li><a href="#tg-en-portability-between-laufbursche-apps">Portability between Laufbursche apps</a></li><li><a href="#tg-en-translations-and-language">Translations and language</a><ul><li><a href="#tg-en-using-existing-app-strings">Using existing app strings</a></li><li><a href="#tg-en-adding-your-own-translated-strings">Adding your own translated strings</a></li></ul></li><li><a href="#tg-en-complete-example---orbit-full-scope-teaching-theme">Complete example - Orbit (full-scope teaching theme)</a><ul><li><a href="#tg-en-themejson">theme.json</a></li><li><a href="#tg-en-themehtml">theme.html</a></li><li><a href="#tg-en-themecss">theme.css</a></li></ul></li><li><a href="#tg-en-tips-and-limitations">Tips and limitations</a></li></ul></div>
+<div class="tg-toc"><p class="tg-toc-title" data-i18n="theme.guide.toc">Contents</p><ul><li><a href="#tg-en-what-a-theme-is-and-is-not">What a theme is and is not</a></li><li><a href="#tg-en-the-bundle-format">The bundle format</a></li><li><a href="#tg-en-theme-scope">Theme scope</a><ul><li><a href="#tg-en-full-scope-dom-skeleton">Full-scope DOM skeleton</a></li></ul></li><li><a href="#tg-en-themehtml---structure-and-hooks">theme.html - structure and hooks</a><ul><li><a href="#tg-en-live-value-hooks---data-lb">Live value hooks - data-lb</a></li><li><a href="#tg-en-state-hooks---data-lb-state">State hooks - data-lb-state</a></li><li><a href="#tg-en-action-hooks---data-lb-action">Action hooks - data-lb-action</a></li><li><a href="#tg-en-tile-registration---data-tile-id">Tile registration - data-tile-id</a></li><li><a href="#tg-en-available-data-keys">Available data keys</a></li></ul></li><li><a href="#tg-en-live-state-signals-on-html">Live-state signals on <code>&lt;html&gt;</code></a><ul><li><a href="#tg-en-throttle-lock-state">Throttle-lock state</a></li><li><a href="#tg-en-display-unit">Display unit</a></li></ul></li><li><a href="#tg-en-circular-speed-gauge---complete-technique">Circular speed gauge - complete technique</a><ul><li><a href="#tg-en-geometry">Geometry</a></li><li><a href="#tg-en-animating-the-fill-arc-with---cur-speed">Animating the fill arc with --cur-speed</a></li><li><a href="#tg-en-managed-scale-marks-optional---data-lb-gauge">Managed scale marks (optional) - data-lb-gauge</a></li><li><a href="#tg-en-unit-label-toggle">Unit label toggle</a></li><li><a href="#tg-en-inline-svg-icons">Inline SVG icons</a></li><li><a href="#tg-en-complete-minimal-gauge">Complete minimal gauge</a></li></ul></li><li><a href="#tg-en-themecss---layout-and-variables">theme.css - layout and variables</a><ul><li><a href="#tg-en-app-provided-css-variables">App-provided CSS variables</a></li></ul></li><li><a href="#tg-en-themejson---metadata">theme.json - metadata</a></li><li><a href="#tg-en-css-variable-overrides---cssvars">CSS variable overrides - cssVars</a><ul><li><a href="#tg-en-label-localization">Label localization</a></li></ul></li><li><a href="#tg-en-security-model---no-javascript">Security model - no JavaScript</a></li><li><a href="#tg-en-how-to-import">How to import</a><ul><li><a href="#tg-en-step-1---create-the-zip">Step 1 - Create the ZIP</a></li><li><a href="#tg-en-step-2---import">Step 2 - Import</a></li></ul></li><li><a href="#tg-en-portability-between-laufbursche-apps">Portability between Laufbursche apps</a></li><li><a href="#tg-en-translations-and-language">Translations and language</a><ul><li><a href="#tg-en-using-existing-app-strings">Using existing app strings</a></li><li><a href="#tg-en-adding-your-own-translated-strings">Adding your own translated strings</a></li></ul></li><li><a href="#tg-en-complete-example---orbit-full-scope-teaching-theme">Complete example - Orbit (full-scope teaching theme)</a><ul><li><a href="#tg-en-themejson">theme.json</a></li><li><a href="#tg-en-themehtml">theme.html</a></li><li><a href="#tg-en-themecss">theme.css</a></li></ul></li><li><a href="#tg-en-tips-and-limitations">Tips and limitations</a></li></ul></div>
 
 <hr class="tg-rule">
 
@@ -309,9 +309,9 @@
 </table>
 <p>Updated every BLE tick (500 ms). Defaults to absent / <code>0</code> at page load.</p>
 <p><strong>CSS usage:</strong></p>
-<pre class="css"><code>/* Scale ring shows full 0-110 range when unlocked */
+<pre class="css"><code>/* Scale ring shows full 0-100 range when unlocked */
 .gauge-scale { --scale-max: 40; }
-:root.lb-unlocked .gauge-scale { --scale-max: 110; }
+:root.lb-unlocked .gauge-scale { --scale-max: 100; }
 
 /* Or with the numeric var */
 .gauge-arc {
@@ -379,8 +379,53 @@
 }
 
 /* Extend scale when the scooter is unlocked (lb-unlocked on &lt;html&gt;). */
-:root.lb-unlocked .gauge-arc { --speed-max: 110; }</code></pre>
+:root.lb-unlocked .gauge-arc { --speed-max: 100; }</code></pre>
 <p>No JavaScript needed - <code>--cur-speed</code> is updated by the app every 500 ms and CSS recalculates automatically.</p>
+<h3 id="tg-en-managed-scale-marks-optional---data-lb-gauge">Managed scale marks (optional) - data-lb-gauge</h3>
+<p>The built-in Carbon and Lambo themes let the rider choose the gauge's number scale - <strong>Klar</strong>, <strong>Fine</strong> or <strong>Round</strong> - under <strong>Settings -&gt; Theme manager -&gt; "Speedometer scale"</strong>. The app draws the tick marks and number labels (evenly spaced, so dense low values like 20 / 22 / 25 stay readable) and drives the needle so it points exactly at the chosen number.</p>
+<p>Your own full-scope theme can opt into this instead of drawing the scale by hand: add a <code>data-lb-gauge</code> attribute to your gauge <code>&lt;svg&gt;</code> and leave two empty groups for the app to fill.</p>
+<pre class="html"><code>&lt;svg class="my-gauge"
+     data-lb-gauge='{"prefix":"my","cx":100,"cy":100,"labelR":61,"tickR0":84,"tickR1":94,"arcR":80,"arcPct":75}'
+     viewBox="0 0 200 200" aria-hidden="true"&gt;
+  &lt;!-- your static track ring, pointer, etc. --&gt;
+  &lt;g class="my-scale scale-locked"&gt;&lt;/g&gt;
+  &lt;g class="my-scale scale-unlocked"&gt;&lt;/g&gt;
+&lt;/svg&gt;</code></pre>
+<table class="tg-table">
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prefix</code></td>
+<td>class prefix for the elements the app injects (<code>my-tick</code>, <code>my-lbl</code>, <code>my-redzone-hi</code>) - style them in your CSS</td>
+</tr>
+<tr>
+<td><code>cx</code> / <code>cy</code></td>
+<td>gauge centre, in viewBox units</td>
+</tr>
+<tr>
+<td><code>labelR</code></td>
+<td>radius of the number labels</td>
+</tr>
+<tr>
+<td><code>tickR0</code> / <code>tickR1</code></td>
+<td>inner / outer radius of each tick line</td>
+</tr>
+<tr>
+<td><code>arcR</code></td>
+<td>radius of the red-zone arc</td>
+</tr>
+<tr>
+<td><code>arcPct</code></td>
+<td>percent of the full circle the 270-degree arc spans (use <code>75</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The app fills <code>.my-scale.scale-locked</code> with the locked marks and <code>.scale-unlocked</code> with the open marks (km/h in <code>.lbl-kmh</code>, mph in <code>.lbl-mph</code>, toggled by <code>lb-mph</code>), adds a <code>.my-redzone-hi</code> arc, and sets <strong><code>--cn-f</code></strong> (0-1, the piecewise needle fraction) on the <code>&lt;svg&gt;</code> every tick. Drive your pointer and fill arc from it, e.g. <code>transform: rotate(calc(135deg + var(--cn-f) * 270deg))</code>. Leave <code>data-lb-gauge</code> off to keep the fully manual pure-CSS scale shown above.</p>
 <h3 id="tg-en-unit-label-toggle">Unit label toggle</h3>
 <p>Use two overlapping <code>&lt;text&gt;</code> elements toggled by <code>opacity</code>. <code>display:none</code> is unreliable on SVG text in Android WebView.</p>
 <pre class="html"><code>&lt;text class="g-unit g-unit-kmh" x="80" y="100" text-anchor="middle"&gt;km/h&lt;/text&gt;
@@ -429,7 +474,7 @@
   stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
   transition: stroke-dashoffset 0.4s ease-out;
 }
-:root.lb-unlocked .g-arc { --speed-max: 110; }
+:root.lb-unlocked .g-arc { --speed-max: 100; }
 
 .g-val       { font-size: 38px; font-weight: 700; fill: var(--text); font-family: inherit; }
 .g-unit      { font-size: 12px; fill: var(--label); font-family: inherit; }
@@ -1206,7 +1251,7 @@
   stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
   transition: stroke-dashoffset 0.4s ease-out;
 }
-:root.lb-unlocked .ot-arc { --speed-max: 110; }
+:root.lb-unlocked .ot-arc { --speed-max: 100; }
 
 .ot-speed-val { font-size: 38px; font-weight: var(--fw-bold); fill: var(--text); font-family: inherit; }
 
@@ -1300,7 +1345,7 @@
 <a class="tg-ai-link" href="https://github.com/Laufbursche42/tr-lb-edition/blob/main/THEME-GUIDE-DE.pdf">https://github.com/Laufbursche42/tr-lb-edition/blob/main/THEME-GUIDE-DE.pdf</a>
 </div>
 
-<div class="tg-toc"><p class="tg-toc-title" data-i18n="theme.guide.toc">Inhalt</p><ul><li><a href="#tg-de-was-ein-theme-ist-und-was-nicht">Was ein Theme ist und was nicht</a></li><li><a href="#tg-de-das-bundle-format">Das Bundle-Format</a></li><li><a href="#tg-de-theme-scope">Theme-Scope</a><ul><li><a href="#tg-de-full-scope-dom-gerüst">Full-Scope-DOM-Gerüst</a></li></ul></li><li><a href="#tg-de-themehtml---struktur-und-hooks">theme.html - Struktur und Hooks</a><ul><li><a href="#tg-de-live-wert-hooks---data-lb">Live-Wert-Hooks - data-lb</a></li><li><a href="#tg-de-zustands-hooks---data-lb-state">Zustands-Hooks - data-lb-state</a></li><li><a href="#tg-de-aktions-hooks---data-lb-action">Aktions-Hooks - data-lb-action</a></li><li><a href="#tg-de-kachel-registrierung---data-tile-id">Kachel-Registrierung - data-tile-id</a></li><li><a href="#tg-de-verfügbare-datenschlüssel">Verfügbare Datenschlüssel</a></li></ul></li><li><a href="#tg-de-live-zustandssignale-auf-html">Live-Zustandssignale auf <code>&lt;html&gt;</code></a><ul><li><a href="#tg-de-drossel-entsperrzustand">Drossel-/Entsperrzustand</a></li><li><a href="#tg-de-anzeigeeinheit">Anzeigeeinheit</a></li></ul></li><li><a href="#tg-de-kreisförmiger-tachometer---vollständige-technik">Kreisförmiger Tachometer - vollständige Technik</a><ul><li><a href="#tg-de-geometrie">Geometrie</a></li><li><a href="#tg-de-den-füllbogen-mit---cur-speed-animieren">Den Füllbogen mit --cur-speed animieren</a></li><li><a href="#tg-de-einheiten-umschalter">Einheiten-Umschalter</a></li><li><a href="#tg-de-inline-svg-icons">Inline-SVG-Icons</a></li><li><a href="#tg-de-vollständiger-minimal-gauge">Vollständiger Minimal-Gauge</a></li></ul></li><li><a href="#tg-de-themecss---layout-und-variablen">theme.css - Layout und Variablen</a><ul><li><a href="#tg-de-von-der-app-bereitgestellte-css-variablen">Von der App bereitgestellte CSS-Variablen</a></li></ul></li><li><a href="#tg-de-themejson---metadaten">theme.json - Metadaten</a></li><li><a href="#tg-de-css-variablen-overrides---cssvars">CSS-Variablen-Overrides - cssVars</a><ul><li><a href="#tg-de-label-lokalisierung">Label-Lokalisierung</a></li></ul></li><li><a href="#tg-de-sicherheitsmodell---kein-javascript">Sicherheitsmodell - kein JavaScript</a></li><li><a href="#tg-de-import-anleitung">Import-Anleitung</a><ul><li><a href="#tg-de-schritt-1---zip-erstellen">Schritt 1 - ZIP erstellen</a></li><li><a href="#tg-de-schritt-2---importieren">Schritt 2 - Importieren</a></li></ul></li><li><a href="#tg-de-portabilität-zwischen-laufbursche-apps">Portabilität zwischen Laufbursche-Apps</a></li><li><a href="#tg-de-übersetzungen-und-sprache">Übersetzungen und Sprache</a><ul><li><a href="#tg-de-vorhandene-app-strings-verwenden">Vorhandene App-Strings verwenden</a></li><li><a href="#tg-de-eigene-übersetzungen-hinzufügen">Eigene Übersetzungen hinzufügen</a></li></ul></li><li><a href="#tg-de-vollständiges-beispiel---orbit-full-scope-lehr-theme">Vollständiges Beispiel - Orbit (Full-Scope-Lehr-Theme)</a><ul><li><a href="#tg-de-themejson">theme.json</a></li><li><a href="#tg-de-themehtml">theme.html</a></li><li><a href="#tg-de-themecss">theme.css</a></li></ul></li><li><a href="#tg-de-tipps-und-einschränkungen">Tipps und Einschränkungen</a></li></ul></div>
+<div class="tg-toc"><p class="tg-toc-title" data-i18n="theme.guide.toc">Inhalt</p><ul><li><a href="#tg-de-was-ein-theme-ist-und-was-nicht">Was ein Theme ist und was nicht</a></li><li><a href="#tg-de-das-bundle-format">Das Bundle-Format</a></li><li><a href="#tg-de-theme-scope">Theme-Scope</a><ul><li><a href="#tg-de-full-scope-dom-gerüst">Full-Scope-DOM-Gerüst</a></li></ul></li><li><a href="#tg-de-themehtml---struktur-und-hooks">theme.html - Struktur und Hooks</a><ul><li><a href="#tg-de-live-wert-hooks---data-lb">Live-Wert-Hooks - data-lb</a></li><li><a href="#tg-de-zustands-hooks---data-lb-state">Zustands-Hooks - data-lb-state</a></li><li><a href="#tg-de-aktions-hooks---data-lb-action">Aktions-Hooks - data-lb-action</a></li><li><a href="#tg-de-kachel-registrierung---data-tile-id">Kachel-Registrierung - data-tile-id</a></li><li><a href="#tg-de-verfügbare-datenschlüssel">Verfügbare Datenschlüssel</a></li></ul></li><li><a href="#tg-de-live-zustandssignale-auf-html">Live-Zustandssignale auf <code>&lt;html&gt;</code></a><ul><li><a href="#tg-de-drossel-entsperrzustand">Drossel-/Entsperrzustand</a></li><li><a href="#tg-de-anzeigeeinheit">Anzeigeeinheit</a></li></ul></li><li><a href="#tg-de-kreisförmiger-tachometer---vollständige-technik">Kreisförmiger Tachometer - vollständige Technik</a><ul><li><a href="#tg-de-geometrie">Geometrie</a></li><li><a href="#tg-de-den-füllbogen-mit---cur-speed-animieren">Den Füllbogen mit --cur-speed animieren</a></li><li><a href="#tg-de-verwaltete-skalen-marken-optional---data-lb-gauge">Verwaltete Skalen-Marken (optional) - data-lb-gauge</a></li><li><a href="#tg-de-einheiten-umschalter">Einheiten-Umschalter</a></li><li><a href="#tg-de-inline-svg-icons">Inline-SVG-Icons</a></li><li><a href="#tg-de-vollständiger-minimal-gauge">Vollständiger Minimal-Gauge</a></li></ul></li><li><a href="#tg-de-themecss---layout-und-variablen">theme.css - Layout und Variablen</a><ul><li><a href="#tg-de-von-der-app-bereitgestellte-css-variablen">Von der App bereitgestellte CSS-Variablen</a></li></ul></li><li><a href="#tg-de-themejson---metadaten">theme.json - Metadaten</a></li><li><a href="#tg-de-css-variablen-overrides---cssvars">CSS-Variablen-Overrides - cssVars</a><ul><li><a href="#tg-de-label-lokalisierung">Label-Lokalisierung</a></li></ul></li><li><a href="#tg-de-sicherheitsmodell---kein-javascript">Sicherheitsmodell - kein JavaScript</a></li><li><a href="#tg-de-import-anleitung">Import-Anleitung</a><ul><li><a href="#tg-de-schritt-1---zip-erstellen">Schritt 1 - ZIP erstellen</a></li><li><a href="#tg-de-schritt-2---importieren">Schritt 2 - Importieren</a></li></ul></li><li><a href="#tg-de-portabilität-zwischen-laufbursche-apps">Portabilität zwischen Laufbursche-Apps</a></li><li><a href="#tg-de-übersetzungen-und-sprache">Übersetzungen und Sprache</a><ul><li><a href="#tg-de-vorhandene-app-strings-verwenden">Vorhandene App-Strings verwenden</a></li><li><a href="#tg-de-eigene-übersetzungen-hinzufügen">Eigene Übersetzungen hinzufügen</a></li></ul></li><li><a href="#tg-de-vollständiges-beispiel---orbit-full-scope-lehr-theme">Vollständiges Beispiel - Orbit (Full-Scope-Lehr-Theme)</a><ul><li><a href="#tg-de-themejson">theme.json</a></li><li><a href="#tg-de-themehtml">theme.html</a></li><li><a href="#tg-de-themecss">theme.css</a></li></ul></li><li><a href="#tg-de-tipps-und-einschränkungen">Tipps und Einschränkungen</a></li></ul></div>
 
 <hr class="tg-rule">
 
@@ -1601,9 +1646,9 @@
 </table>
 <p>Wird bei jedem BLE-Tick (500 ms) aktualisiert. Standard beim Seitenstart: abwesend / <code>0</code>.</p>
 <p><strong>CSS-Verwendung:</strong></p>
-<pre class="css"><code>/* Skalenring zeigt bei Entsperrung den vollen Bereich 0-110 */
+<pre class="css"><code>/* Skalenring zeigt bei Entsperrung den vollen Bereich 0-100 */
 .gauge-scale { --scale-max: 40; }
-:root.lb-unlocked .gauge-scale { --scale-max: 110; }
+:root.lb-unlocked .gauge-scale { --scale-max: 100; }
 
 /* Oder mit der numerischen Variable */
 .gauge-arc {
@@ -1671,8 +1716,53 @@
 }
 
 /* Skala erweitern, wenn der Roller entsperrt ist (lb-unlocked auf &lt;html&gt;). */
-:root.lb-unlocked .gauge-arc { --speed-max: 110; }</code></pre>
+:root.lb-unlocked .gauge-arc { --speed-max: 100; }</code></pre>
 <p>Kein JavaScript nötig - <code>--cur-speed</code> wird von der App alle 500 ms aktualisiert, und CSS berechnet automatisch neu.</p>
+<h3 id="tg-de-verwaltete-skalen-marken-optional---data-lb-gauge">Verwaltete Skalen-Marken (optional) - data-lb-gauge</h3>
+<p>Bei den eingebauten Themes Carbon und Lambo kann der Nutzer die Zahlen-Skala des Tachos wählen - <strong>Klar</strong>, <strong>Fein</strong> oder <strong>Rund</strong> - unter <strong>Einstellungen -&gt; Theme-Manager -&gt; „Tacho-Skala"</strong>. Die App zeichnet die Tick-Marken und Zahlen-Labels (gleichmäßig verteilt, damit dichte niedrige Werte wie 20 / 22 / 25 lesbar bleiben) und steuert den Zeiger so, dass er exakt auf der gewählten Zahl steht.</p>
+<p>Dein eigenes Full-Scope-Theme kann das nutzen, statt die Skala selbst zu zeichnen: Füge deinem Tacho-<code>&lt;svg&gt;</code> ein <code>data-lb-gauge</code>-Attribut hinzu und lass zwei leere Gruppen für die App zum Füllen.</p>
+<pre class="html"><code>&lt;svg class="my-gauge"
+     data-lb-gauge='{"prefix":"my","cx":100,"cy":100,"labelR":61,"tickR0":84,"tickR1":94,"arcR":80,"arcPct":75}'
+     viewBox="0 0 200 200" aria-hidden="true"&gt;
+  &lt;!-- dein statischer Track-Ring, Zeiger usw. --&gt;
+  &lt;g class="my-scale scale-locked"&gt;&lt;/g&gt;
+  &lt;g class="my-scale scale-unlocked"&gt;&lt;/g&gt;
+&lt;/svg&gt;</code></pre>
+<table class="tg-table">
+<thead>
+<tr>
+<th>Feld</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prefix</code></td>
+<td>Klassen-Präfix für die von der App eingefügten Elemente (<code>my-tick</code>, <code>my-lbl</code>, <code>my-redzone-hi</code>) - in deinem CSS stylen</td>
+</tr>
+<tr>
+<td><code>cx</code> / <code>cy</code></td>
+<td>Tacho-Mittelpunkt, in viewBox-Einheiten</td>
+</tr>
+<tr>
+<td><code>labelR</code></td>
+<td>Radius der Zahlen-Labels</td>
+</tr>
+<tr>
+<td><code>tickR0</code> / <code>tickR1</code></td>
+<td>innerer / äußerer Radius jeder Tick-Linie</td>
+</tr>
+<tr>
+<td><code>arcR</code></td>
+<td>Radius des Rotzonen-Bogens</td>
+</tr>
+<tr>
+<td><code>arcPct</code></td>
+<td>Prozent des Vollkreises, den der 270-Grad-Bogen einnimmt (<code>75</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Die App füllt <code>.my-scale.scale-locked</code> mit den gesperrten Marken und <code>.scale-unlocked</code> mit den offenen (km/h in <code>.lbl-kmh</code>, mph in <code>.lbl-mph</code>, umgeschaltet per <code>lb-mph</code>), fügt einen <code>.my-redzone-hi</code>-Bogen hinzu und setzt jeden Tick <strong><code>--cn-f</code></strong> (0-1, der stückweise Zeiger-Anteil) auf dem <code>&lt;svg&gt;</code>. Steuere deinen Zeiger und Füllbogen damit, z. B. <code>transform: rotate(calc(135deg + var(--cn-f) * 270deg))</code>. Lässt du <code>data-lb-gauge</code> weg, bleibt die voll manuelle reine-CSS-Skala von oben.</p>
 <h3 id="tg-de-einheiten-umschalter">Einheiten-Umschalter</h3>
 <p>Zwei überlappende <code>&lt;text&gt;</code>-Elemente per <code>opacity</code> umschalten. <code>display:none</code> ist bei SVG-Text in Android WebView unzuverlässig.</p>
 <pre class="html"><code>&lt;text class="g-unit g-unit-kmh" x="80" y="100" text-anchor="middle"&gt;km/h&lt;/text&gt;
@@ -1721,7 +1811,7 @@
   stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
   transition: stroke-dashoffset 0.4s ease-out;
 }
-:root.lb-unlocked .g-arc { --speed-max: 110; }
+:root.lb-unlocked .g-arc { --speed-max: 100; }
 
 .g-val       { font-size: 38px; font-weight: 700; fill: var(--text); font-family: inherit; }
 .g-unit      { font-size: 12px; fill: var(--label); font-family: inherit; }
@@ -2498,7 +2588,7 @@
   stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
   transition: stroke-dashoffset 0.4s ease-out;
 }
-:root.lb-unlocked .ot-arc { --speed-max: 110; }
+:root.lb-unlocked .ot-arc { --speed-max: 100; }
 
 .ot-speed-val { font-size: 38px; font-weight: var(--fw-bold); fill: var(--text); font-family: inherit; }
 

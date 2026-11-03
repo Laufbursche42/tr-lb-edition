@@ -154,6 +154,8 @@ Replace the main-screen fold area with your own HTML and CSS layout. A theme wit
 
 Themes are distributed as a **ZIP bundle** (`theme.html` + `theme.css` + optional `theme.json`). The format is shared across Laufbursche apps, so a theme built for one app can be imported into any other. Import via **Settings → Display → Theme manager → Import theme**; export any installed theme via the share button in the theme list.
 
+The built-in gauge themes **Carbon** and **Lambo** have a selectable speedometer scale - **Klar**, **Fine** or **Round** - under **Theme manager → "Speedometer scale"**; the marks are evenly spaced so the numbers stay readable and the needle points exactly at the number.
+
 **[→ Full theme authoring guide: THEME-GUIDE.md](THEME-GUIDE.md)**
 
 ## Firmware: update and flash

@@ -220,9 +220,9 @@ Updated every BLE tick (500 ms). Defaults to absent / `0` at page load.
 **CSS usage:**
 
 ```css
-/* Scale ring shows full 0-110 range when unlocked */
+/* Scale ring shows full 0-100 range when unlocked */
 .gauge-scale { --scale-max: 40; }
-:root.lb-unlocked .gauge-scale { --scale-max: 110; }
+:root.lb-unlocked .gauge-scale { --scale-max: 100; }
 
 /* Or with the numeric var */
 .gauge-arc {
@@ -296,10 +296,37 @@ In CSS, define `--speed-max` on the element and reference `--cur-speed` from `:r
 }
 
 /* Extend scale when the scooter is unlocked (lb-unlocked on <html>). */
-:root.lb-unlocked .gauge-arc { --speed-max: 110; }
+:root.lb-unlocked .gauge-arc { --speed-max: 100; }
 ```
 
 No JavaScript needed - `--cur-speed` is updated by the app every 500 ms and CSS recalculates automatically.
+
+### Managed scale marks (optional) - data-lb-gauge
+
+The built-in Carbon and Lambo themes let the rider choose the gauge's number scale - **Klar**, **Fine** or **Round** - under **Settings -> Theme manager -> "Speedometer scale"**. The app draws the tick marks and number labels (evenly spaced, so dense low values like 20 / 22 / 25 stay readable) and drives the needle so it points exactly at the chosen number.
+
+Your own full-scope theme can opt into this instead of drawing the scale by hand: add a `data-lb-gauge` attribute to your gauge `<svg>` and leave two empty groups for the app to fill.
+
+```html
+<svg class="my-gauge"
+     data-lb-gauge='{"prefix":"my","cx":100,"cy":100,"labelR":61,"tickR0":84,"tickR1":94,"arcR":80,"arcPct":75}'
+     viewBox="0 0 200 200" aria-hidden="true">
+  <!-- your static track ring, pointer, etc. -->
+  <g class="my-scale scale-locked"></g>
+  <g class="my-scale scale-unlocked"></g>
+</svg>
+```
+
+| Field | Meaning |
+|-------|---------|
+| `prefix` | class prefix for the elements the app injects (`my-tick`, `my-lbl`, `my-redzone-hi`) - style them in your CSS |
+| `cx` / `cy` | gauge centre, in viewBox units |
+| `labelR` | radius of the number labels |
+| `tickR0` / `tickR1` | inner / outer radius of each tick line |
+| `arcR` | radius of the red-zone arc |
+| `arcPct` | percent of the full circle the 270-degree arc spans (use `75`) |
+
+The app fills `.my-scale.scale-locked` with the locked marks and `.scale-unlocked` with the open marks (km/h in `.lbl-kmh`, mph in `.lbl-mph`, toggled by `lb-mph`), adds a `.my-redzone-hi` arc, and sets **`--cn-f`** (0-1, the piecewise needle fraction) on the `<svg>` every tick. Drive your pointer and fill arc from it, e.g. `transform: rotate(calc(135deg + var(--cn-f) * 270deg))`. Leave `data-lb-gauge` off to keep the fully manual pure-CSS scale shown above.
 
 ### Unit label toggle
 
@@ -368,7 +395,7 @@ No `url()` or `http://` sources are allowed. Embed SVG directly:
   stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
   transition: stroke-dashoffset 0.4s ease-out;
 }
-:root.lb-unlocked .g-arc { --speed-max: 110; }
+:root.lb-unlocked .g-arc { --speed-max: 100; }
 
 .g-val       { font-size: 38px; font-weight: 700; fill: var(--text); font-family: inherit; }
 .g-unit      { font-size: 12px; fill: var(--label); font-family: inherit; }
@@ -878,7 +905,7 @@ Orbit is a complete, importable theme that demonstrates every technique in this 
   stroke-dashoffset: calc(273 - var(--cur-speed) * 273 / var(--speed-max));
   transition: stroke-dashoffset 0.4s ease-out;
 }
-:root.lb-unlocked .ot-arc { --speed-max: 110; }
+:root.lb-unlocked .ot-arc { --speed-max: 100; }
 
 .ot-speed-val { font-size: 38px; font-weight: var(--fw-bold); fill: var(--text); font-family: inherit; }
 
