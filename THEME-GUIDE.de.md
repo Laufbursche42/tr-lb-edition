@@ -498,6 +498,10 @@ Diese in `cssVars` deklarieren, um die Standard-Akzentpalette des Themes festzul
 | `--sz-m2-top` | 12 px | Motor-Kachel-2-Titel |
 | `--sz-m2-mid` | 32 px | Motor-Kachel-2-Wert |
 | `--sz-m2-bot` | 12 px | Motor-Kachel-2-Einheit |
+| `--sz-m3-top` | 12 px | Motor-Kachel-3-Titel |
+| `--sz-m3-mid` | 32 px | Motor-Kachel-3-Wert |
+| `--sz-m3-bot` | 12 px | Motor-Kachel-3-Einheit |
+| `--sz-qbtn` | 10 px | Schnell-Button-Text (min 6, max 16) |
 
 **Kachel-Mindesthöhen** (vom Nutzer einstellbar; `0` = natürliche Inhaltshöhe)
 

@@ -498,6 +498,10 @@ Declare these in `cssVars` to set the theme's default accent palette. Users can 
 | `--sz-m2-top` | 12 px | Motor tile 2 title |
 | `--sz-m2-mid` | 32 px | Motor tile 2 value |
 | `--sz-m2-bot` | 12 px | Motor tile 2 unit |
+| `--sz-m3-top` | 12 px | Motor tile 3 title |
+| `--sz-m3-mid` | 32 px | Motor tile 3 value |
+| `--sz-m3-bot` | 12 px | Motor tile 3 unit |
+| `--sz-qbtn` | 10 px | Quick-control button text (min 6, max 16) |
 
 **Tile minimum heights** (user-configurable; `0` = natural content height)
 
