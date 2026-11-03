@@ -14,6 +14,12 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.40
+
+- Adjustable quick-button font with a smaller default, so long labels (notably the German ones) no longer overflow or overlap. Tune it per theme under Settings -> Display -> Font sizes and in the Theme Manager.
+- Speed gauge: the unlocked scale now ends at 100 km/h (it briefly read 110); the locked scale stays at 40, so the gauge reads identically in every Laufbursche app.
+- Dark-mode text brightness now defaults to full (100) instead of 90.
+
 ## 1.1.39
 
 - Driver-rendered, customizable dashboard. Every live-value tile is now filled by your Teverun's own driver into a shared layout, so the app shows exactly what your scooter reports - per-motor temperatures and currents, battery health, voltage, power (kW), total and trip - and hides the rest. In the Theme Manager a "Live tiles" list (between the fixed speed row and the scroll area) lets you pick, per theme, which value each tile shows: a dropdown per tile, just like the quick buttons.

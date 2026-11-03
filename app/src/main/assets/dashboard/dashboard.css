@@ -494,7 +494,7 @@ select.theme-sel {
   background: var(--card); color: var(--label);
   font-weight: var(--fw-bold); line-height: 1.1; cursor: pointer;
   white-space: nowrap;
-  font-size: clamp(7px, 3.4cqi, 12px);
+  font-size: clamp(6px, 2.8cqi, var(--sz-qbtn, 10px));
   -webkit-tap-highlight-color: transparent;
 }
 #quick-grid .mq-btn:active,

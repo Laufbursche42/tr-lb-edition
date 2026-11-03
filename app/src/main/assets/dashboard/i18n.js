@@ -20,6 +20,9 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Speed gauge ends at 100.</b> On the unlocked scale the gauge now tops out at 100 km/h (it had briefly read 110); the locked scale still reads to 40, so the dial behaves the same in every Laufbursche app.",
+      "<b>Brighter dark-mode text by default.</b> The dark theme's text brightness now starts at full (100) instead of 90; you can still dial it down under the theme's Dark colours.",
+      "<b>Quick buttons fit long labels.</b> The drive-mode quick toggles now use a smaller, adjustable font so long labels no longer overflow or overlap. Change the size under Settings &rarr; Display &rarr; Font sizes (and per theme in the Theme Manager).",
       "<b>More firmware versions shown.</b> The info page now lists the display, battery, light-controller and front/rear motor-controller firmware versions, like the official Teverun app.",
       "<b>Back button fixed.</b> The back arrows and the Android back button now step back exactly one level - a sub-page returns to Settings, not straight to the dashboard.",
       "<b>Fully customizable dashboard.</b> Every live-value tile is now filled by your Teverun's own driver into a shared layout - the app shows exactly what your scooter reports (per-motor temperatures and currents, battery health, voltage, power, total, trip). In the Theme Manager a 'Live tiles' list lets you pick, per theme, which value each tile shows (a dropdown per tile, like the quick buttons).",
@@ -205,6 +208,7 @@ window.I18N = {
     "style.var.sz-m2-top": "Tile 2 title",
     "style.var.sz-m2-mid": "Tile 2 value",
     "style.var.sz-m2-bot": "Tile 2 unit",
+    "style.var.sz-qbtn": "Quick buttons",
     "style.var.tile-h-speed": "Speed tile height",
     "style.var.tile-h-hero": "Hero tile height",
     "style.var.tile-h-motors": "Motor tile height",
@@ -930,6 +934,9 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Tacho endet bei 100.</b> Auf der entsperrten Skala reicht der Tacho jetzt bis 100 km/h (er zeigte kurzzeitig 110); die gesperrte Skala geht weiterhin bis 40, sodass sich der Tacho in jeder Laufbursche-App gleich verh\u00e4lt.",
+      "<b>Hellere Schrift im Dunkelmodus (Standard).</b> Die Text-Helligkeit des dunklen Themes startet jetzt bei voll (100) statt 90; herunterregeln kannst du sie weiterhin unter den Dunkel-Farben des Themes.",
+      "<b>Schnell-Buttons fassen lange Beschriftungen.</b> Die Fahrmodus-Schnellumschalter nutzen jetzt eine kleinere, einstellbare Schrift, damit lange Beschriftungen nicht mehr überlaufen oder überlappen. Die Größe änderst du unter Einstellungen &rarr; Anzeige &rarr; Schriftgrößen (und pro Theme im Theme-Manager).",
       "<b>Mehr Firmware-Versionen.</b> Die Info-Seite listet jetzt die Firmware-Versionen von Display, Akku, Lichtsteuerung und Front-/Heck-Controller - wie die offizielle Teverun-App.",
       "<b>Zurück-Taste korrigiert.</b> Die Zurück-Pfeile und die Android-Zurück-Taste gehen jetzt genau eine Ebene zurück - eine Unterseite führt zurück zu den Einstellungen, nicht direkt aufs Dashboard.",
       "<b>Voll anpassbares Dashboard.</b> Jede Live-Wert-Kachel wird jetzt vom Treiber deines Teverun in ein geteiltes Layout gef&uuml;llt - die App zeigt genau das, was dein Roller meldet (Motor-Temperaturen und -Str&ouml;me je Achse, Akku-Gesundheit, Spannung, Leistung, Gesamt, Trip). Im Theme-Manager w&auml;hlst du &uuml;ber eine 'Live-Kacheln'-Liste pro Theme, welchen Wert jede Kachel zeigt (ein Dropdown pro Kachel, wie bei den Buttons).",
@@ -1115,6 +1122,7 @@ window.I18N = {
     "style.var.sz-m2-top": "Kachel2-Titel",
     "style.var.sz-m2-mid": "Kachel2-Wert",
     "style.var.sz-m2-bot": "Kachel2-Unit",
+    "style.var.sz-qbtn": "Schnell-Buttons",
     "style.var.tile-h-speed": "Speed-Kachel Höhe",
     "style.var.tile-h-hero": "Hero-Kachel Höhe",
     "style.var.tile-h-motors": "Motor-Kachel Höhe",

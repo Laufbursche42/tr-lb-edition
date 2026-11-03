@@ -935,6 +935,10 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
         <div class="settings-row-left"><div class="settings-row-label" data-i18n="display.fonts.m2.bot">Tile row 2 - unit (bottom)</div></div>
         <input class="set-ctrl" id="dsp-font-m2-bot" type="number" min="10" max="40" step="1" inputmode="numeric">
       </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="style.var.sz-qbtn">Quick buttons</div></div>
+        <input class="set-ctrl" id="dsp-font-qbtn" type="number" min="6" max="16" step="1" inputmode="numeric">
+      </div>
       <button type="button" id="btn-dsp-reset-fonts" class="settings-btn mt-10" data-i18n="display.fonts.reset">Reset font sizes</button>
     </div>
   </div>
@@ -1322,7 +1326,8 @@ const FONT_META = [
   { key: 'm1Bot', varName: '--sz-m1-bot', id: 'dsp-font-m1-bot', def: 12, min: 10, max: 40 },
   { key: 'm2Top', varName: '--sz-m2-top', id: 'dsp-font-m2-top', def: 12, min: 10, max: 40 },
   { key: 'm2Mid', varName: '--sz-m2-mid', id: 'dsp-font-m2-mid', def: 32, min: 10, max: 48 },
-  { key: 'm2Bot', varName: '--sz-m2-bot', id: 'dsp-font-m2-bot', def: 12, min: 10, max: 40 }
+  { key: 'm2Bot', varName: '--sz-m2-bot', id: 'dsp-font-m2-bot', def: 12, min: 10, max: 40 },
+  { key: 'qbtn', varName: '--sz-qbtn', id: 'dsp-font-qbtn', def: 10, min: 6, max: 16 }
 ];
 
 function loadDisplayCfg() {
@@ -3619,7 +3624,7 @@ const DEFAULT_CSS_VARS = {
   '--dark-border': { label: 'style.var.dark-border', type: 'color', default: '#1C2035', group: 'dark'    },
   '--dark-text':   { label: 'style.var.dark-text',   type: 'color', default: '#E4EDF6', group: 'dark'    },
   '--dark-label':  { label: 'style.var.dark-label',  type: 'color', default: '#C6D2E2', group: 'dark'    },
-  '--dark-lum':    { label: 'style.var.dark-lum',    type: 'range', default: 90, min: 0, max: 100,        group: 'dark'    },
+  '--dark-lum':    { label: 'style.var.dark-lum',    type: 'range', default: 100, min: 0, max: 100,        group: 'dark'    },
   // Light mode colours
   '--light-card':   { label: 'style.var.light-card',   type: 'color', default: '#ffffff',  group: 'light'   },
   '--light-bg':     { label: 'style.var.light-bg',     type: 'color', default: '#e8edf5',  group: 'light'   },
@@ -3647,6 +3652,7 @@ const DEFAULT_CSS_VARS = {
   '--sz-m2-top':    { label: 'style.var.sz-m2-top',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fonts' },
   '--sz-m2-mid':    { label: 'style.var.sz-m2-mid',    type: 'number', default: 32, min: 10, max: 48, unit: 'px', group: 'fonts' },
   '--sz-m2-bot':    { label: 'style.var.sz-m2-bot',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fonts' },
+  '--sz-qbtn':      { label: 'style.var.sz-qbtn',      type: 'number', default: 10, min: 6, max: 16, unit: 'px', group: 'fonts' },
   // Tile min-heights (0 = natural content height; increase to make a tile taller)
   '--tile-h-speed':   { label: 'style.var.tile-h-speed',   type: 'number', default: 0,   min: 0, max: 400, unit: 'px', group: 'tiles' },
   '--tile-h-hero':    { label: 'style.var.tile-h-hero',    type: 'number', default: 0,   min: 0, max: 400, unit: 'px', group: 'tiles' },
