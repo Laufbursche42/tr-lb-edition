@@ -90,7 +90,7 @@ html, body {
   background: var(--card); border-top: 1px solid var(--border);
   align-items: stretch;
 }
-.bb-btn { flex: 1; height: 32px; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.bb-btn { flex: 1; height: 32px; padding: 0; border: none; background: transparent; border-radius: 0; font-size: 16px; display: flex; align-items: center; justify-content: center; }
 #bb-btn-left, #bb-btn-right { font-size: 11px; font-weight: 600; letter-spacing: .02em; }
 /* When bottom nav is active: push scroller up so content isn't hidden behind the bar */
 body.bottom-nav-active #scroller { padding-bottom: 32px; }
@@ -125,7 +125,7 @@ body.bottom-nav-active #btn-settings { display: none !important; }
    icons can never be pushed off-screen by a wide logo. */
 #topbar .tb-left { flex: 0 1 auto; min-width: 0; overflow: hidden; }
 .icon-btn {
-  width: 34px; height: 34px;
+  width: 34px; height: 34px; padding: 0;
   display: flex; align-items: center; justify-content: center;
   border-radius: 10px; border: none; background: transparent;
   color: var(--text); cursor: pointer; font-size: var(--fs-2xl);
@@ -283,7 +283,7 @@ html[data-theme-loading] #scroller { visibility: hidden; }
    Stays above the spacing utilities so their margin shorthand keeps winning. */
 .route-stats, .settings-row-sublabel { font-size: var(--fs-xs); color: var(--label); margin-top: 2px; }
 .route-gpx-btn {
-  padding: 5px 10px; border-radius: 7px;
+  width: auto; padding: 5px 10px; border-radius: 7px;
   border: 1px solid var(--border); background: transparent;
   color: var(--gps); font-size: var(--fs-xs); font-weight: var(--fw-semibold); cursor: pointer;
   white-space: nowrap;
@@ -313,7 +313,7 @@ html[data-theme-loading] #scroller { visibility: hidden; }
   display: grid; grid-template-columns: repeat(4, 1fr);
 }
 .del-btn {
-  padding: 10px 4px; border: none; border-right: 1px solid var(--border);
+  padding: 10px 4px; border: none; border-right: 1px solid var(--border); border-radius: 0;
   background: transparent; color: var(--danger); font-size: var(--fs-xs);
   font-weight: var(--fw-semibold); cursor: pointer; text-align: center;
   -webkit-tap-highlight-color: transparent;
@@ -609,6 +609,16 @@ select.theme-sel {
 }
 #btn-connect.connected { color: var(--good); }
 #ble-dot { pointer-events: none; }
+/* Default button look: a bare <button> is a standard full-width action button, so a new
+   button inherits the design instead of needing its own CSS. Structural/icon buttons opt
+   out via their own class (higher specificity wins) with the inline neutralisers noted. */
+button {
+  width: 100%; padding: 12px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font-family: inherit;
+  font-size: var(--fs-base); font-weight: var(--fw-semibold);
+  border-radius: 9px; cursor: pointer; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
 /* The settings action button. .settings-btn is the reusable form; the id list is the same
    declaration for the buttons that predate the class. New buttons take the class. */
 .settings-btn,
@@ -620,7 +630,7 @@ select.theme-sel {
 }
 .settings-btn:active,
 #btn-scooter-settings:active, #btn-connect-scooter:active, #btn-export-logs:active, #btn-error-reports:active, #btn-navigation:active, #btn-info:active, #btn-battery:active, #btn-firmware:active, #btn-whatsnew:active, #btn-version-info:active { background: var(--border); }
-.settings-btn-secondary { color: var(--label); font-weight: normal; font-size: var(--fs-sm); margin-top: 4px; }
+.settings-btn-secondary { margin-top: 8px; } /* spacing only: stacked standard buttons (no look override) */
 /* #btn-stream-start (good fill) + #btn-stream-stop (neutral) are styled by the shared action-button base. */
 #stream-url { color: var(--text); background: var(--bg); border: 1px solid var(--border);
   border-radius: 8px; padding: 8px; font-family: monospace; }
@@ -829,7 +839,7 @@ select.theme-sel {
   border: 1px solid var(--border); border-radius: 9px; overflow: hidden;
 }
 .seg button {
-  padding: 9px 6px; border: none; background: var(--bg);
+  padding: 9px 6px; border: none; border-radius: 0; background: var(--bg);
   color: var(--text); font-size: var(--fs-sm); font-weight: var(--fw-bold); cursor: pointer;
   border-right: 1px solid var(--border);
   -webkit-tap-highlight-color: transparent;
@@ -983,7 +993,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 /* ── Language switch and the what-is-new modal ─────────────────────────────── */
 .lang-switch { display: flex; gap: 4px; flex-shrink: 0; }
 .lang-switch button {
-  padding: 5px 9px; border-radius: 7px; border: 1px solid var(--border);
+  width: auto; padding: 5px 9px; border-radius: 7px; border: 1px solid var(--border);
   min-width: 3em; text-align: center;
   background: transparent; color: var(--label);
   font-family: monospace; font-size: var(--fs-sm); font-weight: var(--fw-bold);
@@ -1036,7 +1046,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 .tile-source-sel { font-size: var(--fs-sm); background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 4px; flex-shrink: 0; }
 .theme-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .theme-row-actions button {
-  padding: 5px 10px; font-size: var(--fs-sm);
+  width: auto; padding: 5px 10px; font-size: var(--fs-sm);
   border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--card); color: var(--text);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
@@ -1104,7 +1114,7 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
 /* Button-slot editor: the × delete button and the slot select fill available space. */
 .btn-slot-sel { flex: 1; }
 .btn-slot-del {
-  flex-shrink: 0; background: none; border: 1px solid var(--border);
+  width: auto; flex-shrink: 0; background: none; border: 1px solid var(--border);
   border-radius: var(--radius); color: var(--label); font-size: 14px;
   padding: 2px 8px; cursor: pointer; line-height: 1;
 }
@@ -1282,4 +1292,3 @@ html:not([lang="de"]) #guide-body .tg-de { display: none; }
 #start-scroller { padding-left: calc(var(--gap) + 5px); padding-right: calc(var(--gap) + 5px); }
 #start-scroller .settings-group-title { margin-top: 18px; }
 #start-scroller .start-risk { color: var(--warn); margin-top: 14px; }
-#btn-start-forum { margin-top: 18px; }
