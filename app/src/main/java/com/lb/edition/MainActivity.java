@@ -557,7 +557,8 @@ public class MainActivity extends Activity {
             pollApkDownload(dm, id, 0);
         } catch (Throwable t) {
             Log.e(TAG, "startApkDownload failed", t);
-            toast("Download failed: " + t.getMessage());
+            // Keep the exception detail in the log only; show the user a generic message.
+            toast("Download failed");
         }
     }
 
@@ -986,8 +987,8 @@ public class MainActivity extends Activity {
          *  the patched version/CRC/target. The next otaStart() flashes this patched image. */
         @JavascriptInterface
         public void otaStagePatched(final String name, final String text) {
-            // sanitize the JS-provided name before logging (strip CR/LF) - avoids log injection
-            Log.i(TAG, "LB.otaStagePatched(" + (name == null ? "null" : name.replaceAll("[\\r\\n]", "_")) + ")");
+            // logSafe strips CR/LF from the JS-provided name - avoids log injection
+            Log.i(TAG, "LB.otaStagePatched(" + logSafe(name) + ")");
             try {
                 if (text == null || text.isEmpty()) {
                     pushOtaFile("{\"ok\":false,\"error\":\"empty patched image\"}");
@@ -1711,7 +1712,7 @@ public class MainActivity extends Activity {
                 is.close();
                 return out.toString("UTF-8");
             } catch (Throwable t) {
-                Log.w(TAG, "LB.getAsset failed for " + name, t);
+                Log.w(TAG, "LB.getAsset failed for " + logSafe(name), t);
                 return "";
             }
         }

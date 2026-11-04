@@ -210,11 +210,14 @@ public final class DebugLog {
     // survive, so the actual scooter traffic is still readable. This is always on
     // (the in-app "redact" control is shown checked and locked, to match the sites).
     private static final Pattern RE_JWT       = Pattern.compile("eyJ[A-Za-z0-9_-]{4,}\\.[A-Za-z0-9_-]{4,}\\.[A-Za-z0-9_-]{4,}");
-    private static final Pattern RE_BEARER_KV = Pattern.compile("\\bBearer\\s+[A-Za-z0-9._~+/=-]+", Pattern.CASE_INSENSITIVE);
-    private static final Pattern RE_TOKEN_KV  = Pattern.compile("\\b(access[_-]?token|refresh[_-]?token|token|jwt|password|passwd|pwd|secret|code|otp)\\b(\\s*[:=]\\s*)(\"?)([^\\s\",}]+)\\3", Pattern.CASE_INSENSITIVE);
+    // Possessive quantifiers (*+, ++, {n,}+): the value/whitespace runs never need to give
+    // characters back (the following token is outside the repeated class), so matches are
+    // identical to the greedy form but cannot backtrack -> no polynomial ReDoS on crafted input.
+    private static final Pattern RE_BEARER_KV = Pattern.compile("\\bBearer\\s++[A-Za-z0-9._~+/=-]++", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RE_TOKEN_KV  = Pattern.compile("\\b(access[_-]?token|refresh[_-]?token|token|jwt|password|passwd|pwd|secret|code|otp)\\b(\\s*+[:=]\\s*+)(\"?)([^\\s\",}]++)\\3", Pattern.CASE_INSENSITIVE);
     private static final Pattern RE_MAC       = Pattern.compile("\\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\\b");
-    private static final Pattern RE_SECRET_KV = Pattern.compile("\\b(secret|token|key|aes|pwd|password|pin|mac|serial|vin|uid|imei)\\b(\\s*[:=]\\s*)(\"?)([^\\s\",]+)\\3", Pattern.CASE_INSENSITIVE);
-    private static final Pattern RE_HEX       = Pattern.compile("\\b[0-9A-Fa-f]{16,}\\b");
+    private static final Pattern RE_SECRET_KV = Pattern.compile("\\b(secret|token|key|aes|pwd|password|pin|mac|serial|vin|uid|imei)\\b(\\s*+[:=]\\s*+)(\"?)([^\\s\",]++)\\3", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RE_HEX       = Pattern.compile("\\b[0-9A-Fa-f]{16,}+\\b");
 
     /** Always-on PII/secret scrub applied to every written line (see comment above). */
     static String redactLine(String line) {

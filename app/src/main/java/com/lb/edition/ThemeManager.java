@@ -135,19 +135,40 @@ class ThemeManager {
         }
     }
 
-    /** Delete theme files. No-op if the theme does not exist. */
+    /** Delete theme files. No-op if the theme does not exist or the name is rejected. */
     void deleteTheme(String name) {
         if (name == null || name.isEmpty()) return;
-        getThemeFile(name, "html").delete();
-        getThemeFile(name, "css").delete();
-        getThemeFile(name, "json").delete();
+        try {
+            getThemeFile(name, "html").delete();
+            getThemeFile(name, "css").delete();
+            getThemeFile(name, "json").delete();
+        } catch (Throwable rejected) {
+            return;
+        }
         if (name.equals(getActiveThemeName())) prefs.edit().remove(PREF_ACTIVE).apply();
         prefs.edit().remove("theme_tiles_" + name).remove("theme_vars_" + name).apply();
     }
 
-    /** File handle for a theme asset (does not imply existence). */
+    /** File handle for a theme asset (does not imply existence). Rejects any name that would
+     *  resolve outside the flat themes directory (path traversal). */
     File getThemeFile(String name, String ext) {
-        return new File(themesDir(), name + "." + ext);
+        File dir = themesDir();
+        try {
+            return requireInside(dir, new File(dir, name + "." + ext));
+        } catch (IOException e) {
+            throw new IllegalArgumentException("theme path rejected");
+        }
+    }
+
+    /** Canonicalize {@code f} and require it to be a direct child of {@code baseDir}, else throw.
+     *  Returns the canonical file so callers operate on the validated path. */
+    private static File requireInside(File baseDir, File f) throws IOException {
+        File canon = f.getCanonicalFile();
+        File parent = canon.getParentFile();
+        if (parent == null || !parent.getCanonicalPath().equals(baseDir.getCanonicalPath())) {
+            throw new IllegalArgumentException("path escapes base directory");
+        }
+        return canon;
     }
 
     // ── ZIP bundle import/export ───────────────────────────────────────────
@@ -225,7 +246,7 @@ class ThemeManager {
             if (!htmlFile.exists() || !cssFile.exists()) return null;
             File outDir = new File(ctx.getCacheDir(), "theme_export");
             if (!outDir.exists()) outDir.mkdirs();
-            File out = new File(outDir, name + ".zip");
+            File out = requireInside(outDir, new File(outDir, name + ".zip"));
             try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(out))) {
                 putZipEntry(zos, "theme.html", readFile(htmlFile));
                 putZipEntry(zos, "theme.css",  readFile(cssFile));
