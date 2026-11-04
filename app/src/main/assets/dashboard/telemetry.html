@@ -1011,12 +1011,53 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
   </div>
   <div id="start-scroller">
     <p class="settings-row-sublabel" data-i18n="start.intro">New here and not sure how it works?</p>
+
     <div class="settings-group-title" data-i18n="start.s1.title">1. Connect your scooter</div>
     <p class="settings-row-sublabel" data-i18n="start.s1.text">Connect over Bluetooth.</p>
-    <div class="settings-group-title" data-i18n="start.s2.title">2. Take the limiter off</div>
-    <p class="settings-row-sublabel" data-i18n="start.s2.text">Unlock over Bluetooth.</p>
-    <div class="settings-group-title" data-i18n="start.s3.title">3. Firmware patcher</div>
-    <p class="settings-row-sublabel" data-i18n="start.s3.text">More.</p>
+
+    <div class="settings-group-title" data-i18n="start.s2.title">2. Which route fits your Teverun</div>
+    <p class="settings-row-sublabel" data-i18n="start.s2.text">Find your model.</p>
+    <div class="start-branch">
+      <div class="start-branch-cond" data-i18n="start.s2.b1.cond">Recognised IVCU Teverun</div>
+      <div class="start-branch-text" data-i18n="start.s2.b1.text">Firmware patcher.</div>
+    </div>
+    <div class="start-branch">
+      <div class="start-branch-cond" data-i18n="start.s2.b2.cond">Blade Mini and others</div>
+      <div class="start-branch-text" data-i18n="start.s2.b2.text">Bluetooth limiter only.</div>
+    </div>
+    <p class="start-note" data-i18n="start.s2.note">Build options appear only for a recognised image.</p>
+
+    <div class="settings-group-title" data-i18n="start.s3.title">3. In the patcher: which build</div>
+    <p class="settings-row-sublabel" data-i18n="start.s3.text">Pick a build.</p>
+    <div class="start-branch">
+      <div class="start-branch-cond" data-i18n="start.s3.b1.cond">Standard</div>
+      <div class="start-branch-text" data-i18n="start.s3.b1.text">Switchable unlock.</div>
+    </div>
+    <div class="start-branch">
+      <div class="start-branch-cond" data-i18n="start.s3.b2.cond">Kickstart</div>
+      <div class="start-branch-text" data-i18n="start.s3.b2.text">Older controllers.</div>
+    </div>
+    <div class="start-branch">
+      <div class="start-branch-cond" data-i18n="start.s3.b3.cond">Permanently open</div>
+      <div class="start-branch-text" data-i18n="start.s3.b3.text">Permanent, no switch.</div>
+    </div>
+    <div class="start-branch">
+      <div class="start-branch-cond" data-i18n="start.s3.b4.cond">EEPROM reset</div>
+      <div class="start-branch-text" data-i18n="start.s3.b4.text">Factory reset, no unlock.</div>
+    </div>
+    <p class="start-note" data-i18n="start.s3.note">Clamp, blinker fix and the on/off lock.</p>
+
+    <div class="settings-group-title" data-i18n="start.s4.title">4. Download, patch, flash</div>
+    <p class="settings-row-sublabel" data-i18n="start.s4.text">Flash over Bluetooth.</p>
+    <p class="start-note" data-i18n="start.s4.note">Where to get a stock firmware.</p>
+    <button type="button" class="start-cta" onclick="openExt('https://github.com/Spooonky/Teverun-Fighter-Mini-Pro-Eco-eKFV-Firmware')" data-i18n="start.cta.fw">Firmware source: Spooonky's repo</button>
+
+    <div class="settings-group-title" data-i18n="start.s5.title">5. Switchable or permanent</div>
+    <p class="settings-row-sublabel" data-i18n="start.s5.text">Standard switches; permanent stays.</p>
+
+    <div class="settings-group-title" data-i18n="start.s6.title">6. Back to stock</div>
+    <p class="settings-row-sublabel" data-i18n="start.s6.text">Flash stock to restore.</p>
+
     <p class="settings-row-sublabel start-risk" data-i18n="start.risk">At your own risk.</p>
   </div>
 </div>
