@@ -629,7 +629,7 @@ select.theme-sel {
    Every sub-page is the same full-screen sheet that slides in from the right, so one shell
    carries all of them. #routes-scroller keeps its own block: it clips instead of scrolling. */
 #routes-page, #streaming-page,
-#connect-page, #scooter-page, #error-reports-page, #info-page, #battery-page, #firmware-page, #display-page, #theme-page, #guide-page, #settings-sheet {
+#connect-page, #scooter-page, #error-reports-page, #info-page, #battery-page, #firmware-page, #display-page, #theme-page, #guide-page, #start-page, #settings-sheet {
   position: fixed; inset: 0; z-index: 120; background: var(--bg);
   display: flex; flex-direction: column;
   transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
@@ -638,9 +638,9 @@ select.theme-sel {
    earlier in the DOM) opens on top of the open Settings sheet and back returns to it. */
 #settings-sheet { z-index: 119; }
 #routes-page.open, #streaming-page.open,
-#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #battery-page.open, #firmware-page.open, #display-page.open, #theme-page.open, #guide-page.open, #settings-sheet.open { transform: translateX(0); }
+#connect-page.open, #scooter-page.open, #error-reports-page.open, #info-page.open, #battery-page.open, #firmware-page.open, #display-page.open, #theme-page.open, #guide-page.open, #start-page.open, #settings-sheet.open { transform: translateX(0); }
 #streaming-scroller,
-#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #battery-scroller, #firmware-scroller, #display-scroller, #theme-scroller, #guide-scroller, #settings-scroller {
+#connect-scroller, #scooter-scroller, #error-reports-scroller, #info-scroller, #battery-scroller, #firmware-scroller, #display-scroller, #theme-scroller, #guide-scroller, #start-scroller, #settings-scroller {
   flex: 1; min-height: 0; overflow-y: auto; padding: var(--gap);
   display: flex; flex-direction: column; gap: 4px;
   padding-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px) + 12px);
@@ -648,7 +648,7 @@ select.theme-sel {
 #theme-scroller { padding-left: calc(var(--gap) + 5px); padding-right: calc(var(--gap) + 5px); }
 /* children must NOT shrink, otherwise the flex column squashes instead of scrolling */
 #routes-scroller > *, #streaming-scroller > *,
-#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > *, #battery-scroller > *, #firmware-scroller > *, #display-scroller > *, #theme-scroller > * { flex-shrink: 0; }
+#connect-scroller > *, #scooter-scroller > *, #error-reports-scroller > *, #info-scroller > *, #battery-scroller > *, #firmware-scroller > *, #display-scroller > *, #theme-scroller > *, #start-scroller > * { flex-shrink: 0; }
 
 /* ── Battery Info page ── */
 .bat-health {
@@ -1277,3 +1277,9 @@ html:not([lang="de"]) #guide-body .tg-de { display: none; }
 #quick-grid .mq-btn, #quick-grid .dq-btn {
   background: rgb(from var(--card) r g b / var(--btn-alpha, 1));
 }
+
+/* Beginner Guide page */
+#start-scroller { padding-left: calc(var(--gap) + 5px); padding-right: calc(var(--gap) + 5px); }
+#start-scroller .settings-group-title { margin-top: 18px; }
+#start-scroller .start-risk { color: var(--warn); margin-top: 14px; }
+#btn-start-forum { margin-top: 18px; }

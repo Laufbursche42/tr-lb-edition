@@ -445,6 +445,8 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
     </div>
     <button id="btn-whatsnew" data-i18n="settings.whatsnew">&#10024; What is new</button>
     <div class="settings-row-sublabel note-gap" data-i18n="settings.whatsnew.sub">What changed in this version</div>
+    <button type="button" id="btn-start-guide" data-i18n="start.menu.action">&#128075; Beginner Guide</button>
+    <div class="settings-row-sublabel note-gap" data-i18n="start.menu.hint">A short guide to get you started.</div>
     <button id="btn-version-info" data-i18n="settings.version.info.action">&#8505; Version Info &amp; Disclaimer</button>
   </div>
 
@@ -996,6 +998,28 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
   <button id="guide-totop" class="guide-totop" aria-hidden="true" data-i18n-aria="theme.guide.totop.aria">
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>
   </button>
+</div>
+
+<!-- Beginner Guide: a short, plain intro for new users (not model-specific). -->
+<div id="start-page">
+  <div id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btn-start-back" aria-label="Back" data-i18n-aria="fw.nav.back.label" data-i18n="fw.nav.back.icon">&#8592;</button>
+    </div>
+    <span class="tb-title" data-i18n="start.title">Beginner Guide</span>
+    <div class="tb-right"><span class="tb-spacer"></span></div>
+  </div>
+  <div id="start-scroller">
+    <p class="settings-row-sublabel" data-i18n="start.intro">New here and not sure how it works?</p>
+    <div class="settings-group-title" data-i18n="start.s1.title">1. Connect your scooter</div>
+    <p class="settings-row-sublabel" data-i18n="start.s1.text">Connect over Bluetooth.</p>
+    <div class="settings-group-title" data-i18n="start.s2.title">2. Take the limiter off</div>
+    <p class="settings-row-sublabel" data-i18n="start.s2.text">Unlock over Bluetooth.</p>
+    <div class="settings-group-title" data-i18n="start.s3.title">3. Firmware patcher</div>
+    <p class="settings-row-sublabel" data-i18n="start.s3.text">More.</p>
+    <p class="settings-row-sublabel start-risk" data-i18n="start.risk">At your own risk.</p>
+    <button type="button" id="btn-start-forum" class="settings-btn settings-btn-secondary" onclick="openExt('https://www.escooter-stammtisch.de')" data-i18n="start.forum">Stuck? Ask in the forum</button>
+  </div>
 </div>
 
 <!-- ── Firmware update page ───────────────────────── -->
@@ -3691,7 +3715,7 @@ function _updateNavState() {
   if (!open && avHelpModal && avHelpModal.classList && avHelpModal.classList.contains('open')) open = true;
   if (!open) {
     ['confirm-overlay','whatsnew-overlay','verinfo-overlay','disclaimer-overlay',
-     'guide-page','firmware-page','battery-page','error-reports-page','info-page',
+     'guide-page','start-page','firmware-page','battery-page','error-reports-page','info-page',
      'scooter-page','connect-page','theme-page','display-page','routes-page',
      'streaming-page','settings-sheet'].some(function(id) {
       var el = document.getElementById(id);
@@ -3718,6 +3742,7 @@ window.__navBack = function() {
   // Sub-pages first (deeper in the nav hierarchy), then top-level sheets
   var pageMap = [
     ['guide-page',         closeGuidePage],
+    ['start-page',         closeStartPage],
     ['firmware-page',      closeFirmwarePage],
     ['battery-page',       closeBatteryPage],
     ['error-reports-page', closeErrorReports],
@@ -3740,6 +3765,8 @@ function openThemePage() {
   document.getElementById('theme-page').classList.add('open');
   renderThemeList();
 }
+function openStartPage() { document.getElementById('start-page').classList.add('open'); }
+function closeStartPage() { document.getElementById('start-page').classList.remove('open'); }
 function closeThemePage() {
   document.getElementById('theme-page').classList.remove('open');
 }
@@ -7203,6 +7230,8 @@ function wireEvents() {
   { var pbg = document.getElementById('btn-pick-bg'); if (pbg) pbg.addEventListener('click', function() { if (typeof LB !== 'undefined' && LB.pickBackgroundImage) LB.pickBackgroundImage(); else showToast(t('msg.app.only.in.app')); }); }
   { var rbg = document.getElementById('btn-reset-bg'); if (rbg) rbg.addEventListener('click', function() { try { storage.set(_userBgKey(), ''); } catch (e) {} applyUserBg(); }); }
   document.getElementById('btn-guide-back').addEventListener('click', closeGuidePage);
+  document.getElementById('btn-start-guide').addEventListener('click', openStartPage);
+  document.getElementById('btn-start-back').addEventListener('click', closeStartPage);
   document.getElementById('btn-theme-import').addEventListener('click', () => {
     if (typeof LB !== 'undefined' && LB.pickThemeFiles) LB.pickThemeFiles();
     else showToast(t('msg.app.only.in.app'));
