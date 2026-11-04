@@ -1288,7 +1288,19 @@ html:not([lang="de"]) #guide-body .tg-de { display: none; }
   background: rgb(from var(--card) r g b / var(--btn-alpha, 1));
 }
 
-/* Beginner Guide page */
+/* Beginner's Guide page: shared shell + decision-tree vocabulary (brand content fills it; any depth). */
 #start-scroller { padding-left: calc(var(--gap) + 5px); padding-right: calc(var(--gap) + 5px); }
 #start-scroller .settings-group-title { margin-top: 18px; }
-#start-scroller .start-risk { color: var(--warn); margin-top: 14px; }
+#start-scroller p { line-height: 1.5; }
+/* A conditional path ("if this model / this case -> do that"); nest steps + branches freely. */
+#start-scroller .start-branch {
+  margin: 8px 0 0; padding: 8px 10px;
+  border-left: 3px solid var(--ble, var(--border)); border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--card) 55%, transparent);
+}
+#start-scroller .start-branch + .start-branch { margin-top: 6px; }
+#start-scroller .start-branch-cond { font-weight: var(--fw-semibold); color: var(--text); font-size: var(--fs-sm); }
+#start-scroller .start-branch-text { color: var(--label); font-size: var(--fs-sm); margin-top: 3px; }
+#start-scroller .start-note { margin-top: 8px; color: var(--label); font-size: var(--fs-xs); line-height: 1.5; }
+#start-scroller .start-cta { margin-top: 12px; }
+#start-scroller .start-risk { color: var(--warn); margin-top: 16px; }
