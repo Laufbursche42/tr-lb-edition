@@ -20,6 +20,7 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>New Beginner's Guide.</b> A short in-app guide for newcomers, in Settings just above Version Info. It shows how to connect over Bluetooth and which route fits your Teverun - recognised IVCU models (the Fighter Mini class) get the built-in firmware patcher with its Standard, Kickstart, Permanently-open and EEPROM-reset builds, while Blade Mini and other non-IVCU controllers use the switchable Bluetooth limiter instead. Honest that taking the limiter off or flashing a patched firmware voids the road approval, with the community firmware source linked. Bilingual (EN/DE).",
       "<b>Correct theme version.</b> Carbon and Lambo are now version 5.2, and the Theme Manager shows each theme's real version (imported or re-seeded themes could show 1.0 before).",
       "<b>Pick your speedometer scale.</b> The gauge themes now have evenly-spaced, easy-to-read marks and the needle sits exactly on the number. Choose Klar, Fine or Round in the Theme Manager - the eKFV speeds 20, 22 and 25 are now clearly apart.",
       "<b>Brighter dark-mode text by default.</b> The dark theme's text brightness now starts at full (100) instead of 90; you can still dial it down under the theme's Dark colours.",
@@ -977,6 +978,7 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Neue Einsteiger-Anleitung.</b> Eine kurze In-App-Anleitung für Neueinsteiger, in den Einstellungen direkt über der Versions-Info. Sie zeigt, wie du dich per Bluetooth verbindest und welcher Weg zu deinem Teverun passt - erkannte IVCU-Modelle (die Fighter-Mini-Klasse) bekommen den eingebauten Firmware-Patcher mit seinen Builds Standard, Kickstart, Dauerhaft offen und EEPROM-Reset, während Blade Mini und andere Nicht-IVCU-Controller die umschaltbare Bluetooth-Drossel nutzen. Ehrlich dazu, dass Entdrosseln oder das Flashen einer gepatchten Firmware die Straßenzulassung aufhebt, mit verlinkter Community-Firmware-Quelle. Zweisprachig (EN/DE).",
       "<b>Korrekte Theme-Version.</b> Carbon und Lambo sind jetzt Version 5.2, und der Theme-Manager zeigt die echte Version jedes Themes (importierte oder neu eingespielte Themes konnten vorher 1.0 anzeigen).",
       "<b>Wähle deine Tacho-Skala.</b> Die Gauge-Themes haben jetzt gleichmäßig verteilte, gut lesbare Marken, und der Zeiger steht exakt auf der Zahl. Im Theme-Manager wählst du Klar, Fein oder Rund - die eKFV-Tempi 20, 22 und 25 sind jetzt klar getrennt.",
       "<b>Hellere Schrift im Dunkelmodus (Standard).</b> Die Text-Helligkeit des dunklen Themes startet jetzt bei voll (100) statt 90; herunterregeln kannst du sie weiterhin unter den Dunkel-Farben des Themes.",

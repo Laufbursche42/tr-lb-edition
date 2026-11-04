@@ -105,6 +105,7 @@ Step-by-step in [Firmware: update and flash](#firmware-update-and-flash). Implem
 
 - **Error reports** view - read out the fault codes the scooter reports.
 - **Info page** showing, read-only and read live from the scooter over Bluetooth: **FIN / Bluetooth name** (the scooter's Bluetooth name is its full FIN), the **frame number** and the IVCU **software** and **hardware** versions. (The app version lives in the "Version Info & Disclaimer" entry, not here.)
+- **Beginner's Guide** - a short, model-by-model guide for new users, reached from Settings (the "Beginner's Guide" entry just above Version Info & Disclaimer). It shows how to connect over Bluetooth and which route fits your Teverun: recognised IVCU models (the Fighter Mini class) get the built-in firmware patcher with its Standard, Kickstart, Permanently-open and EEPROM-reset builds, while Blade Mini and other non-IVCU controllers use the switchable Bluetooth limiter instead. Honest that taking the limiter off or flashing a patched firmware voids the road approval, with the community firmware source linked. Bilingual (EN/DE).
 
 ### Battery info
 
