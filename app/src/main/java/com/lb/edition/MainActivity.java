@@ -261,8 +261,9 @@ public class MainActivity extends Activity {
         webView.post(() -> {
             try {
                 if (webView != null) webView.evaluateJavascript(js, null);
-            } catch (Throwable t) {
-                Log.e(TAG, "evaluateJavascript failed", t);
+            } catch (Throwable ignored) {
+                // Do not log the throwable: it can embed the externally-derived js payload.
+                Log.e(TAG, "evaluateJavascript failed");
             }
         });
     }

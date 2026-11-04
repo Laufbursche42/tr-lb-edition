@@ -160,15 +160,15 @@ class ThemeManager {
         }
     }
 
-    /** Canonicalize {@code f} and require it to be a direct child of {@code baseDir}, else throw.
-     *  Returns the canonical file so callers operate on the validated path. */
+    /** Canonicalize {@code f} and require its canonical path to lie inside {@code baseDir}
+     *  (canonical-path containment), else throw. Returns the canonical file. */
     private static File requireInside(File baseDir, File f) throws IOException {
-        File canon = f.getCanonicalFile();
-        File parent = canon.getParentFile();
-        if (parent == null || !parent.getCanonicalPath().equals(baseDir.getCanonicalPath())) {
+        String base = baseDir.getCanonicalPath();
+        String canonical = f.getCanonicalPath();
+        if (!canonical.equals(base) && !canonical.startsWith(base + File.separator)) {
             throw new IllegalArgumentException("path escapes base directory");
         }
-        return canon;
+        return new File(canonical);
     }
 
     // ── ZIP bundle import/export ───────────────────────────────────────────
