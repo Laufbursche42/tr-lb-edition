@@ -195,6 +195,9 @@ html[data-theme-loading] #scroller { visibility: hidden; }
   font-size: var(--sz-speed-lbl, var(--fs-base)); color: var(--label); margin-top: 4px;
   font-weight: var(--fw-medium); letter-spacing: .04em;
 }
+/* GPS drum: own size knobs, default to the main speed sizes so the look is unchanged until set. */
+.speed-drum.gps-drum .sd-val { font-size: var(--sz-gps-val, var(--sz-speed-val, clamp(42px, 13vw, 64px))); }
+.speed-drum.gps-drum .sd-unit { font-size: var(--sz-gps-lbl, var(--sz-speed-lbl, var(--fs-base))); }
 
 /* ── Hero Metrics ──────────────────────────────────────────── */
 /* Hero cells and motor cells are the same kind of tile row, so they share one grid. */
@@ -244,11 +247,11 @@ html[data-theme-loading] #scroller { visibility: hidden; }
   justify-content: space-between; gap: 6px;
 }
 .dg-cell:not(:last-child) { border-right: 1px solid var(--border); }
-.dg-label { color: var(--label); font-size: var(--fs-md); white-space: nowrap; }
+.dg-label { color: var(--label); font-size: var(--sz-dg-lbl, var(--fs-md)); white-space: nowrap; }
 /* Longer labels (e.g. "Recuperation") may wrap / shrink so the full word stays readable. */
-.dg-label-wide { white-space: normal; font-size: var(--fs-sm); line-height: 1.15; }
+.dg-label-wide { white-space: normal; font-size: var(--sz-dg-lbl, var(--fs-sm)); line-height: 1.15; }
 .dg-value {
-  font-weight: var(--fw-semibold); font-size: var(--fs-lg); color: var(--value);
+  font-weight: var(--fw-semibold); font-size: var(--sz-dg-val, var(--fs-lg)); color: var(--value);
   font-variant-numeric: tabular-nums; text-align: right;
 }
 /* Groups a data-grid label with its inline "?" help button so they stay together on the left. */
@@ -262,7 +265,7 @@ html[data-theme-loading] #scroller { visibility: hidden; }
 }
 .section-hdr {
   padding: 10px 14px; border-bottom: 1px solid var(--border);
-  font-size: var(--fs-base); font-weight: var(--fw-bold); color: var(--label);
+  font-size: var(--sz-sec, var(--fs-base)); font-weight: var(--fw-bold); color: var(--label);
   letter-spacing: .08em; text-transform: uppercase;
   display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0;
@@ -456,6 +459,16 @@ html[data-theme-loading] #scroller { visibility: hidden; }
 #motor-row-2 .mc-main  { font-size: var(--sz-m2-mid, clamp(22px, 7vw, 30px)); }
 #motor-row-2 .mc-unit  { font-size: var(--sz-m2-bot, var(--fs-sm)); }
 
+/* Default packed fold has no #motor-row wrappers - every tile falls on the base .mc-* rules above
+   (= row 1). renderTelemetryCells tags the visible motor cells by visual row (data-mrow 1..3), so the
+   "Tile row 2/3" font knobs reach rows 2 and 3 here too. Row 1 stays on the base rules. */
+#tele-fold .motor-cell[data-mrow="2"] .mc-title { font-size: var(--sz-m2-top, var(--fs-sm)); }
+#tele-fold .motor-cell[data-mrow="2"] .mc-main  { font-size: var(--sz-m2-mid, clamp(22px, 7vw, 30px)); }
+#tele-fold .motor-cell[data-mrow="2"] .mc-unit  { font-size: var(--sz-m2-bot, var(--fs-sm)); }
+#tele-fold .motor-cell[data-mrow="3"] .mc-title { font-size: var(--sz-m3-top, var(--fs-sm)); }
+#tele-fold .motor-cell[data-mrow="3"] .mc-main  { font-size: var(--sz-m3-mid, clamp(22px, 7vw, 30px)); }
+#tele-fold .motor-cell[data-mrow="3"] .mc-unit  { font-size: var(--sz-m3-bot, var(--fs-sm)); }
+
 /* Stacked tile rows (Live values): temps+power, currents, then the battery/distance superset rows. */
 #motor-area { display: flex; flex-direction: column; gap: var(--gap); }
 /* Default only: applyDataSlots adds .lb-packed to #motor-area so the cells this app fills flow into
@@ -497,8 +510,8 @@ select.theme-sel {
   border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--card); color: var(--label);
   font-weight: var(--fw-bold); line-height: 1.1; cursor: pointer;
-  white-space: nowrap;
-  font-size: clamp(6px, 2.8cqi, var(--sz-qbtn, 10px));
+  white-space: normal; overflow-wrap: anywhere;
+  font-size: var(--sz-qbtn, clamp(6px, 2.8cqi, 10px));
   -webkit-tap-highlight-color: transparent;
 }
 #quick-grid .mq-btn:active,
@@ -513,8 +526,8 @@ select.theme-sel {
   padding: 8px 12px; border-bottom: 1px solid var(--border); gap: 8px;
 }
 .av-row:last-child { border-bottom: none; }
-.av-label { color: var(--label); font-size: var(--fs-base); flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.av-val { font-weight: var(--fw-semibold); font-size: var(--fs-lg); color: var(--value); font-variant-numeric: tabular-nums; text-align: right; flex: 0 0 auto; white-space: nowrap; }
+.av-label { color: var(--label); font-size: var(--sz-av-lbl, var(--fs-base)); flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.av-val { font-weight: var(--fw-semibold); font-size: var(--sz-av-val, var(--fs-lg)); color: var(--value); font-variant-numeric: tabular-nums; text-align: right; flex: 0 0 auto; white-space: nowrap; }
 /* Subtle circular "?" info button per row; opens a shared explanation popup (event-delegated). */
 .av-help {
   flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
@@ -1130,6 +1143,16 @@ select.set-ctrl { text-align: left; -webkit-appearance: none; appearance: none; 
   font-size: var(--fs-sm); text-align: right; flex-shrink: 0;
 }
 .style-var-unit { font-size: 11px; color: var(--label); margin-left: 2px; flex-shrink: 0; }
+.style-var-stepper { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.style-var-stepper .style-var-num { text-align: center; }
+.style-var-step {
+  width: 32px; height: 32px; flex-shrink: 0; background: var(--card);
+  border: 1px solid var(--border); color: var(--text); border-radius: 6px;
+  font-size: 18px; line-height: 1; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation; -webkit-user-select: none; user-select: none;
+}
+.style-var-step:active { background: var(--border); }
 .tile-mv {
   padding: 2px 8px; font-size: 14px; border: 1px solid var(--border);
   background: var(--card); color: var(--text); border-radius: 5px;

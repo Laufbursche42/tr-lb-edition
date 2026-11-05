@@ -1403,7 +1403,17 @@ const FONT_META = [
   { key: 'm2Top', varName: '--sz-m2-top', id: 'dsp-font-m2-top', def: 12, min: 10, max: 40 },
   { key: 'm2Mid', varName: '--sz-m2-mid', id: 'dsp-font-m2-mid', def: 32, min: 10, max: 48 },
   { key: 'm2Bot', varName: '--sz-m2-bot', id: 'dsp-font-m2-bot', def: 12, min: 10, max: 40 },
-  { key: 'qbtn', varName: '--sz-qbtn', id: 'dsp-font-qbtn', def: 10, min: 6, max: 16 }
+  { key: 'm3Top', varName: '--sz-m3-top', id: 'dsp-font-m3-top', def: 12, min: 10, max: 40 },
+  { key: 'm3Mid', varName: '--sz-m3-mid', id: 'dsp-font-m3-mid', def: 32, min: 10, max: 48 },
+  { key: 'm3Bot', varName: '--sz-m3-bot', id: 'dsp-font-m3-bot', def: 12, min: 10, max: 40 },
+  { key: 'qbtn', varName: '--sz-qbtn', id: 'dsp-font-qbtn', def: 10, min: 5, max: 30 },
+  { key: 'gpsVal', varName: '--sz-gps-val', id: 'dsp-font-gps-val', def: 32, min: 10, max: 60 },
+  { key: 'gpsLbl', varName: '--sz-gps-lbl', id: 'dsp-font-gps-lbl', def: 13, min: 8, max: 30 },
+  { key: 'dgVal', varName: '--sz-dg-val', id: 'dsp-font-dg-val', def: 20, min: 10, max: 48 },
+  { key: 'dgLbl', varName: '--sz-dg-lbl', id: 'dsp-font-dg-lbl', def: 15, min: 8, max: 30 },
+  { key: 'avLbl', varName: '--sz-av-lbl', id: 'dsp-font-av-lbl', def: 14, min: 8, max: 30 },
+  { key: 'avVal', varName: '--sz-av-val', id: 'dsp-font-av-val', def: 18, min: 10, max: 40 },
+  { key: 'sec', varName: '--sz-sec', id: 'dsp-font-sec', def: 13, min: 8, max: 30 }
 ];
 
 function loadDisplayCfg() {
@@ -3721,15 +3731,25 @@ const DEFAULT_CSS_VARS = {
   // Font sizes
   '--sz-speed-val': { label: 'style.var.sz-speed-val', type: 'number', default: 64, min: 20, max: 72, unit: 'px', group: 'fonts' },
   '--sz-speed-lbl': { label: 'style.var.sz-speed-lbl', type: 'number', default: 14, min: 10, max: 40, unit: 'px', group: 'fonts' },
+  '--sz-gps-val':   { label: 'style.var.sz-gps-val',   type: 'number', default: 32, min: 10, max: 60, unit: 'px', group: 'fonts' },
+  '--sz-gps-lbl':   { label: 'style.var.sz-gps-lbl',   type: 'number', default: 13, min: 8,  max: 30, unit: 'px', group: 'fonts' },
   '--sz-hero-val':  { label: 'style.var.sz-hero-val',  type: 'number', default: 38, min: 10, max: 48, unit: 'px', group: 'fonts' },
   '--sz-hero-lbl':  { label: 'style.var.sz-hero-lbl',  type: 'number', default: 13, min: 10, max: 40, unit: 'px', group: 'fonts' },
-  '--sz-m1-top':    { label: 'style.var.sz-m1-top',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fonts' },
-  '--sz-m1-mid':    { label: 'style.var.sz-m1-mid',    type: 'number', default: 32, min: 10, max: 48, unit: 'px', group: 'fonts' },
-  '--sz-m1-bot':    { label: 'style.var.sz-m1-bot',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fonts' },
-  '--sz-m2-top':    { label: 'style.var.sz-m2-top',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fonts' },
-  '--sz-m2-mid':    { label: 'style.var.sz-m2-mid',    type: 'number', default: 32, min: 10, max: 48, unit: 'px', group: 'fonts' },
-  '--sz-m2-bot':    { label: 'style.var.sz-m2-bot',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fonts' },
-  '--sz-qbtn':      { label: 'style.var.sz-qbtn',      type: 'number', default: 10, min: 6, max: 16, unit: 'px', group: 'fonts' },
+  '--sz-m1-top':    { label: 'style.var.sz-m1-top',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fontrows' },
+  '--sz-m1-mid':    { label: 'style.var.sz-m1-mid',    type: 'number', default: 32, min: 10, max: 48, unit: 'px', group: 'fontrows' },
+  '--sz-m1-bot':    { label: 'style.var.sz-m1-bot',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fontrows' },
+  '--sz-m2-top':    { label: 'style.var.sz-m2-top',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fontrows' },
+  '--sz-m2-mid':    { label: 'style.var.sz-m2-mid',    type: 'number', default: 32, min: 10, max: 48, unit: 'px', group: 'fontrows' },
+  '--sz-m2-bot':    { label: 'style.var.sz-m2-bot',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fontrows' },
+  '--sz-m3-top':    { label: 'style.var.sz-m3-top',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fontrows' },
+  '--sz-m3-mid':    { label: 'style.var.sz-m3-mid',    type: 'number', default: 32, min: 10, max: 48, unit: 'px', group: 'fontrows' },
+  '--sz-m3-bot':    { label: 'style.var.sz-m3-bot',    type: 'number', default: 12, min: 10, max: 40, unit: 'px', group: 'fontrows' },
+  '--sz-qbtn':      { label: 'style.var.sz-qbtn',      type: 'number', default: 10, min: 5,  max: 30, unit: 'px', group: 'fontmisc' },
+  '--sz-dg-val':    { label: 'style.var.sz-dg-val',    type: 'number', default: 20, min: 10, max: 48, unit: 'px', group: 'fontmisc' },
+  '--sz-dg-lbl':    { label: 'style.var.sz-dg-lbl',    type: 'number', default: 15, min: 8,  max: 30, unit: 'px', group: 'fontmisc' },
+  '--sz-av-lbl':    { label: 'style.var.sz-av-lbl',    type: 'number', default: 14, min: 8,  max: 30, unit: 'px', group: 'fontmisc' },
+  '--sz-av-val':    { label: 'style.var.sz-av-val',    type: 'number', default: 18, min: 10, max: 40, unit: 'px', group: 'fontmisc' },
+  '--sz-sec':       { label: 'style.var.sz-sec',       type: 'number', default: 13, min: 8,  max: 30, unit: 'px', group: 'fontmisc' },
   // Tile min-heights (0 = natural content height; increase to make a tile taller)
   '--tile-h-speed':   { label: 'style.var.tile-h-speed',   type: 'number', default: 0,   min: 0, max: 400, unit: 'px', group: 'tiles' },
   '--tile-h-hero':    { label: 'style.var.tile-h-hero',    type: 'number', default: 0,   min: 0, max: 400, unit: 'px', group: 'tiles' },
@@ -4473,7 +4493,7 @@ function renderStyleEditor(themeName) {
       saved = JSON.parse(LB.getThemeVars(themeName) || '{}');
   } catch(e) {}
 
-  var _groupLabels = { dark: 'style.group.dark', light: 'style.group.light', accents: 'style.group.accents', fonts: 'style.group.fonts', tiles: 'style.group.tiles' };
+  var _groupLabels = { dark: 'style.group.dark', light: 'style.group.light', accents: 'style.group.accents', fonts: 'style.group.fonts', fontrows: 'style.group.fontrows', fontmisc: 'style.group.fontmisc', tiles: 'style.group.tiles' };
   var _lastGroup = null;
   el.innerHTML = '';
   keys.forEach(function(varName) {
@@ -4507,24 +4527,47 @@ function renderStyleEditor(themeName) {
       inp.addEventListener('change', function() { _saveStyleVar(themeName, varName, inp.value); });
       row.appendChild(inp);
     } else if (def.type === 'number') {
+      // Stepper: - / editable value / + . Works without a soft keyboard (needed on
+      // emulators and OEM WebViews that suppress soft input), the text field stays
+      // editable where a keyboard is present. Every path clamps and live-binds.
       var unit = def.unit || '';
+      var step = def.step !== undefined ? def.step : 1;
+      var mn = def.min !== undefined ? def.min : 1;
+      var mx = def.max !== undefined ? def.max : 999;
+      var stepper = document.createElement('div');
+      stepper.className = 'style-var-stepper';
       var numInp = document.createElement('input');
       numInp.type = 'number';
-      numInp.min = def.min !== undefined ? def.min : 1;
-      numInp.max = def.max !== undefined ? def.max : 999;
+      numInp.min = mn; numInp.max = mx; numInp.step = step;
+      numInp.inputMode = 'numeric';
       numInp.value = parseInt(current) || def.default || 16;
       numInp.className = 'style-var-num';
-      (function(inp, d, u) {
-        inp.addEventListener('change', function() {
-          var mn = d.min !== undefined ? d.min : 1;
-          var mx = d.max !== undefined ? d.max : 999;
-          var v = Math.max(mn, Math.min(mx, parseInt(inp.value) || d.default || 16));
+      var btnDec = document.createElement('button');
+      btnDec.type = 'button'; btnDec.className = 'style-var-step'; btnDec.textContent = '-';
+      var btnInc = document.createElement('button');
+      btnInc.type = 'button'; btnInc.className = 'style-var-step'; btnInc.textContent = '+';
+      (function(inp, dec, inc, d, u, lo, hi, st) {
+        function commit(v) {
+          v = Math.max(lo, Math.min(hi, isNaN(v) ? (d.default || 16) : v));
           inp.value = v;
           _saveStyleVar(themeName, varName, v + u);
+        }
+        // Live preview while typing (apply to :root without persisting), persist on change/step.
+        inp.addEventListener('input', function() {
+          var v = parseInt(inp.value);
+          if (isNaN(v)) return;
+          v = Math.max(lo, Math.min(hi, v));
+          document.documentElement.style.setProperty(varName, v + u);
         });
-      })(numInp, def, unit);
-      row.appendChild(numInp);
-      if (unit) { var uSpan = document.createElement('span'); uSpan.className = 'style-var-unit'; uSpan.textContent = unit; row.appendChild(uSpan); }
+        inp.addEventListener('change', function() { commit(parseInt(inp.value)); });
+        dec.addEventListener('click', function() { commit((parseInt(inp.value) || d.default || 16) - st); });
+        inc.addEventListener('click', function() { commit((parseInt(inp.value) || d.default || 16) + st); });
+      })(numInp, btnDec, btnInc, def, unit, mn, mx, step);
+      stepper.appendChild(btnDec);
+      stepper.appendChild(numInp);
+      stepper.appendChild(btnInc);
+      if (unit) { var uSpan = document.createElement('span'); uSpan.className = 'style-var-unit'; uSpan.textContent = unit; stepper.appendChild(uSpan); }
+      row.appendChild(stepper);
     } else if (def.type === 'range') {
       var unit = def.unit || '';
       var wrap = document.createElement('div');
@@ -4733,6 +4776,7 @@ function applyTeleAvailability() {
   });
   var sect = document.getElementById('motors-section');
   if (sect && fold) sect.classList.toggle('sect-hidden', !fold.querySelector('[data-cell-id]:not(.is-hidden)'));
+  try { _tagMotorRows(fold); } catch(e) {}
   try { scheduleFitFold(); } catch(e) {}
 }
 
@@ -4761,6 +4805,21 @@ function _buildTeleCell(c) {
   }
   return cell;
 }
+
+/* Tag each VISIBLE motor cell in the packed fold with its visual row (data-mrow 1..3, capped), so the
+   Default dashboard - which has no #motor-row wrappers - still lets the "Tile row 2/3" font knobs reach
+   rows 2 and 3 (see the #tele-fold[data-mrow] rules in dashboard.css). Hidden/empty cells are skipped so
+   the numbering follows what the rider actually sees, and it is re-run after availability + reorder. */
+function _tagMotorRows(container) {
+  if (!container) container = document.getElementById('tele-fold');
+  if (!container) return;
+  var cells = container.querySelectorAll('.motor-cell:not(.is-hidden):not(.slot-empty)');
+  var cols = 3;
+  for (var i = 0; i < cells.length; i++) {
+    cells[i].setAttribute('data-mrow', String(Math.min(3, Math.floor(i / cols) + 1)));
+  }
+}
+
 /* Render the driver's telemetry cells into #tele-fold (or a theme's own empty #tele-fold). */
 function renderTelemetryCells(container) {
   if (!container) container = document.getElementById('tele-fold');
@@ -4770,6 +4829,7 @@ function renderTelemetryCells(container) {
   try { initCellDrag(); } catch (e) {}
   try { applyQuickCellOrder(); } catch (e) {}
   try { applyTeleAvailability(); } catch (e) {}
+  try { _tagMotorRows(container); } catch (e) {}
 }
 /* Re-render the fold cells from the saved list, re-fill from the last live data, re-apply presence. */
 function _reflectFold(theme) {
@@ -5042,6 +5102,7 @@ function applyQuickCellOrder() {
     if (!row || !stored[rowId]) return;
     stored[rowId].forEach(function(id) { if (allCells[id]) row.appendChild(allCells[id]); });
   });
+  try { _tagMotorRows(document.getElementById('tele-fold')); } catch(e) {}
 }
 
 function initCellDrag() {
