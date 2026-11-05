@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# commit-msg hook: block AI-attribution / session-link trailers in commit messages.
+#
+# These repositories are published under an anonymous identity. A commit-message
+# line that reveals the commit was produced by an AI assistant, or that carries a
+# claude.ai session URL, is an anonymity / security leak and must never reach
+# history. Some tooling appends such a trailer automatically; this hook is the
+# backstop that rejects it regardless of where it came from.
+#
+# Bypass (ONLY for a genuine false positive): git commit --no-verify
+#
+set -u
+
+MSG_FILE="${1:-}"
+[ -n "$MSG_FILE" ] && [ -f "$MSG_FILE" ] || exit 0
+
+# Case-insensitive forbidden patterns (POSIX extended regex). Covers the known
+# auto-appended trailers and session links.
+PAT='claude-session|claude\.ai|co-authored-by:[[:space:]]*claude|generated[[:space:]]+with[[:space:]]+claude|assisted-by:[[:space:]]*claude'
+
+if grep -iEn "$PAT" "$MSG_FILE" >/dev/null 2>&1; then
+  echo "commit-msg: BLOCKED - the message carries an AI-attribution / session-link trailer." >&2
+  echo "  These repos are published anonymously; such a line is an anonymity leak." >&2
+  echo "  Offending line(s):" >&2
+  grep -iEn "$PAT" "$MSG_FILE" | sed 's/^/    /' >&2
+  echo "  Remove the line, then commit again (--no-verify only for a real false positive)." >&2
+  exit 1
+fi
+
+exit 0
