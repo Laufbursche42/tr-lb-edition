@@ -5449,9 +5449,15 @@ function injectThemeVars() {
     });
   }
 
-  // Font sizes, tile heights, and --unlock: apply saved override or theme-declared default.
+  // Font sizes: per-theme style-editor override > rider's global in-app font control (stored in
+  // cfg.fonts) > theme-declared default. Without the cfg.fonts fallback the global control saved
+  // its values but nothing applied them, so changing a size had no visible effect.
+  var globalFonts = {};
+  try { globalFonts = (loadDisplayCfg().fonts) || {}; } catch (e) {}
   FONT_META.forEach(function(m) {
-    var effective = vars[m.varName] !== undefined ? vars[m.varName] : tdef(m.varName);
+    var g = globalFonts[m.key];
+    var effective = vars[m.varName] !== undefined ? vars[m.varName]
+                  : (g != null ? g : tdef(m.varName));
     if (effective !== undefined) {
       var px = Math.max(m.min, Math.min(m.max, parseInt(effective, 10) || m.def));
       root.style.setProperty(m.varName, px + 'px');

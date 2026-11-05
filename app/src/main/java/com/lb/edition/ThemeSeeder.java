@@ -19,7 +19,7 @@ class ThemeSeeder {
 
     private static final String[] BUNDLED = { "Carbon", "Lambo" };
     // Bump whenever the bundled theme .zips change so existing installs re-seed the new version.
-    private static final int BUNDLE_VERSION = 8;
+    private static final int BUNDLE_VERSION = 9;
     private static final String PREF = "lb_theme_bundle";
     private static final String KEY = "seededVersion";
 

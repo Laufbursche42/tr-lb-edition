@@ -437,13 +437,17 @@ html[data-theme-loading] #scroller { visibility: hidden; }
   border-radius: var(--radius); padding: 10px 8px;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
 }
-.mc-title { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--label); letter-spacing: .06em; }
+/* Base live-value tiles honour the row-1 font knobs so the font control also works on the Default
+   fold (packed one-grid layout, no #motor-row wrapper). The gauge themes keep their per-row rules
+   below (id + class is more specific and wins). The var stays unset until a knob is moved, so the
+   fallback is the unchanged built-in size. Long titles wrap instead of clipping at the tile edge. */
+.mc-title { font-size: var(--sz-m1-top, var(--fs-sm)); font-weight: var(--fw-bold); color: var(--label); letter-spacing: .06em; text-align: center; overflow-wrap: anywhere; }
 .mc-main {
-  font-size: clamp(22px, 7vw, 30px); font-weight: var(--fw-heavy); line-height: 1.05;
+  font-size: var(--sz-m1-mid, clamp(22px, 7vw, 30px)); font-weight: var(--fw-heavy); line-height: 1.05;
   color: var(--value); font-variant-numeric: tabular-nums;
 }
 /* Own line under the value, centred like the title and the value above it. */
-.mc-unit { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--label); }
+.mc-unit { font-size: var(--sz-m1-bot, var(--fs-sm)); font-weight: var(--fw-semibold); color: var(--label); }
 /* Rider-adjustable per-row tile font sizes (Display settings > Font sizes); unset falls back to the built-in size. */
 #motor-row .mc-title { font-size: var(--sz-m1-top, var(--fs-sm)); }
 #motor-row .mc-main  { font-size: var(--sz-m1-mid, clamp(22px, 7vw, 30px)); }
