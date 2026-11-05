@@ -20,6 +20,8 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Theme settings now apply in every theme.</b> Font sizes, colours and spacing from the Theme Manager now really take effect on every theme - including the Default dashboard and Lambo, where the speed readout and the tiles ignored the size sliders before. Move a slider and the dashboard follows.",
+      "<b>Large system fonts no longer break the layout.</b> On a phone set to a very large system font or display size (e.g. OPPO/ColorOS, Samsung), the dashboard no longer overflows - the cockpit keeps its fixed layout and long tile labels wrap inside the tile instead of being cut off.",
       "<b>New Beginner's Guide.</b> A short in-app guide for newcomers, in Settings just above Version Info. It shows how to connect over Bluetooth and which route fits your Teverun - recognised IVCU models (the Fighter Mini class) get the built-in firmware patcher with its Standard, Kickstart, Permanently-open and EEPROM-reset builds, while Blade Mini and other non-IVCU controllers use the switchable Bluetooth limiter instead. Honest that taking the limiter off or flashing a patched firmware voids the road approval, with the community firmware source linked. Bilingual (EN/DE).",
       "<b>Correct theme version.</b> Carbon and Lambo are now version 5.2, and the Theme Manager shows each theme's real version (imported or re-seeded themes could show 1.0 before).",
       "<b>Pick your speedometer scale.</b> The gauge themes now have evenly-spaced, easy-to-read marks and the needle sits exactly on the number. Choose Klar, Fine or Round in the Theme Manager - the eKFV speeds 20, 22 and 25 are now clearly apart.",
@@ -978,6 +980,8 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Theme-Einstellungen greifen jetzt in jedem Theme.</b> Schriftgrößen, Farben und Abstände aus dem Theme-Manager wirken jetzt wirklich in jedem Theme - auch im Standard-Dashboard und in Lambo, wo die Tacho-Anzeige und die Kacheln die Größenregler vorher ignoriert haben. Regler bewegen und das Dashboard zieht mit.",
+      "<b>Große Systemschrift sprengt das Layout nicht mehr.</b> Bei sehr großer System-Schrift- oder Anzeigegröße (z. B. OPPO/ColorOS, Samsung) läuft das Dashboard nicht mehr über - das Cockpit behält sein festes Layout, und lange Kachel-Beschriftungen brechen in der Kachel um statt abgeschnitten zu werden.",
       "<b>Neue Einsteiger-Anleitung.</b> Eine kurze In-App-Anleitung für Neueinsteiger, in den Einstellungen direkt über der Versions-Info. Sie zeigt, wie du dich per Bluetooth verbindest und welcher Weg zu deinem Teverun passt - erkannte IVCU-Modelle (die Fighter-Mini-Klasse) bekommen den eingebauten Firmware-Patcher mit seinen Builds Standard, Kickstart, Dauerhaft offen und EEPROM-Reset, während Blade Mini und andere Nicht-IVCU-Controller die umschaltbare Bluetooth-Drossel nutzen. Ehrlich dazu, dass Entdrosseln oder das Flashen einer gepatchten Firmware die Straßenzulassung aufhebt, mit verlinkter Community-Firmware-Quelle. Zweisprachig (EN/DE).",
       "<b>Korrekte Theme-Version.</b> Carbon und Lambo sind jetzt Version 5.2, und der Theme-Manager zeigt die echte Version jedes Themes (importierte oder neu eingespielte Themes konnten vorher 1.0 anzeigen).",
       "<b>Wähle deine Tacho-Skala.</b> Die Gauge-Themes haben jetzt gleichmäßig verteilte, gut lesbare Marken, und der Zeiger steht exakt auf der Zahl. Im Theme-Manager wählst du Klar, Fein oder Rund - die eKFV-Tempi 20, 22 und 25 sind jetzt klar getrennt.",
