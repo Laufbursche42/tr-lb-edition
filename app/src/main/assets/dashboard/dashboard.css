@@ -510,8 +510,8 @@ select.theme-sel {
   border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--card); color: var(--label);
   font-weight: var(--fw-bold); line-height: 1.1; cursor: pointer;
-  white-space: normal; overflow-wrap: anywhere;
-  font-size: var(--sz-qbtn, clamp(6px, 2.8cqi, 10px));
+  white-space: normal; overflow-wrap: anywhere; -webkit-hyphens: manual; hyphens: manual;
+  font-size: var(--sz-qbtn, clamp(6px, 2.8cqi, 9px));
   -webkit-tap-highlight-color: transparent;
 }
 #quick-grid .mq-btn:active,

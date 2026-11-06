@@ -20,6 +20,8 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Button text sized to fit, up to 35.</b> The quick-button label size now starts at 9 so the labels fit by default, and its maximum in the Theme manager is raised from 30 to 35 for when you want it large.",
+      "<b>Long button labels wrap with a hyphen.</b> German button labels now break at syllable boundaries, so a long word like 'Tempomat' wraps inside the button with a hyphen instead of spilling over - even at the largest size.",
       "<b>Every text size is now adjustable, in every theme.</b> The Theme manager now has a working size control for every dashboard text - the GPS speed, ride data, the All-values list, section headers and tile rows 1-3 - and they finally take effect in every theme including the Default dashboard and Lambo. Use the new plus/minus steppers (no keyboard needed); the dashboard updates live.",
       "<b>Clearer size editor, no more clipping.</b> The size controls are grouped under plain headers (speedo &amp; upper tiles / tile rows / buttons &amp; more text) with clearer labels, the Quick-button range is wider, and long button labels wrap inside the button instead of being cut off.",
       "<b>Theme settings now apply in every theme.</b> Font sizes, colours and spacing from the Theme Manager now really take effect on every theme - including the Default dashboard and Lambo, where the speed readout and the tiles ignored the size sliders before. Move a slider and the dashboard follows.",
@@ -994,6 +996,8 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Button-Schrift passt standardmäßig - bis 35 einstellbar.</b> Die Schriftgröße der Schnelltasten-Beschriftung startet jetzt bei 9 und passt so von Haus aus; ihr Maximum im Theme-Manager wurde von 30 auf 35 angehoben, falls du es groß möchtest.",
+      "<b>Lange Button-Beschriftungen brechen mit Bindestrich um.</b> Deutsche Button-Texte trennen jetzt an Silbengrenzen, damit ein langes Wort wie 'Tempomat' mit Bindestrich innerhalb des Buttons umbricht statt überzulaufen - auch bei größter Schrift.",
       "<b>Jede Schriftgröße ist jetzt einstellbar - in jedem Theme.</b> Der Theme-Manager hat jetzt für jeden Dashboard-Text einen funktionierenden Größenregler - GPS-Speed, Fahrdaten, die Alle-Werte-Liste, Abschnitts-Titel und Kachelreihen 1-3 - und sie greifen endlich in jedem Theme auch im Standard-Dashboard und in Lambo. Mit den neuen Plus/Minus-Steppern (keine Tastatur nötig); das Dashboard ändert sich live.",
       "<b>Übersichtlicher Größen-Editor, kein Abschneiden mehr.</b> Die Größenregler sind unter klaren Überschriften gruppiert (Tacho &amp; obere Kacheln / Kachelreihen / Buttons &amp; weitere Schrift) mit klareren Labels, die Schnell-Button-Spanne ist größer, und lange Button-Beschriftungen brechen im Button um statt abgeschnitten zu werden.",
       "<b>Theme-Einstellungen greifen jetzt in jedem Theme.</b> Schriftgrößen, Farben und Abstände aus dem Theme-Manager wirken jetzt wirklich in jedem Theme - auch im Standard-Dashboard und in Lambo, wo die Tacho-Anzeige und die Kacheln die Größenregler vorher ignoriert haben. Regler bewegen und das Dashboard zieht mit.",
@@ -1033,12 +1037,12 @@ window.I18N = {
     "dash.bmini.fw.required": "&#9888; Firmware 3.4.6 benötigt für Blade Mini Ultra",
     "dash.drive.quick.abs": "ABS",
     "dash.drive.quick.abs.aria": "ABS umschalten",
-    "dash.drive.quick.cruise": "Tempomat",
+    "dash.drive.quick.cruise": "Tem­po­mat",
     "dash.drive.quick.cruise.aria": "Tempomat umschalten",
     "dash.drive.quick.eco": "Eco",
     "dash.drive.quick.eco.aria": "Eco-Modus umschalten",
     "dash.drive.quick.group": "Schnellumschalter Fahrmodus",
-    "dash.drive.quick.kickstart": "Kickstart",
+    "dash.drive.quick.kickstart": "Kick­start",
     "dash.drive.quick.kickstart.aria": "Kickstart umschalten",
     "dash.gear.eabs.level": "EABS-Stufe",
     "dash.gear.front.current.limit": "Stromgrenze vorne",
@@ -1070,11 +1074,11 @@ window.I18N = {
     "dash.motor.rear.current.unit": "A",
     "dash.motor.rear.temp.unit": "°C",
     "dash.motor.rear.title": "HINTEN",
-    "dash.motors.mode.both": "Beide",
+    "dash.motors.mode.both": "Bei­de",
     "dash.motors.mode.both.aria": "Beide Motoren",
-    "dash.motors.mode.front": "Vorne",
+    "dash.motors.mode.front": "Vor­ne",
     "dash.motors.mode.front.aria": "Nur Vorderradmotor",
-    "dash.motors.mode.rear": "Hinten",
+    "dash.motors.mode.rear": "Hin­ten",
     "dash.motors.mode.rear.aria": "Nur Hinterradmotor",
     "dash.motors.mode.smart": "Smart",
     "dash.motors.mode.smart.aria": "Smart (TCS) umschalten",

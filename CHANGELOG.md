@@ -14,6 +14,11 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.45
+
+- Quick-button labels are sized to fit by default (size 9) and can now be made larger - the per-theme size control in the Theme manager goes up to 35 (was 30).
+- German button labels hyphenate at syllable boundaries, so long words wrap inside the button with a hyphen instead of being cut off, even at the largest size.
+
 ## 1.1.44
 
 - Every dashboard text now has a working font-size control in the Theme manager, in every theme. The size controls are plus/minus steppers (no keyboard needed) and change the dashboard live. Now adjustable or newly effective: the GPS speed readout (separate from the VCU speed), ride-data values and labels, the All-values name and value, section headers, tile row 3, and the quick buttons (wider range). On the Default dashboard and the gauge themes the per-row tile knobs reach rows 2 and 3 too.
