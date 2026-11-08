@@ -492,13 +492,23 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
       Nothing is written until you save. Connect first.
     </div>
 
+    <!-- Tap-count to toggle the de-restrict: how many taps on the speed/VCU tile arm or disarm it.
+         A LOCAL preference (1-50, default 3), saved instantly, never sent to the scooter. -->
+    <div class="settings-group pt-4">
+      <div class="settings-row-sublabel mb-8" id="tap-count-hint" data-i18n="settings.tapcount.hint">How many taps on the speed tile switch the de-restrict on or off. Default 3, range 1-50.</div>
+      <div class="settings-row no-bottom-rule">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.tapcount.label">Taps to toggle the de-restrict</div></div>
+        <input class="set-ctrl" id="tap-count" type="number" min="1" max="50" step="1" inputmode="numeric">
+      </div>
+    </div>
+
     <!-- Blade Mini de-restrict speed: the per-gear values the speed-tile triple-tap writes on unlock
          (ESC gears 2/3/4). A LOCAL preference, saved instantly and NOT sent to the scooter on Save.
          Shown only for the Blade Mini (toggled by applyModelUi via showEl); the Fighter's lock differs. -->
     <div id="bmini-speed-block" class="is-hidden">
       <div class="section-hdr sub-hdr" data-i18n="settings.bmini.group.title">Blade Mini unlock speed</div>
       <div class="settings-group pt-4">
-        <div class="settings-row-sublabel mb-8" data-i18n="settings.bmini.hint">Per-gear speed the speed-tile triple-tap writes when de-restricting (gears 1/2/3). 45 / 60 / 80 opens fully; lower values cap the top speed. Saved instantly - no Save needed, and not sent with the other settings. Firmware 3.4.6 only.</div>
+        <div class="settings-row-sublabel mb-8" id="bmini-hint" data-i18n="settings.bmini.hint">Per-gear speed the speed-tile triple-tap writes when de-restricting (gears 1/2/3). 45 / 60 / 80 opens fully; lower values cap the top speed. Saved instantly - no Save needed, and not sent with the other settings. Firmware 3.4.6 only.</div>
         <div class="settings-row">
           <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g1.label">Gear 1</div></div>
           <input class="set-ctrl" id="bmini-g1" type="number" min="1" max="100" step="1" inputmode="numeric">
@@ -2881,6 +2891,8 @@ function applyLang() {
   // The firmware patcher's variant labels (name + version badge) and its dynamic hint are built in
   // JS, so the generic [data-i18n] pass above cannot relocalize them - do it here.
   try { fwRelocalizePatch(); } catch (e) {}
+  // Tap-count help texts carry the live value via tf() - re-inject after the generic pass.
+  try { refreshTapCountTexts(); } catch (e) {}
   // Label lengths just changed, so the fold has to be measured again.
   try { scheduleFitFold(); } catch (e) {}
 }
@@ -3629,11 +3641,16 @@ function setBleName() {
    55 71 lock byte (data.vcuUnlock: 0 = LOCKED, 1 = UNLOCKED): locked -> send unlock, unlocked ->
    send lock. No FIN rename, no wheel/cruise housekeeping (the wheel byte now feeds the tacho WD
    calibration, so forcing it would fight that). The tile colour (updateBLEUI) shows the state. */
+// How many taps on the speed/VCU tile toggle the lock. User-set 1-50 (default 3), local only.
+function tapCount() {
+  const v = parseFloat(storage.get('lb_tap_count'));
+  return isFinite(v) ? Math.min(Math.max(Math.round(v), 1), 50) : 3;
+}
 let _finTapCount = 0, _finTapTimer = null;
 function onVcuTileTap() {
   _finTapCount++;
   clearTimeout(_finTapTimer);
-  if (_finTapCount >= 3) { _finTapCount = 0; toggleFinLock(); return; }
+  if (_finTapCount >= tapCount()) { _finTapCount = 0; toggleFinLock(); return; }
   _finTapTimer = setTimeout(() => { _finTapCount = 0; }, 700);
 }
 function toggleFinLock() {
@@ -3694,6 +3711,34 @@ function wireBminiSpeeds() {
     }
   });
   _bminiSpeedsWired = true;
+}
+
+// The tap-count input: fill from storage, persist on change (clamp 1-50). Local-only, never streamed.
+let _tapCountWired = false;
+function wireTapCount() {
+  const el = document.getElementById('tap-count');
+  if (el) {
+    el.value = tapCount();
+    if (!_tapCountWired) {
+      el.addEventListener('change', () => {
+        const v = parseFloat(el.value);
+        const n = isFinite(v) ? Math.min(Math.max(Math.round(v), 1), 50) : 3;
+        el.value = n;
+        storage.set('lb_tap_count', String(n));
+        refreshTapCountTexts();
+      });
+    }
+  }
+  _tapCountWired = true;
+  refreshTapCountTexts();
+}
+// Keep the tap-count-dependent help texts in sync with the live value (and the active language).
+function refreshTapCountTexts() {
+  const n = tapCount();
+  const h = document.getElementById('tap-count-hint');
+  if (h) h.textContent = tf('settings.tapcount.hint', { n: n });
+  const b = document.getElementById('bmini-hint');
+  if (b) b.textContent = tf('settings.bmini.hint', { n: n });
 }
 
 /* ── Theme Manager ─────────────────────────────────────────────
@@ -7658,6 +7703,7 @@ function init() {
   loadModelOverride();
   populateModelSelect();
   wireBminiSpeeds();
+  wireTapCount();
   recoverStuckRides();
   importNativeRoutes();   // pull in any track the native recorder finished while the app was away
   // ...and again whenever the app returns to the foreground (a ride may have finished while away).

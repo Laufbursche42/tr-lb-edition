@@ -14,6 +14,10 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.47
+
+- You can now set how many taps on the speed tile toggle the de-restrict - a new Settings field (1 to 50, default 3). The gesture is no longer fixed at three taps; the 700 ms window between taps is unchanged.
+
 ## 1.1.46
 
 - The auto-filled feedback report is now plain text - the leftover formatting marks around the labels are gone, so the report reads cleanly on GitHub.

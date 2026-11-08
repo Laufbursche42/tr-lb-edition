@@ -20,6 +20,7 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Set how many taps toggle the de-restrict.</b> A new Settings field (1-50, default 3) lets you choose how many taps on the speed tile switch the lock on or off, so the gesture can be as deliberate or as quick as you like.",
       "<b>Cleaner feedback report.</b> The pre-filled feedback report is now plain, readable text - the leftover formatting marks around its labels are gone, so it reads cleanly on GitHub.",
       "<b>Button text sized to fit, up to 35.</b> The quick-button label size now starts at 9 so the labels fit by default, and its maximum in the Theme manager is raised from 30 to 35 for when you want it large.",
       "<b>Long button labels wrap with a hyphen.</b> German button labels now break at syllable boundaries, so a long word like 'Tempomat' wraps inside the button with a hyphen instead of spilling over - even at the largest size.",
@@ -953,7 +954,9 @@ window.I18N = {
     "settings.gps.autotrack.hint": "Records a GPS ride after ~20 m; stops when the scooter disconnects",
     "settings.gps.autotrack.label": "Auto-track rides",
     "settings.bmini.group.title": "Blade Mini unlock speed",
-    "settings.bmini.hint": "Per-gear speed the speed-tile triple-tap writes when de-restricting (gears 1/2/3). 45 / 60 / 80 opens fully; lower values cap the top speed. Saved instantly - no Save needed, and not sent with the other settings. Firmware 3.4.6 only.",
+    "settings.bmini.hint": "Per-gear speed the speed-tile tap gesture ({n} taps) writes when de-restricting (gears 1/2/3). 45 / 60 / 80 opens fully; lower values cap the top speed. Saved instantly - no Save needed, and not sent with the other settings. Firmware 3.4.6 only.",
+    "settings.tapcount.label": "Taps to toggle the de-restrict",
+    "settings.tapcount.hint": "How many taps on the speed tile switch the de-restrict on or off. Default 3, range 1-50 (1 = a single tap). Right now: {n} taps. Saved instantly, local only, never sent to the scooter.",
     "settings.bmini.g1.label": "Gear 1",
     "settings.bmini.g2.label": "Gear 2",
     "settings.bmini.g3.label": "Gear 3 (top)",
@@ -997,6 +1000,7 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Tippzahl für die Entdrosselung einstellbar.</b> Ein neues Einstellungsfeld (1-50, Standard 3) legt fest, wie viele Tipps auf die Tempo-Kachel die Sperre ein- oder ausschalten - so wird die Geste so bewusst oder so schnell, wie du willst.",
       "<b>Sauberer Fehlerbericht.</b> Der automatisch ausgefüllte Rückmelde-Text ist jetzt klarer Klartext - die überflüssigen Formatierungszeichen um die Beschriftungen sind weg.",
       "<b>Button-Schrift passt standardmäßig - bis 35 einstellbar.</b> Die Schriftgröße der Schnelltasten-Beschriftung startet jetzt bei 9 und passt so von Haus aus; ihr Maximum im Theme-Manager wurde von 30 auf 35 angehoben, falls du es groß möchtest.",
       "<b>Lange Button-Beschriftungen brechen mit Bindestrich um.</b> Deutsche Button-Texte trennen jetzt an Silbengrenzen, damit ein langes Wort wie 'Tempomat' mit Bindestrich innerhalb des Buttons umbricht statt überzulaufen - auch bei größter Schrift.",
@@ -1930,7 +1934,9 @@ window.I18N = {
     "settings.gps.autotrack.hint": "Zeichnet eine GPS-Fahrt nach ~20 m auf; stoppt, wenn der Scooter die Verbindung trennt",
     "settings.gps.autotrack.label": "Fahrten automatisch aufzeichnen",
     "settings.bmini.group.title": "Blade Mini Entsperr-Tempo",
-    "settings.bmini.hint": "Der Wert pro Gang, den der Dreifach-Tipp auf die Tempo-Kachel beim Entsperren schreibt (Gänge 1/2/3). 45 / 60 / 80 macht voll auf; kleinere Werte begrenzen das Tempo. Wird sofort gespeichert - kein Speichern nötig und nicht Teil der anderen Einstellungen. Nur Firmware 3.4.6.",
+    "settings.bmini.hint": "Der Wert pro Gang, den der Tipp auf die Tempo-Kachel ({n}×) beim Entsperren schreibt (Gänge 1/2/3). 45 / 60 / 80 macht voll auf; kleinere Werte begrenzen das Tempo. Wird sofort gespeichert - kein Speichern nötig und nicht Teil der anderen Einstellungen. Nur Firmware 3.4.6.",
+    "settings.tapcount.label": "Tipps zum Umschalten der Entdrosselung",
+    "settings.tapcount.hint": "Wie viele Tipps auf die Tempo-Kachel die Entdrosselung ein- oder ausschalten. Standard 3, Bereich 1-50 (1 = ein einzelner Tipp). Aktuell: {n} Tipps. Wird sofort gespeichert, nur lokal, nie an den Roller gesendet.",
     "settings.bmini.g1.label": "Gang 1",
     "settings.bmini.g2.label": "Gang 2",
     "settings.bmini.g3.label": "Gang 3 (oben)",
