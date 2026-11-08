@@ -3061,23 +3061,23 @@ function reportFromApp() {
   const lang = di.lang || (isDe ? 'de' : 'en');
   const lines = [];
   if (isDe) {
-    lines.push('**App:** Teverun LB Edition ' + appVer);
-    lines.push('**Android:** ' + android);
-    lines.push('**Handy:** ' + phone);
-    lines.push('**Sprache:** ' + lang);
-    lines.push('**Scooter / Modell:**');
+    lines.push('App: Teverun LB Edition ' + appVer);
+    lines.push('Android: ' + android);
+    lines.push('Handy: ' + phone);
+    lines.push('Sprache: ' + lang);
+    lines.push('Scooter / Modell:');
     lines.push('', '---', '');
-    lines.push('**Dein Anliegen:**', '', '(bitte beschreiben)', '');
-    lines.push(log ? '**Debug-Log (automatisch angehängt):**' : '**Debug-Log:** (keins vorhanden - Debug-Modus einschalten und erneut melden)');
+    lines.push('Dein Anliegen:', '', '(bitte beschreiben)', '');
+    lines.push(log ? 'Debug-Log (automatisch angehängt):' : 'Debug-Log: (keins vorhanden - Debug-Modus einschalten und erneut melden)');
   } else {
-    lines.push('**App:** Teverun LB Edition ' + appVer);
-    lines.push('**Android:** ' + android);
-    lines.push('**Phone:** ' + phone);
-    lines.push('**Language:** ' + lang);
-    lines.push('**Scooter / model:**');
+    lines.push('App: Teverun LB Edition ' + appVer);
+    lines.push('Android: ' + android);
+    lines.push('Phone: ' + phone);
+    lines.push('Language: ' + lang);
+    lines.push('Scooter / model:');
     lines.push('', '---', '');
-    lines.push('**Your request:**', '', '(please describe)', '');
-    lines.push(log ? '**Debug log (attached automatically):**' : '**Debug log:** (none yet - enable debug mode and report again)');
+    lines.push('Your request:', '', '(please describe)', '');
+    lines.push(log ? 'Debug log (attached automatically):' : 'Debug log: (none yet - enable debug mode and report again)');
   }
   if (log) { lines.push('', F, log, F); }
   const title = '[tr-lb-edition] ' + (isDe ? 'Rückmeldung' : 'Feedback');

@@ -20,6 +20,7 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Cleaner feedback report.</b> The pre-filled feedback report is now plain, readable text - the leftover formatting marks around its labels are gone, so it reads cleanly on GitHub.",
       "<b>Button text sized to fit, up to 35.</b> The quick-button label size now starts at 9 so the labels fit by default, and its maximum in the Theme manager is raised from 30 to 35 for when you want it large.",
       "<b>Long button labels wrap with a hyphen.</b> German button labels now break at syllable boundaries, so a long word like 'Tempomat' wraps inside the button with a hyphen instead of spilling over - even at the largest size.",
       "<b>Every text size is now adjustable, in every theme.</b> The Theme manager now has a working size control for every dashboard text - the GPS speed, ride data, the All-values list, section headers and tile rows 1-3 - and they finally take effect in every theme including the Default dashboard and Lambo. Use the new plus/minus steppers (no keyboard needed); the dashboard updates live.",
@@ -996,6 +997,7 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Sauberer Fehlerbericht.</b> Der automatisch ausgefüllte Rückmelde-Text ist jetzt klarer Klartext - die überflüssigen Formatierungszeichen um die Beschriftungen sind weg.",
       "<b>Button-Schrift passt standardmäßig - bis 35 einstellbar.</b> Die Schriftgröße der Schnelltasten-Beschriftung startet jetzt bei 9 und passt so von Haus aus; ihr Maximum im Theme-Manager wurde von 30 auf 35 angehoben, falls du es groß möchtest.",
       "<b>Lange Button-Beschriftungen brechen mit Bindestrich um.</b> Deutsche Button-Texte trennen jetzt an Silbengrenzen, damit ein langes Wort wie 'Tempomat' mit Bindestrich innerhalb des Buttons umbricht statt überzulaufen - auch bei größter Schrift.",
       "<b>Jede Schriftgröße ist jetzt einstellbar - in jedem Theme.</b> Der Theme-Manager hat jetzt für jeden Dashboard-Text einen funktionierenden Größenregler - GPS-Speed, Fahrdaten, die Alle-Werte-Liste, Abschnitts-Titel und Kachelreihen 1-3 - und sie greifen endlich in jedem Theme auch im Standard-Dashboard und in Lambo. Mit den neuen Plus/Minus-Steppern (keine Tastatur nötig); das Dashboard ändert sich live.",

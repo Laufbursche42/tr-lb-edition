@@ -14,6 +14,10 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.46
+
+- The auto-filled feedback report is now plain text - the leftover formatting marks around the labels are gone, so the report reads cleanly on GitHub.
+
 ## 1.1.45
 
 - Quick-button labels are sized to fit by default (size 9) and can now be made larger - the per-theme size control in the Theme manager goes up to 35 (was 30).
