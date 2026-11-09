@@ -20,6 +20,7 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>R5.4.25 firmware now supported.</b> The Teverun firmware patcher recognises the R5.4.25 stock image and builds every variant (standard, kickstart, permanently-open, EEPROM reset, plus the blinker option) exactly as it does for R5.4.19 and R5.4.21.",
       "<b>Set how many taps toggle the de-restrict.</b> A new Settings field (1-50, default 3) lets you choose how many taps on the speed tile switch the lock on or off, so the gesture can be as deliberate or as quick as you like.",
       "<b>Cleaner feedback report.</b> The pre-filled feedback report is now plain, readable text - the leftover formatting marks around its labels are gone, so it reads cleanly on GitHub.",
       "<b>Button text sized to fit, up to 35.</b> The quick-button label size now starts at 9 so the labels fit by default, and its maximum in the Theme manager is raised from 30 to 35 for when you want it large.",
@@ -187,7 +188,7 @@ window.I18N = {
     "start.s1.text": "Turn the scooter on and keep it close, with Bluetooth on. Then tap \"Connect scooter\" and pick your Teverun from the list; the first time, confirm the Bluetooth pairing.",
     "start.s2.title": "2. Which route fits your Teverun",
     "start.s2.text": "The limiter (Drossel) is a Bluetooth switch in the scooter settings - take the speed limit off or put it back on, applied right away. For more, Teverun firmware is plain and the app has a built-in patcher. Which route you get depends on your model:",
-    "start.s2.b1.cond": "A Teverun whose stock firmware the app recognises (IVCU models such as the Fighter Mini class, stock R5.4.19 / R5.4.21)",
+    "start.s2.b1.cond": "A Teverun whose stock firmware the app recognises (IVCU models such as the Fighter Mini class, stock R5.4.19 / R5.4.21 / R5.4.25)",
     "start.s2.b1.text": "The firmware patcher builds a patched image and flashes it back over Bluetooth. Continue below for the builds.",
     "start.s2.b2.cond": "Blade Mini and other non-IVCU controllers",
     "start.s2.b2.text": "The patcher does not build an image for these - use the Bluetooth limiter in the scooter settings instead (switchable). There is no permanently-open build for them.",
@@ -205,7 +206,7 @@ window.I18N = {
     "start.s3.note": "Options: the clamp fields set the locked speed (native units, not km/h - measure the road speed), the blinker fix is only needed if your indicator stays lit instead of blinking, and the on/off lock needs an app that supports it.",
     "start.s4.title": "4. Download, patch, flash",
     "start.s4.text": "Open the firmware update in Settings, download the stock firmware, build your chosen patch on the phone (you can save both the stock image and the patched copy to your Downloads folder), then flash it back over Bluetooth. A flash takes about 13 minutes - keep the scooter on and in range and the app in the foreground. If it is interrupted the IVCU just stays in update mode and can be flashed again; it is not bricked. Nothing is uploaded anywhere.",
-    "start.s4.note": "Where to get a stock firmware: the app downloads it for recognised models. To get the R5.4.19 / R5.4.21 stock image yourself - to restore, or if your scooter is not recognised - the community shares it: Spooonky's Teverun firmware repo (link below) and the eScooter-Stammtisch forum.",
+    "start.s4.note": "Where to get a stock firmware: the app downloads it for recognised models. To get the R5.4.19 / R5.4.21 / R5.4.25 stock image yourself - to restore, or if your scooter is not recognised - the community shares it: Spooonky's Teverun firmware repo (link below) and the eScooter-Stammtisch forum.",
     "start.cta.fw": "Firmware source: Spooonky's repo",
     "start.s5.title": "5. Switchable or permanent",
     "start.s5.text": "Standard is switchable - turn the limit off and on from the app, and it re-locks as set. Permanently open stays open until you flash a stock firmware back. Each build above says which one you get.",
@@ -372,7 +373,7 @@ window.I18N = {
     "fw.progress.phase.preparing": "Preparing",
     "fw.section.file.title": "Firmware file",
     "fw.patch.title": "Patch options",
-    "fw.patch.intro": "Choose the build and its options, then build the patched firmware. Shown only for a recognised stock image (R5.4.19 / R5.4.21).",
+    "fw.patch.intro": "Choose the build and its options, then build the patched firmware. Shown only for a recognised stock image (R5.4.19 / R5.4.21 / R5.4.25).",
     "fw.patch.variant": "Build",
     "fw.patch.variant.standard": "Standard",
     "fw.patch.variant.kickstart": "Kickstart",
@@ -1000,6 +1001,7 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Firmware R5.4.25 jetzt unterstützt.</b> Der Teverun-Firmware-Patcher erkennt das Serien-Image R5.4.25 und baut alle Varianten (Standard, Kickstart, Dauerhaft offen, EEPROM-Reset, plus Blinker-Option) genau wie bei R5.4.19 und R5.4.21.",
       "<b>Tippzahl für die Entdrosselung einstellbar.</b> Ein neues Einstellungsfeld (1-50, Standard 3) legt fest, wie viele Tipps auf die Tempo-Kachel die Sperre ein- oder ausschalten - so wird die Geste so bewusst oder so schnell, wie du willst.",
       "<b>Sauberer Fehlerbericht.</b> Der automatisch ausgefüllte Rückmelde-Text ist jetzt klarer Klartext - die überflüssigen Formatierungszeichen um die Beschriftungen sind weg.",
       "<b>Button-Schrift passt standardmäßig - bis 35 einstellbar.</b> Die Schriftgröße der Schnelltasten-Beschriftung startet jetzt bei 9 und passt so von Haus aus; ihr Maximum im Theme-Manager wurde von 30 auf 35 angehoben, falls du es groß möchtest.",
@@ -1167,7 +1169,7 @@ window.I18N = {
     "start.s1.text": "Schalte den Roller ein, halte ihn nah, Bluetooth an. Dann auf \"Roller verbinden\" tippen und deinen Teverun aus der Liste wählen; beim ersten Mal die Bluetooth-Kopplung bestätigen.",
     "start.s2.title": "2. Welcher Weg passt zu deinem Teverun",
     "start.s2.text": "Die Drossel ist ein Bluetooth-Schalter in den Scooter-Einstellungen - Geschwindigkeitsgrenze aufheben oder wieder setzen, sofort wirksam. Für mehr ist die Teverun-Firmware im Klartext und die App hat einen eingebauten Patcher. Welcher Weg möglich ist, hängt vom Modell ab:",
-    "start.s2.b1.cond": "Ein Teverun, dessen Stock-Firmware die App erkennt (IVCU-Modelle wie die Fighter-Mini-Klasse, Stock R5.4.19 / R5.4.21)",
+    "start.s2.b1.cond": "Ein Teverun, dessen Stock-Firmware die App erkennt (IVCU-Modelle wie die Fighter-Mini-Klasse, Stock R5.4.19 / R5.4.21 / R5.4.25)",
     "start.s2.b1.text": "Der Firmware-Patcher baut ein gepatchtes Image und flasht es per Bluetooth zurück. Weiter unten zu den Builds.",
     "start.s2.b2.cond": "Blade Mini und andere Nicht-IVCU-Controller",
     "start.s2.b2.text": "Für diese baut der Patcher kein Image - nutze stattdessen die Bluetooth-Drossel in den Scooter-Einstellungen (schaltbar). Einen Permanent-offen-Build gibt es dafür nicht.",
@@ -1185,7 +1187,7 @@ window.I18N = {
     "start.s3.note": "Optionen: Die Klemmen-Felder setzen das gesperrte Tempo (native Einheiten, keine km/h - Straßentempo nachmessen), der Blinker-Fix ist nur nötig, wenn dein Blinker dauerhaft leuchtet statt zu blinken, und die schaltbare Sperre braucht eine App, die das unterstützt.",
     "start.s4.title": "4. Herunterladen, patchen, flashen",
     "start.s4.text": "Öffne das Firmware-Update in den Einstellungen, lade die Stock-Firmware, baue deinen gewählten Patch auf dem Handy (du kannst sowohl das Stock-Image als auch die gepatchte Kopie in deinen Downloads-Ordner speichern), dann flashe ihn per Bluetooth zurück. Ein Flash dauert etwa 13 Minuten - Roller an und in Reichweite lassen, App im Vordergrund. Wird er unterbrochen, bleibt die IVCU einfach im Update-Modus und kann erneut geflasht werden; nichts ist gebrickt. Es wird nichts hochgeladen.",
-    "start.s4.note": "Wo du eine Stock-Firmware herbekommst: Die App lädt sie bei erkannten Modellen selbst. Das R5.4.19/R5.4.21-Stock-Image selbst - zum Zurücksetzen oder wenn dein Roller nicht erkannt wird - teilt die Community: Spooonkys Teverun-Firmware-Repo (Link unten) und das eScooter-Stammtisch-Forum.",
+    "start.s4.note": "Wo du eine Stock-Firmware herbekommst: Die App lädt sie bei erkannten Modellen selbst. Das R5.4.19/R5.4.21/R5.4.25-Stock-Image selbst - zum Zurücksetzen oder wenn dein Roller nicht erkannt wird - teilt die Community: Spooonkys Teverun-Firmware-Repo (Link unten) und das eScooter-Stammtisch-Forum.",
     "start.cta.fw": "Firmware-Quelle: Spooonkys Repo",
     "start.s5.title": "5. Schaltbar oder permanent",
     "start.s5.text": "Standard ist schaltbar - Limit in der App aus- und einschalten, es sperrt wieder wie eingestellt. Permanent offen bleibt offen, bis du eine Serien-Firmware zurückflashst. Jeder Build oben sagt, was du bekommst.",
@@ -1352,7 +1354,7 @@ window.I18N = {
     "fw.progress.phase.preparing": "Vorbereitung",
     "fw.section.file.title": "Firmware-Datei",
     "fw.patch.title": "Patch-Optionen",
-    "fw.patch.intro": "Wähle die Variante und ihre Optionen, dann baue die gepatchte Firmware. Erscheint nur bei einem erkannten Stock-Image (R5.4.19 / R5.4.21).",
+    "fw.patch.intro": "Wähle die Variante und ihre Optionen, dann baue die gepatchte Firmware. Erscheint nur bei einem erkannten Stock-Image (R5.4.19 / R5.4.21 / R5.4.25).",
     "fw.patch.variant": "Variante",
     "fw.patch.variant.standard": "Standard",
     "fw.patch.variant.kickstart": "Kickstart",

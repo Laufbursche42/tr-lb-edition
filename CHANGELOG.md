@@ -14,6 +14,10 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.48
+
+- Teverun firmware patcher: the R5.4.25 stock firmware is now supported. The app recognises it and builds every variant (standard, kickstart, EEPROM reset, permanent-open, blinker option) exactly as it does for R5.4.19 and R5.4.21.
+
 ## 1.1.47
 
 - You can now set how many taps on the speed tile toggle the de-restrict - a new Settings field (1 to 50, default 3). The gesture is no longer fixed at three taps; the 700 ms window between taps is unchanged.
