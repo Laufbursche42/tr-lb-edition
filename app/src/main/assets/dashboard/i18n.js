@@ -20,6 +20,7 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Blade Mini de-restrict fixed.</b> The app now identifies a Blade Mini by its display firmware, so the Drossel on/off switch works even when the scooter's Bluetooth name is not recognised - previously it silently did nothing on those. The Fighter Mini unlock is unchanged.",
       "<b>R5.4.25 firmware now supported.</b> The Teverun firmware patcher recognises the R5.4.25 stock image and builds every variant (standard, kickstart, permanently-open, EEPROM reset, plus the blinker option) exactly as it does for R5.4.19 and R5.4.21.",
       "<b>Set how many taps toggle the de-restrict.</b> A new Settings field (1-50, default 3) lets you choose how many taps on the speed tile switch the lock on or off, so the gesture can be as deliberate or as quick as you like.",
       "<b>Cleaner feedback report.</b> The pre-filled feedback report is now plain, readable text - the leftover formatting marks around its labels are gone, so it reads cleanly on GitHub.",
@@ -1001,6 +1002,7 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Blade-Mini-Entdrosselung gefixt.</b> Die App erkennt einen Blade Mini jetzt an seiner Display-Firmware, sodass der Drossel-Schalter auch funktioniert, wenn der Bluetooth-Name nicht erkannt wird - vorher tat sich dort still nichts. Die Fighter-Mini-Freischaltung bleibt unverändert.",
       "<b>Firmware R5.4.25 jetzt unterstützt.</b> Der Teverun-Firmware-Patcher erkennt das Serien-Image R5.4.25 und baut alle Varianten (Standard, Kickstart, Dauerhaft offen, EEPROM-Reset, plus Blinker-Option) genau wie bei R5.4.19 und R5.4.21.",
       "<b>Tippzahl für die Entdrosselung einstellbar.</b> Ein neues Einstellungsfeld (1-50, Standard 3) legt fest, wie viele Tipps auf die Tempo-Kachel die Sperre ein- oder ausschalten - so wird die Geste so bewusst oder so schnell, wie du willst.",
       "<b>Sauberer Fehlerbericht.</b> Der automatisch ausgefüllte Rückmelde-Text ist jetzt klarer Klartext - die überflüssigen Formatierungszeichen um die Beschriftungen sind weg.",

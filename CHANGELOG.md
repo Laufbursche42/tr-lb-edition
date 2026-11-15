@@ -14,6 +14,10 @@ To hand-write the notes for a release, add a section headed with its version num
 
 If no matching section exists the notes fall back to the commit messages, so keeping this file up to date is optional.
 
+## 1.1.49
+
+- Teverun Blade Mini: the de-restrict (Drossel on/off) now works reliably. The app identifies a Blade Mini by its display firmware (3.4.6 / 3.4.8) and the absence of an IVCU - not just the Bluetooth name - so a Blade whose name was not recognised is no longer treated as a Fighter and the switch no longer silently does nothing. The Fighter Mini unlock is unchanged.
+
 ## 1.1.48
 
 - Teverun firmware patcher: the R5.4.25 stock firmware is now supported. The app recognises it and builds every variant (standard, kickstart, EEPROM reset, permanent-open, blinker option) exactly as it does for R5.4.19 and R5.4.21.

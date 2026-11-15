@@ -3328,11 +3328,18 @@ function setModelOverride(id) {
 function applyModelUi(btName) {
   const auto = detectModel(btName);
   const ov = _modelOverride ? MODEL_OPTIONS.find(o => o.id === _modelOverride) : null;
-  const isFighter = ov ? ov.cat === 'fighter' : auto.isFighter;
-  const isTetra   = ov ? ov.cat === 'tetra'   : auto.isTetra;
-  const isBmini   = ov ? ov.id === 'bmini'    : auto.name === 'BLADE MINI';
-  const known     = ov ? true : auto.known;
-  const dispName  = ov ? t(ov.key) : (auto.known ? auto.name : (btName ? t('msg.model.unknown') : '-'));
+  // Blade Mini is a display-only scooter: it has NO IVCU, and its display firmware (55 44) is 3.4.6 or
+  // 3.4.8. A Fighter always reports an IVCU/VCU version (55 43) - even one running 3.4.8 - so it can
+  // never match this. This firmware signature is reliable where the BLE name is not, so it overrides the
+  // name (a manual pick still wins). The name decides only until the firmware frames have arrived.
+  const ivcuVer = (liveRaw().swVer || '') + '';          // 55 43 VCU/IVCU version; '' => no IVCU present
+  const dispVer = (liveRaw().displayVer || '') + '';     // 55 44 display firmware version
+  const fwBmini = ivcuVer === '' && (dispVer === '3.4.6' || dispVer === '3.4.8');
+  const isFighter = ov ? ov.cat === 'fighter' : (!fwBmini && auto.isFighter);
+  const isTetra   = ov ? ov.cat === 'tetra'   : (!fwBmini && auto.isTetra);
+  const isBmini   = ov ? ov.id === 'bmini'    : (fwBmini || auto.name === 'BLADE MINI');
+  const known     = ov ? true : (fwBmini || auto.known);
+  const dispName  = ov ? t(ov.key) : (fwBmini ? 'BLADE MINI' : (auto.known ? auto.name : (btName ? t('msg.model.unknown') : '-')));
   const key = dispName + '|' + isFighter + '|' + isTetra + '|' + isBmini + '|' + (ov ? 'm' : 'a');
   if (key === _lastModelKey) return;   // only touch the DOM when the effective model changes
   _lastModelKey = key;
@@ -3372,8 +3379,8 @@ function bminiActive() { return _bminiEffective; }
 // Blade Mini de-restrict (per-gear speed) only works on firmware 3.4.6; 3.4.8 ignores every BLE write.
 // A Fighter IVCU can also run 3.4.x, so this MUST gate on the model too, never on the firmware alone.
 function bminiFwBlocked() {
-  const sw = (liveRaw().swVer || '') + '';
-  return bminiActive() && sw !== '' && sw !== '3.4.6';
+  const disp = (liveRaw().displayVer || '') + '';   // 55 44 display firmware: de-restrict only lands on 3.4.6
+  return bminiActive() && disp !== '' && disp !== '3.4.6';
 }
 
 function pick(d, keys) {
