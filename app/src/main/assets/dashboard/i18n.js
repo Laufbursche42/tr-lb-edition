@@ -20,6 +20,8 @@
 window.I18N = {
   en: {
     'whatsnew.points': [
+      "<b>Keep your own settings across power loss.</b> Pin the pack voltage, the kickstart start mode or the motor mode in the scooter settings - if the controller forgets them after standing unused for days, the app writes your value back automatically on the next connection, only when it really differs. Works on Fighter and Blade.",
+      "<b>Blade Mini lock speeds are remembered.</b> When you lock the Blade Mini again by tapping, it no longer resets your gears to the fixed factory 10 / 15 / 21 - set your own locked per-gear speeds in the settings and they are kept every time you lock.",
       "<b>Blade Mini de-restrict fixed.</b> The app now identifies a Blade Mini by its display firmware, so the Drossel on/off switch works even when the scooter's Bluetooth name is not recognised - previously it silently did nothing on those. The Fighter Mini unlock is unchanged.",
       "<b>R5.4.25 firmware now supported.</b> The Teverun firmware patcher recognises the R5.4.25 stock image and builds every variant (standard, kickstart, permanently-open, EEPROM reset, plus the blinker option) exactly as it does for R5.4.19 and R5.4.21.",
       "<b>Set how many taps toggle the de-restrict.</b> A new Settings field (1-50, default 3) lets you choose how many taps on the speed tile switch the lock on or off, so the gesture can be as deliberate or as quick as you like.",
@@ -962,6 +964,16 @@ window.I18N = {
     "settings.bmini.g1.label": "Gear 1",
     "settings.bmini.g2.label": "Gear 2",
     "settings.bmini.g3.label": "Gear 3 (top)",
+    "settings.bmini.lock.title": "Blade Mini locked speed",
+    "settings.bmini.lock.hint": "Per-gear speed the tap gesture writes when LOCKING again (gears 1/2/3). Set your own legal values - they are kept and no longer reset to the factory 10 / 15 / 21 each time you lock. Saved instantly. Firmware 3.4.6 only.",
+    "settings.pin.section.title": "Remember & restore",
+    "settings.pin.hint": "If the scooter forgets a setting after standing unused for days, pin it here: on the next connection the app writes your value back automatically, but only when it really differs. Saved on the device.",
+    "settings.pin.packvoltage.label": "Pack voltage",
+    "settings.pin.startmode.label": "Start mode (kickstart)",
+    "settings.pin.motormode.label": "Motor mode",
+    "msg2.pin.restored": "Your pinned settings were restored.",
+    "msg2.pin.saved": "Saved - will be restored on connect.",
+    "msg2.pin.need_connect": "Connect the scooter first so the current value can be stored.",
     "settings.gps.group.title": "GPS recording",
     "settings.gps.interval.label": "Interval",
     "settings.gps.interval.option.10s": "10 s",
@@ -1002,6 +1014,8 @@ window.I18N = {
 
   de: {
     'whatsnew.points': [
+      "<b>Eigene Einstellungen überleben den Stromverlust.</b> Hefte die Pack-Spannung, den Kickstart-Startmodus oder den Motormodus in den Roller-Einstellungen an - wenn der Controller sie nach Tagen Stillstand vergisst, schreibt die App deinen Wert beim nächsten Verbinden automatisch zurück, nur wenn er wirklich abweicht. Funktioniert bei Fighter und Blade.",
+      "<b>Blade-Mini-Sperrwerte werden gemerkt.</b> Wenn du den Blade Mini per Tippen wieder sperrst, setzt er die Gänge nicht mehr auf die festen Werks-Werte 10 / 15 / 21 zurück - trage deine eigenen Sperr-Tempi pro Gang in den Einstellungen ein, sie bleiben bei jedem Sperren erhalten.",
       "<b>Blade-Mini-Entdrosselung gefixt.</b> Die App erkennt einen Blade Mini jetzt an seiner Display-Firmware, sodass der Drossel-Schalter auch funktioniert, wenn der Bluetooth-Name nicht erkannt wird - vorher tat sich dort still nichts. Die Fighter-Mini-Freischaltung bleibt unverändert.",
       "<b>Firmware R5.4.25 jetzt unterstützt.</b> Der Teverun-Firmware-Patcher erkennt das Serien-Image R5.4.25 und baut alle Varianten (Standard, Kickstart, Dauerhaft offen, EEPROM-Reset, plus Blinker-Option) genau wie bei R5.4.19 und R5.4.21.",
       "<b>Tippzahl für die Entdrosselung einstellbar.</b> Ein neues Einstellungsfeld (1-50, Standard 3) legt fest, wie viele Tipps auf die Tempo-Kachel die Sperre ein- oder ausschalten - so wird die Geste so bewusst oder so schnell, wie du willst.",
@@ -1944,6 +1958,16 @@ window.I18N = {
     "settings.bmini.g1.label": "Gang 1",
     "settings.bmini.g2.label": "Gang 2",
     "settings.bmini.g3.label": "Gang 3 (oben)",
+    "settings.bmini.lock.title": "Blade Mini Sperr-Tempo",
+    "settings.bmini.lock.hint": "Der Wert pro Gang, den die Tipp-Geste beim erneuten SPERREN schreibt (Gänge 1/2/3). Trage deine eigenen legalen Werte ein - sie bleiben erhalten und werden beim Sperren nicht mehr auf die Werks-Werte 10 / 15 / 21 zurückgesetzt. Wird sofort gespeichert. Nur Firmware 3.4.6.",
+    "settings.pin.section.title": "Merken & wiederherstellen",
+    "settings.pin.hint": "Wenn der Roller eine Einstellung nach Tagen Stillstand vergisst, hier anheften: beim nächsten Verbinden schreibt die App deinen Wert automatisch zurück, aber nur wenn er wirklich abweicht. Wird auf dem Gerät gespeichert.",
+    "settings.pin.packvoltage.label": "Pack-Spannung",
+    "settings.pin.startmode.label": "Startmodus (Kickstart)",
+    "settings.pin.motormode.label": "Motormodus",
+    "msg2.pin.restored": "Deine gemerkten Einstellungen wurden wiederhergestellt.",
+    "msg2.pin.saved": "Gemerkt - wird beim Verbinden wiederhergestellt.",
+    "msg2.pin.need_connect": "Verbinde erst den Roller, damit der aktuelle Wert gespeichert werden kann.",
     "settings.gps.group.title": "GPS-Aufzeichnung",
     "settings.gps.interval.label": "Intervall",
     "settings.gps.interval.option.10s": "10 s",

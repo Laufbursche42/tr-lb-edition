@@ -522,6 +522,22 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
           <input class="set-ctrl" id="bmini-g3" type="number" min="1" max="100" step="1" inputmode="numeric">
         </div>
       </div>
+      <div class="section-hdr sub-hdr" data-i18n="settings.bmini.lock.title">Blade Mini locked speed</div>
+      <div class="settings-group pt-4">
+        <div class="settings-row-sublabel mb-8" id="bmini-lock-hint" data-i18n="settings.bmini.lock.hint">Per-gear speed the triple-tap writes when LOCKING again (gears 1/2/3). Set your own legal values - they are kept and no longer reset to the factory 10 / 15 / 21 each time you lock. Saved instantly. Firmware 3.4.6 only.</div>
+        <div class="settings-row">
+          <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g1.label">Gear 1</div></div>
+          <input class="set-ctrl" id="bmini-lock-g1" type="number" min="1" max="100" step="1" inputmode="numeric">
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g2.label">Gear 2</div></div>
+          <input class="set-ctrl" id="bmini-lock-g2" type="number" min="1" max="100" step="1" inputmode="numeric">
+        </div>
+        <div class="settings-row no-bottom-rule">
+          <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.bmini.g3.label">Gear 3 (top)</div></div>
+          <input class="set-ctrl" id="bmini-lock-g3" type="number" min="1" max="100" step="1" inputmode="numeric">
+        </div>
+      </div>
     </div>
 
     <!-- Per-gear (assist) settings, one profile per gear
@@ -657,6 +673,25 @@ Source-available under the PolyForm Noncommercial License 1.0.0 with Additional 
         <div class="settings-row-left"><div class="settings-row-label" data-i18n="scooter.mode.smart.label">Smart mode</div></div>
         <button type="button" class="set-help" data-set-help="ss-tractioncontrol" aria-label="What is this?" data-i18n-aria="scooter.help.hint">?</button>
         <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="ss-tractioncontrol"><label class="toggle-label" for="ss-tractioncontrol"></label></div>
+      </div>
+    </div>
+
+    <!-- Remember & restore: the user pins a setting; on the next connect the app writes the pinned
+         value back if the controller forgot it (power loss). Local only. Fighter + Blade identical. -->
+    <div class="section-hdr sub-hdr" data-i18n="settings.pin.section.title">Remember &amp; restore</div>
+    <div class="settings-group pt-4">
+      <div class="settings-row-sublabel mb-8" data-i18n="settings.pin.hint">If the scooter forgets a setting after standing unused for days, pin it here: on the next connection the app writes your value back automatically, but only when it really differs. Saved on the device.</div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.pin.packvoltage.label">Pack voltage</div></div>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="pin-packvoltage"><label class="toggle-label" for="pin-packvoltage"></label></div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.pin.startmode.label">Start mode (kickstart)</div></div>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="pin-startmode"><label class="toggle-label" for="pin-startmode"></label></div>
+      </div>
+      <div class="settings-row no-bottom-rule">
+        <div class="settings-row-left"><div class="settings-row-label" data-i18n="settings.pin.motormode.label">Motor mode</div></div>
+        <div class="toggle-wrap"><input type="checkbox" class="toggle-input" id="pin-motormode"><label class="toggle-label" for="pin-motormode"></label></div>
       </div>
     </div>
 
@@ -1991,6 +2026,9 @@ function updateBLEUI(data) {
   // Fighter-Mini-only features (firmware / FIN unlock) are gated and the Tetra is flagged unsupported.
   try { applyModelUi(liveRaw().btName); } catch (e) {}
 
+  // Restore any settings the user pinned, once the controller has reported its real config.
+  try { maybeRestorePinned(data); } catch (e) {}
+
   // Auto-arm a ride once the scooter has actually moved ~20 m (keeps GPS off while parked).
   try { maybeArmRide(data); } catch (e) {}
 
@@ -2118,6 +2156,7 @@ function onBLEConnectionChange(nowConnected) {
     // BLE dropped (manual disconnect or the scooter powered off - same thing): always finalize
     // the ride and stop GPS.
     _teleSeen = {};   // forget which Live-Values keys were seen, so the fold shows the full set again
+    _pinRestoredKeys = null;   // re-arm the pinned-settings restore for the next connection
     try { applyTeleAvailability(); } catch(e) {}
     finalizeRide();
     stopGPSWatch();
@@ -3406,6 +3445,8 @@ function pushSetting(key, val) {
 function openScooterPage() {
   ssDirty.clear();                 // fresh load: no unsaved global-setting edits yet
   prefillScooterSettings();
+  try { wireBminiSpeeds(); } catch (e) {}   // refresh the Blade unlock/lock speed inputs from storage
+  try { wirePinToggles(); } catch (e) {}    // reflect the remember-&-restore pin state
   updateGearCache();
   prefillGearEditor(activeGear() || gsSelectedGear || 2);
   document.getElementById('scooter-page').classList.add('open');
@@ -3681,42 +3722,123 @@ function toggleFinLock() {
   } catch (e) { showToast(tf('msg2.toast.error', { e: e })); }
 }
 // Blade Mini de-restrict: the active gear's per-gear speed (55 71 t[10]) above the eKFV cap = de-restricted;
-// tap toggles it on German gears 2/3/4. Unlock values are user-set (settings block); lock restores the legal
-// cap and stays fixed at 10/15/21.
+// tap toggles it on German gears 2/3/4. BOTH the unlock values and the lock (restore) values are user-set in
+// the settings block and persisted locally; when the user has set none, lock falls back to the legal cap 10/15/21.
 const BMINI_TUNED_ABOVE = 22;   // eKFV legal per-gear cap; a gear set above this counts as tuned -> red tile + "unlocked"
 const BMINI_UNLOCK_DEFAULTS = [45, 60, 80];
-function bminiUnlockSpeeds() {
+const BMINI_LOCK_DEFAULTS = [10, 15, 21];   // legal eKFV cap; fallback when the user has not set own lock values
+function bminiGearSpeeds(storePrefix, defaults) {
   return [1, 2, 3].map((n, i) => {
-    let v = parseInt(storage.get('lb_bmini_g' + n), 10);
-    if (!isFinite(v)) v = BMINI_UNLOCK_DEFAULTS[i];
+    let v = parseInt(storage.get(storePrefix + n), 10);
+    if (!isFinite(v)) v = defaults[i];
     return Math.min(Math.max(v, 1), 100);
   });
 }
+function bminiUnlockSpeeds() { return bminiGearSpeeds('lb_bmini_g', BMINI_UNLOCK_DEFAULTS); }
+function bminiLockSpeeds()   { return bminiGearSpeeds('lb_bmini_lock_g', BMINI_LOCK_DEFAULTS); }
 function bminiToggleDerestrict() {
   if (!LB.sendGearSetting) { showToast(t('msg.app.only.in.app')); return; }
   const unlocked = (liveRaw().assistSpeedLimit | 0) > BMINI_TUNED_ABOVE;
-  const speeds = unlocked ? [10, 15, 21] : bminiUnlockSpeeds();
+  const speeds = unlocked ? bminiLockSpeeds() : bminiUnlockSpeeds();   // lock -> the user's own locked values, not a fixed reset
   [2, 3, 4].forEach((g, i) => { try { LB.sendGearSetting(g, JSON.stringify({ speedLimit: speeds[i] })); } catch (e) {} });
   showToast(unlocked ? t('msg2.lock.toast.locking') : t('msg2.lock.toast.unlocking'), 3000);
 }
+
+/* ── Remember & restore scooter settings across power loss ──────────────────────────────────
+   The controller can forget pack voltage, kickstart (start mode) and the motor mode when it sits
+   unpowered for days and boots on firmware defaults. The user can PIN any of these; on connect -
+   only AFTER the controller reported its real config (settingsReady) - the app writes the pinned
+   value back, and only when it actually differs (compare-first, so a normal connect is a no-op).
+   Local only, never streamed. Model-agnostic: identical for Fighter and Blade (same native path). */
+const PIN_SETTINGS = ['packVoltage', 'startMode', 'motorMode'];
+function pinKey(k) { return 'lb_pin_' + k; }
+function pinnedVal(k) { const v = storage.get(pinKey(k)); return (v == null || v === '') ? null : v; }
+function isPinned(k) { return pinnedVal(k) != null; }
+function setPinned(k, on, val) { if (on) storage.set(pinKey(k), String(val)); else storage.remove(pinKey(k)); }
+// Current effective value of a pinnable setting from live data, as a canonical string (null if not reported yet).
+function pinCurrent(k) {
+  const d = liveRaw();
+  if (k === 'packVoltage') { const v = pick(d, ['packVoltage']); return v == null ? null : String(v | 0); }
+  if (k === 'startMode')   { const v = pick(d, ['startMode']);   return v == null ? null : (v ? '1' : '0'); }
+  if (k === 'motorMode') {
+    const dm = pick(d, ['dualMotor']), rm = pick(d, ['rearMotorOn']);
+    if (dm === undefined || rm === undefined) return null;
+    const b = x => x === true || x === 1 || x === '1';
+    if (b(rm) && b(dm)) return '0';        // dual
+    if (b(rm) && !b(dm)) return '1';       // rear only
+    if (!b(rm) && b(dm)) return '2';       // front only
+    return null;
+  }
+  return null;
+}
+// Write a pinned value back through the setting's own path (same calls a manual change uses).
+function pinApply(k, val) {
+  if (k === 'motorMode') {
+    if (typeof LB !== 'undefined' && LB.setMotorMode) { try { LB.setMotorMode(parseInt(val, 10)); return true; } catch (e) {} }
+    return false;
+  }
+  if (k === 'startMode') return pushSetting('startMode', val === '1');   // boolean, exactly as the manual toggle writes it
+  return pushSetting(k, parseInt(val, 10));                              // packVoltage -> 55 71 settings frame (safe once settingsReady)
+}
+let _pinRestoredKeys = null;   // per-connection: keys already handled; null = fresh. Reset on disconnect.
+function maybeRestorePinned(d) {
+  if (!d || !d.settingsReady) return;        // never write before the controller reported its real config
+  if (!_pinRestoredKeys) _pinRestoredKeys = {};
+  PIN_SETTINGS.forEach(k => {
+    if (_pinRestoredKeys[k]) return;                                    // already handled this connection
+    const want = pinnedVal(k); if (want == null) { _pinRestoredKeys[k] = 1; return; }   // not pinned -> done
+    const cur = pinCurrent(k); if (cur == null) return;                // value not reported yet (e.g. motor mode 55 72 lags) -> retry next tick
+    _pinRestoredKeys[k] = 1;                                           // handled: matches, or we write exactly once
+    if (cur !== want && pinApply(k, want)) showToast(t('msg2.pin.restored'), 3500);
+  });
+}
+// The "remember" toggles in the scooter-settings sheet: reflect stored state, snapshot the current
+// value on enable, clear on disable.
+let _pinWired = false;
+const PIN_TOGGLE_MAP = { 'pin-packvoltage': 'packVoltage', 'pin-startmode': 'startMode', 'pin-motormode': 'motorMode' };
+function wirePinToggles() {
+  Object.keys(PIN_TOGGLE_MAP).forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.checked = isPinned(PIN_TOGGLE_MAP[id]);
+    if (!_pinWired) {
+      el.addEventListener('change', () => {
+        const k = PIN_TOGGLE_MAP[id];
+        if (el.checked) {
+          const c = pinCurrent(k);
+          if (c == null) { el.checked = false; showToast(t('msg2.pin.need_connect'), 3000, 'err'); return; }
+          setPinned(k, true, c);
+          showToast(t('msg2.pin.saved'), 2500);
+        } else {
+          setPinned(k, false);
+        }
+      });
+    }
+  });
+  _pinWired = true;
+}
+
 // The Blade-Mini unlock-speed inputs: fill from storage, persist on change. Local-only, never streamed.
 let _bminiSpeedsWired = false;
-function wireBminiSpeeds() {
-  const cur = bminiUnlockSpeeds();
+function wireBminiGroup(idPrefix, storePrefix, defaults) {
+  const cur = bminiGearSpeeds(storePrefix, defaults);
   [1, 2, 3].forEach((n, i) => {
-    const el = document.getElementById('bmini-g' + n);
+    const el = document.getElementById(idPrefix + n);
     if (!el) return;
     el.value = cur[i];
     if (!_bminiSpeedsWired) {
       el.addEventListener('change', () => {
         let v = parseInt(el.value, 10);
-        if (!isFinite(v)) v = BMINI_UNLOCK_DEFAULTS[i];
+        if (!isFinite(v)) v = defaults[i];
         v = Math.min(Math.max(v, 1), 100);
         el.value = v;
-        storage.set('lb_bmini_g' + n, String(v));
+        storage.set(storePrefix + n, String(v));
       });
     }
   });
+}
+function wireBminiSpeeds() {
+  wireBminiGroup('bmini-g',      'lb_bmini_g',      BMINI_UNLOCK_DEFAULTS);   // speeds written when de-restricting
+  wireBminiGroup('bmini-lock-g', 'lb_bmini_lock_g', BMINI_LOCK_DEFAULTS);     // speeds written when locking again
   _bminiSpeedsWired = true;
 }
 
@@ -6927,7 +7049,7 @@ function saveScooterSettings() {
     if (numById[key]) {
       const el = document.getElementById(numById[key]);
       const v = parseFloat(el && el.value);
-      if (!isNaN(v)) pushSetting(key, v);
+      if (!isNaN(v)) { pushSetting(key, v); if (isPinned(key)) storage.set(pinKey(key), String(Math.round(v))); }
     } else if (boolById[key]) {
       const el = document.getElementById(boolById[key]);
       if (el) {
@@ -6936,6 +7058,7 @@ function saveScooterSettings() {
           try { LB.setSmart(el.checked); } catch (e) { showToast(tf('msg2.toast.error', { e: e })); }
         } else {
           pushSetting(key, el.checked);
+          if (isPinned(key)) storage.set(pinKey(key), el.checked ? '1' : '0');   // keep a pinned value current with the user's choice
         }
       }
     } else if (key === 'cruise') {
@@ -7111,7 +7234,10 @@ function wireGearEditor() {
 function setMotorMode(mode) {
   if (typeof LB === 'undefined' || !LB.setMotorMode) { showToast(t('msg.app.only.in.app')); return; }
   if (!state.bleConnected) { showToast(t('msg2.toast.connect_scooter_first')); return; }
-  try { LB.setMotorMode(mode); setSegActive('#motor-mode-seg', mode); showToast(t('msg2.motor.toast.mode_set')); }
+  try {
+    LB.setMotorMode(mode); setSegActive('#motor-mode-seg', mode); showToast(t('msg2.motor.toast.mode_set'));
+    if (isPinned('motorMode')) storage.set(pinKey('motorMode'), String(mode));   // keep a pinned motor mode current
+  }
   catch (e) { showToast(tf('msg2.toast.error', { e: e })); }
 }
 
@@ -7710,6 +7836,7 @@ function init() {
   loadModelOverride();
   populateModelSelect();
   wireBminiSpeeds();
+  wirePinToggles();
   wireTapCount();
   recoverStuckRides();
   importNativeRoutes();   // pull in any track the native recorder finished while the app was away
